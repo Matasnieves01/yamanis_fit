@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
-import 'features/home/presentation/home_page.dart';
-import '/features/home/presentation/main_navigation_bar.dart';
+import 'features/home/presentation/Client/home_page.dart';
+import 'features/home/presentation/Client/main_navigation_bar.dart';
+import 'features/home/presentation/Client/login_page.dart';
 
  class App extends StatelessWidget {
    const App({super.key});
@@ -13,7 +14,12 @@ import '/features/home/presentation/main_navigation_bar.dart';
        debugShowCheckedModeBanner: false,
        theme: ThemeData.dark(),
 
-       home: const MainNavigationBar(),
+       initialRoute: "/",
+
+       routes: {
+          "/": (context) => const LoginPage(),
+          "/home": (context) => const MainNavigationBar(),
+       },
      );
    }
  }

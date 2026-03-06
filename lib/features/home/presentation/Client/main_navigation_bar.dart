@@ -1,8 +1,9 @@
 import 'package:flutter/material.dart';
-import '/features/home/presentation/dashboard_page.dart';
-import '/features/home/presentation/workouts_page.dart';
-import '/features/home/presentation/clients_page.dart';
-import '/features/home/presentation/profile_page.dart';
+import 'dashboard_page.dart';
+import 'workouts_page.dart';
+import '../Admin/clients_page.dart';
+import 'profile_page.dart';
+import '../Admin/create_workout_page.dart';
 
 class MainNavigationBar extends StatefulWidget {
   const MainNavigationBar({super.key});
@@ -16,7 +17,7 @@ class _MainNavigationBarState extends State<MainNavigationBar> {
 
   final List<Widget> _pages = const [
     DashboardPage(),
-    WorkoutsPage(),
+    CreateWorkoutPage(),
     ClientsPage(),
     ProfilePage(),
   ];void _onTabSelected(int index) {
