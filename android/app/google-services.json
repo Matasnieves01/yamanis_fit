@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "551467548139",
+    "project_id": "vyofit-5eedf",
+    "storage_bucket": "vyofit-5eedf.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:551467548139:android:fd6b8f2472f1076c786dae",
+        "android_client_info": {
+          "package_name": "com.vyofitness.yamanis_fit"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyCLl1dypxKSISC1EpTFu2any_8w4BwEfzQ"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

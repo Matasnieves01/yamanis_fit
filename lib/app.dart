@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
-import 'package:flutter/widgets.dart';
 import 'features/home/presentation/home_page.dart';
+import '/features/home/presentation/main_navigation_bar.dart';
 
  class App extends StatelessWidget {
    const App({super.key});
@@ -13,7 +13,7 @@ import 'features/home/presentation/home_page.dart';
        debugShowCheckedModeBanner: false,
        theme: ThemeData.dark(),
 
-       home: const HomePage(),
+       home: const MainNavigationBar(),
      );
    }
  }
