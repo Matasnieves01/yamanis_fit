@@ -20,18 +20,19 @@ class _LoginPageState extends State<LoginPage> {
       _emailController.text,
       _passwordController.text,
     );
+
+    if (!mounted) {
+      return;
+    }
+
     if (user != null) {
-      // Navigate to the home page or show a success message
       if (kDebugMode) {
-        if (kDebugMode) {
-          print("Login Succesfull");
-        }
+        print('Login successful');
       }
       Navigator.pushReplacementNamed(context, '/home');
     } else {
-      // Show an error message
       if (kDebugMode) {
-        print("Login failed");
+        print('Login failed');
       }
     }
   }
@@ -68,7 +69,13 @@ class _LoginPageState extends State<LoginPage> {
             ElevatedButton(
                 onPressed: login,
                 child: const Text('Login'),
-            )
+            ),
+            TextButton(
+              onPressed: () {
+                Navigator.pushNamed(context, '/register');
+              },
+              child: const Text("Don't have an account? Register"),
+            ),
           ],
         ),
       ),
