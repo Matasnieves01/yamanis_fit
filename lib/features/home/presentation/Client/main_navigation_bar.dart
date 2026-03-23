@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:yamanis_fit/features/home/presentation/Admin/workouts_page.dart';
 import '../../../auth/auth_service.dart';
 import 'dashboard_page.dart';
 import '../Admin/clients_page.dart';
@@ -21,7 +22,7 @@ class _MainNavigationBarState extends State<MainNavigationBar> {
     if (widget.role == UserRole.admin) {
       return const [
         DashboardPage(),
-        CreateWorkoutPage(),
+        WorkoutsPage(),
         ClientsPage(),
         ProfilePage(),
       ];
