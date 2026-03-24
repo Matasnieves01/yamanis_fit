@@ -4,7 +4,6 @@ import '../../../auth/auth_service.dart';
 import 'dashboard_page.dart';
 import '../Admin/clients_page.dart';
 import 'profile_page.dart';
-import '../Admin/create_workout_page.dart';
 
 class MainNavigationBar extends StatefulWidget {
   const MainNavigationBar({super.key, required this.role});
