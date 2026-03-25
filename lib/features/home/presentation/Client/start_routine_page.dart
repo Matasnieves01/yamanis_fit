@@ -25,26 +25,39 @@ class _StartRoutinePageState extends State<StartRoutinePage> {
 
   List<dynamic> workouts = [];
   List<bool> completionStatus = [];
-  List<String?> feedbackList = [];
+  List<Map<String, dynamic>> resultsList = [];
   Map<String, Map<String, dynamic>> workoutDetailsCache = {};
   bool isLoading = true;
+  bool _canStartToday = true;
+
+  DateTime _normalizeDay(DateTime date) => DateTime.utc(date.year, date.month, date.day);
 
   @override
   void initState() {
     super.initState();
+    final routineDateTs = widget.routine['date'] as Timestamp?;
+    if (routineDateTs != null) {
+      final routineDay = _normalizeDay(routineDateTs.toDate());
+      final today = _normalizeDay(DateTime.now());
+      _canStartToday = !routineDay.isAfter(today);
+    }
+
     workouts = widget.routine['workouts'] ?? [];
     completionStatus = List.generate(workouts.length, (index) => false);
-    feedbackList = List.generate(workouts.length, (index) => null);
+    resultsList = List.generate(workouts.length, (index) => {});
     _loadAllWorkoutDetails();
   }
 
   Future<void> _loadAllWorkoutDetails() async {
     for (var workout in workouts) {
-      final id = workout['workoutId'];
-      if (id != null && !workoutDetailsCache.containsKey(id)) {
-        final doc = await FirebaseFirestore.instance.collection('workouts').doc(id).get();
-        if (doc.exists) {
-          workoutDetailsCache[id] = doc.data()!;
+      final List exercises = workout['exercises'] ?? [workout];
+      for (var ex in exercises) {
+        final id = ex['workoutId'];
+        if (id != null && !workoutDetailsCache.containsKey(id)) {
+          final doc = await FirebaseFirestore.instance.collection('workouts').doc(id).get();
+          if (doc.exists) {
+            workoutDetailsCache[id] = doc.data()!;
+          }
         }
       }
     }
@@ -52,10 +65,9 @@ class _StartRoutinePageState extends State<StartRoutinePage> {
   }
 
   void _showWorkoutDetail(int index) {
-    final workout = workouts[index];
-    final details = workoutDetailsCache[workout['workoutId']];
-    if (details == null) return;
-
+    final workoutGroup = workouts[index];
+    final List exercises = workoutGroup['exercises'] ?? [workoutGroup];
+    
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
@@ -64,14 +76,15 @@ class _StartRoutinePageState extends State<StartRoutinePage> {
         borderRadius: BorderRadius.vertical(top: Radius.circular(32)),
       ),
       builder: (context) => WorkoutDetailSheet(
-        workout: workout,
-        details: details,
+        workoutGroup: workoutGroup,
+        exercises: exercises,
+        detailsCache: workoutDetailsCache,
         primaryColor: primaryColor,
         secondaryColor: secondaryColor,
-        onComplete: (feedback) {
+        onComplete: (results) {
           setState(() {
             completionStatus[index] = true;
-            feedbackList[index] = feedback;
+            resultsList[index] = results;
           });
           _checkRoutineCompletion();
         },
@@ -80,24 +93,43 @@ class _StartRoutinePageState extends State<StartRoutinePage> {
   }
 
   void _checkRoutineCompletion() async {
+    if (!_canStartToday) return;
     if (completionStatus.every((status) => status)) {
       final user = FirebaseAuth.instance.currentUser;
       if (user == null) return;
 
-      // Save Log to Firestore for Admin
-      await FirebaseFirestore.instance.collection('routine_logs').add({
-        'routineId': widget.routineId,
-        'routineName': widget.routine['name'],
-        'userId': user.uid,
-        'date': Timestamp.now(),
-        'results': List.generate(workouts.length, (i) => {
-          'workoutName': workouts[i]['workoutName'],
-          'feedback': feedbackList[i],
-        }),
-      });
+      try {
+        final userDoc = await FirebaseFirestore.instance.collection('users').doc(user.uid).get();
+        final userData = userDoc.data();
+        final clientName = "${userData?['firstName'] ?? ''} ${userData?['lastName'] ?? ''}".trim();
 
-      if (!mounted) return;
-      _showCompletionDialog();
+        final logRef = await FirebaseFirestore.instance.collection('routine_logs').add({
+          'routineId': widget.routineId,
+          'routineName': widget.routine['name'],
+          'userId': user.uid,
+          'userName': clientName,
+          'date': Timestamp.now(),
+          'results': resultsList,
+        });
+
+        await FirebaseFirestore.instance.collection('notifications').add({
+          'type': 'routine_completed',
+          'title': 'Rutina Completada',
+          'message': '$clientName ha terminado la rutina: ${widget.routine['name']}',
+          'userId': user.uid,
+          'userName': clientName,
+          'targetRole': 'admin',
+          'logId': logRef.id,
+          'read': false,
+          'createdAt': FieldValue.serverTimestamp(),
+        });
+
+        if (!mounted) return;
+        Navigator.pop(context, true);
+        _showCompletionDialog();
+      } catch (e) {
+        debugPrint("Error finishing routine: $e");
+      }
     }
   }
 
@@ -107,16 +139,16 @@ class _StartRoutinePageState extends State<StartRoutinePage> {
       barrierDismissible: false,
       builder: (context) => AlertDialog(
         backgroundColor: const Color(0xFF1A1A1A),
-        title: const Text("Routine Completed!", style: TextStyle(color: Colors.white)),
-        content: Text("Great job! Your progress has been sent to your trainer.", 
+        title: const Text("¡Rutina Completada!", style: TextStyle(color: Colors.white)),
+        content: Text("¡Buen trabajo! Tu progreso ha sido enviado.", 
           style: TextStyle(color: Colors.white.withOpacity(0.7))),
         actions: [
           TextButton(
             onPressed: () {
-              Navigator.pop(context); // Close dialog
-              Navigator.pop(context); // Back to dashboard
+              Navigator.pop(context);
+              Navigator.pop(context, true);
             },
-            child: Text("FINISH", style: TextStyle(color: primaryColor, fontWeight: FontWeight.bold)),
+            child: Text("FINALIZAR", style: TextStyle(color: primaryColor, fontWeight: FontWeight.bold)),
           )
         ],
       ),
@@ -133,7 +165,30 @@ class _StartRoutinePageState extends State<StartRoutinePage> {
         backgroundColor: Colors.transparent,
         elevation: 0,
       ),
-      body: isLoading
+      body: !_canStartToday
+          ? Center(
+              child: Padding(
+                padding: const EdgeInsets.all(24.0),
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    const Icon(Icons.event_busy, color: Colors.redAccent, size: 56),
+                    const SizedBox(height: 16),
+                    const Text(
+                      'Esta rutina no está disponible todavía',
+                      style: TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold),
+                      textAlign: TextAlign.center,
+                    ),
+                    const SizedBox(height: 20),
+                    ElevatedButton(
+                      onPressed: () => Navigator.pop(context),
+                      child: const Text('VOLVER'),
+                    ),
+                  ],
+                ),
+              ),
+            )
+          : isLoading
           ? Center(child: CircularProgressIndicator(color: primaryColor))
           : Padding(
               padding: const EdgeInsets.all(24.0),
@@ -141,12 +196,12 @@ class _StartRoutinePageState extends State<StartRoutinePage> {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   const Text(
-                    "WORKOUT LIST",
+                    "LISTA DE EJERCICIOS",
                     style: TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold),
                   ),
                   const SizedBox(height: 8),
                   Text(
-                    "Complete exercises in order to unlock the next one.",
+                    "Puedes completar los ejercicios en cualquier orden.",
                     style: TextStyle(color: Colors.white.withOpacity(0.5), fontSize: 13),
                   ),
                   const SizedBox(height: 24),
@@ -155,28 +210,27 @@ class _StartRoutinePageState extends State<StartRoutinePage> {
                       itemCount: workouts.length,
                       itemBuilder: (context, index) {
                         final isCompleted = completionStatus[index];
-                        final isAvailable = index == 0 || completionStatus[index - 1];
-                        final workout = workouts[index];
+                        final workoutGroup = workouts[index];
+                        final List exercises = workoutGroup['exercises'] ?? [workoutGroup];
 
                         return GestureDetector(
-                          onTap: isAvailable && !isCompleted ? () => _showWorkoutDetail(index) : null,
+                          onTap: !isCompleted ? () => _showWorkoutDetail(index) : null,
                           child: Container(
                             margin: const EdgeInsets.only(bottom: 16),
                             padding: const EdgeInsets.all(20),
                             decoration: BoxDecoration(
                               color: isCompleted 
                                 ? primaryColor.withOpacity(0.1) 
-                                : isAvailable ? surfaceColor.withOpacity(0.15) : Colors.white.withOpacity(0.05),
+                                : surfaceColor.withOpacity(0.15),
                               borderRadius: BorderRadius.circular(24),
                               border: Border.all(
                                 color: isCompleted 
                                   ? primaryColor.withOpacity(0.3) 
-                                  : isAvailable ? primaryColor.withOpacity(0.1) : Colors.white.withOpacity(0.05)
+                                  : primaryColor.withOpacity(0.1)
                               ),
                             ),
                             child: Row(
                               children: [
-                                // Status Icon
                                 Container(
                                   width: 44,
                                   height: 44,
@@ -185,37 +239,28 @@ class _StartRoutinePageState extends State<StartRoutinePage> {
                                     shape: BoxShape.circle,
                                   ),
                                   child: Icon(
-                                    isCompleted ? Icons.check : isAvailable ? Icons.play_arrow : Icons.lock_outline,
-                                    color: isCompleted ? backgroundColor : isAvailable ? primaryColor : Colors.white24,
+                                    isCompleted ? Icons.check : Icons.play_arrow,
+                                    color: isCompleted ? backgroundColor : primaryColor,
                                   ),
                                 ),
                                 const SizedBox(width: 20),
-                                // Text Data
                                 Expanded(
                                   child: Column(
                                     crossAxisAlignment: CrossAxisAlignment.start,
                                     children: [
-                                      Text(
-                                        workout['workoutName']?.toString().toUpperCase() ?? "UNKNOWN",
-                                        style: TextStyle(
-                                          color: isAvailable ? Colors.white : Colors.white38,
-                                          fontWeight: FontWeight.bold,
-                                          fontSize: 16,
-                                        ),
-                                      ),
+                                      ...exercises.map((ex) => Text(
+                                        ex['workoutName']?.toString().toUpperCase() ?? "UNKNOWN",
+                                        style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 15),
+                                      )),
                                       const SizedBox(height: 4),
                                       Text(
-                                        "${workout['sets']} Sets | ${workout['reps']} Reps | ${workout['weight']}kg",
-                                        style: TextStyle(
-                                          color: isAvailable ? primaryColor.withOpacity(0.7) : Colors.white12,
-                                          fontSize: 12,
-                                        ),
+                                        "${workoutGroup['sets']} Sets | ${exercises.map((e) => "${e['reps']}r").join(' + ')} | ${exercises.map((e) => "${e['weight']}kg").join(' + ')}",
+                                        style: TextStyle(color: primaryColor.withOpacity(0.7), fontSize: 12),
                                       ),
                                     ],
                                   ),
                                 ),
-                                if (isCompleted)
-                                  Icon(Icons.check_circle, color: primaryColor),
+                                if (isCompleted) Icon(Icons.check_circle, color: primaryColor),
                               ],
                             ),
                           ),
@@ -231,16 +276,18 @@ class _StartRoutinePageState extends State<StartRoutinePage> {
 }
 
 class WorkoutDetailSheet extends StatefulWidget {
-  final dynamic workout;
-  final Map<String, dynamic> details;
+  final dynamic workoutGroup;
+  final List exercises;
+  final Map<String, Map<String, dynamic>> detailsCache;
   final Color primaryColor;
   final Color secondaryColor;
-  final Function(String feedback) onComplete;
+  final Function(Map<String, dynamic> results) onComplete;
 
   const WorkoutDetailSheet({
     super.key,
-    required this.workout,
-    required this.details,
+    required this.workoutGroup,
+    required this.exercises,
+    required this.detailsCache,
     required this.primaryColor,
     required this.secondaryColor,
     required this.onComplete,
@@ -251,22 +298,35 @@ class WorkoutDetailSheet extends StatefulWidget {
 }
 
 class _WorkoutDetailSheetState extends State<WorkoutDetailSheet> {
-  late YoutubePlayerController _ytController;
+  late List<YoutubePlayerController> _ytControllers;
+  late List<TextEditingController> _weightControllers;
   String selectedFeedback = "Good";
 
   @override
   void initState() {
     super.initState();
-    final videoId = YoutubePlayer.convertUrlToId(widget.details['videoUrl'] ?? "");
-    _ytController = YoutubePlayerController(
-      initialVideoId: videoId ?? "",
-      flags: const YoutubePlayerFlags(autoPlay: true, mute: false),
-    );
+    _ytControllers = widget.exercises.map((ex) {
+      final details = widget.detailsCache[ex['workoutId']];
+      final videoId = YoutubePlayer.convertUrlToId(details?['videoUrl'] ?? "");
+      return YoutubePlayerController(
+        initialVideoId: videoId ?? "",
+        flags: const YoutubePlayerFlags(autoPlay: false, mute: false),
+      );
+    }).toList();
+
+    _weightControllers = widget.exercises.map((ex) {
+      return TextEditingController(text: ex['weight']?.toString() ?? "");
+    }).toList();
   }
 
   @override
   void dispose() {
-    _ytController.dispose();
+    for (var c in _ytControllers) {
+      c.dispose();
+    }
+    for (var c in _weightControllers) {
+      c.dispose();
+    }
     super.dispose();
   }
 
@@ -277,75 +337,101 @@ class _WorkoutDetailSheetState extends State<WorkoutDetailSheet> {
       height: MediaQuery.of(context).size.height * 0.9,
       child: Column(
         children: [
-          // Video Player
-          ClipRRect(
-            borderRadius: const BorderRadius.vertical(top: Radius.circular(32)),
-            child: YoutubePlayer(
-              controller: _ytController,
-              showVideoProgressIndicator: true,
-              progressIndicatorColor: widget.primaryColor,
-            ),
-          ),
+          const SizedBox(height: 12),
+          Container(width: 40, height: 4, decoration: BoxDecoration(color: Colors.white24, borderRadius: BorderRadius.circular(2))),
           Expanded(
-            child: Padding(
-              padding: const EdgeInsets.all(32.0),
-              child: SingleChildScrollView(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      widget.workout['workoutName'].toString().toUpperCase(),
-                      style: const TextStyle(color: Colors.white, fontSize: 24, fontWeight: FontWeight.w900),
-                    ),
-                    const SizedBox(height: 16),
-                    Row(
-                      children: [
-                        _buildStatCard("SETS", widget.workout['sets']),
-                        const SizedBox(width: 12),
-                        _buildStatCard("REPS", widget.workout['reps']),
-                        const SizedBox(width: 12),
-                        _buildStatCard("WEIGHT", "${widget.workout['weight']}kg"),
-                      ],
-                    ),
-                    const SizedBox(height: 32),
-                    const Text("INSTRUCTIONS", style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
-                    const SizedBox(height: 8),
-                    Text(
-                      widget.details['description'] ?? "No instructions provided.",
-                      style: TextStyle(color: Colors.white.withOpacity(0.6), height: 1.5),
-                    ),
-                    const SizedBox(height: 40),
-                    const Text("HOW DID IT GO?", style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
-                    const SizedBox(height: 16),
-                    // Feedback Options
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      children: [
-                        _feedbackBtn("Struggled", Icons.sentiment_very_dissatisfied, Colors.redAccent),
-                        _feedbackBtn("Good", Icons.sentiment_satisfied, widget.primaryColor),
-                        _feedbackBtn("Overperformed", Icons.bolt, Colors.orangeAccent),
-                      ],
-                    ),
-                    const SizedBox(height: 48),
-                    SizedBox(
-                      width: double.infinity,
-                      height: 60,
-                      child: ElevatedButton(
-                        onPressed: () {
-                          widget.onComplete(selectedFeedback);
-                          Navigator.pop(context);
-                        },
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: widget.primaryColor,
-                          foregroundColor: Colors.black,
-                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-                        ),
-                        child: const Text("COMPLETE EXERCISE", style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
+            child: ListView(
+              padding: const EdgeInsets.all(24),
+              children: [
+                Text(
+                  widget.exercises.length > 1 ? "SUPERSET" : "EJERCICIO",
+                  style: TextStyle(color: widget.primaryColor, fontWeight: FontWeight.bold, letterSpacing: 1.5, fontSize: 12),
+                ),
+                const SizedBox(height: 8),
+                ...widget.exercises.asMap().entries.map((entry) {
+                  final idx = entry.key;
+                  final ex = entry.value;
+                  final details = widget.detailsCache[ex['workoutId']];
+
+                  return Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      if (idx > 0) const Padding(padding: EdgeInsets.symmetric(vertical: 16), child: Divider(color: Colors.white10)),
+                      Text(ex['workoutName'].toString().toUpperCase(), style: const TextStyle(color: Colors.white, fontSize: 20, fontWeight: FontWeight.w900)),
+                      const SizedBox(height: 16),
+                      ClipRRect(
+                        borderRadius: BorderRadius.circular(16),
+                        child: YoutubePlayer(controller: _ytControllers[idx], showVideoProgressIndicator: true),
                       ),
-                    ),
+                      const SizedBox(height: 16),
+                      Row(
+                        children: [
+                          _buildStatCard("SETS", widget.workoutGroup['sets']),
+                          const SizedBox(width: 12),
+                          _buildStatCard("REPS", ex['reps']),
+                          const SizedBox(width: 12),
+                          Expanded(
+                            child: Container(
+                              padding: const EdgeInsets.all(12),
+                              decoration: BoxDecoration(color: widget.primaryColor.withOpacity(0.1), borderRadius: BorderRadius.circular(16), border: Border.all(color: widget.primaryColor.withOpacity(0.2))),
+                              child: Column(
+                                children: [
+                                  const Text("PESO REAL", style: TextStyle(color: Colors.white38, fontSize: 10, fontWeight: FontWeight.bold)),
+                                  TextField(
+                                    controller: _weightControllers[idx],
+                                    keyboardType: TextInputType.number,
+                                    textAlign: TextAlign.center,
+                                    style: const TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.bold),
+                                    decoration: const InputDecoration(isDense: true, border: InputBorder.none, suffixText: "kg", suffixStyle: TextStyle(color: Colors.white38, fontSize: 12)),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 16),
+                      const Text("INSTRUCCIONES", style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 12)),
+                      const SizedBox(height: 8),
+                      Text(details?['description'] ?? "Sin instrucciones.", style: TextStyle(color: Colors.white.withOpacity(0.6), height: 1.5, fontSize: 13)),
+                    ],
+                  );
+                }),
+                const SizedBox(height: 32),
+                const Text("¿CÓMO TE SENTISTE?", style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 12)),
+                const SizedBox(height: 16),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    _feedbackBtn("Struggled", Icons.sentiment_very_dissatisfied, Colors.redAccent),
+                    _feedbackBtn("Good", Icons.sentiment_satisfied, widget.primaryColor),
+                    _feedbackBtn("Overperformed", Icons.bolt, Colors.orangeAccent),
                   ],
                 ),
-              ),
+                const SizedBox(height: 40),
+                SizedBox(
+                  width: double.infinity,
+                  height: 60,
+                  child: ElevatedButton(
+                    onPressed: () {
+                      final results = {
+                        'workoutName': widget.exercises.map((e) => e['workoutName']).join(' + '),
+                        'feedback': selectedFeedback,
+                        'exercises': widget.exercises.asMap().entries.map((e) => {
+                          'name': e.value['workoutName'],
+                          'plannedWeight': e.value['weight'],
+                          'actualWeight': _weightControllers[e.key].text,
+                          'reps': e.value['reps'],
+                        }).toList(),
+                      };
+                      widget.onComplete(results);
+                      Navigator.pop(context);
+                    },
+                    style: ElevatedButton.styleFrom(backgroundColor: widget.primaryColor, foregroundColor: Colors.black, shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16))),
+                    child: const Text("COMPLETAR SET", style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
+                  ),
+                ),
+              ],
             ),
           ),
         ],
@@ -357,10 +443,7 @@ class _WorkoutDetailSheetState extends State<WorkoutDetailSheet> {
     return Expanded(
       child: Container(
         padding: const EdgeInsets.all(12),
-        decoration: BoxDecoration(
-          color: Colors.white.withOpacity(0.05),
-          borderRadius: BorderRadius.circular(16),
-        ),
+        decoration: BoxDecoration(color: Colors.white.withOpacity(0.05), borderRadius: BorderRadius.circular(16)),
         child: Column(
           children: [
             Text(label, style: const TextStyle(color: Colors.white38, fontSize: 10, fontWeight: FontWeight.bold)),
@@ -379,11 +462,7 @@ class _WorkoutDetailSheetState extends State<WorkoutDetailSheet> {
         children: [
           Container(
             padding: const EdgeInsets.all(16),
-            decoration: BoxDecoration(
-              color: isSelected ? color.withOpacity(0.2) : Colors.white.withOpacity(0.05),
-              shape: BoxShape.circle,
-              border: Border.all(color: isSelected ? color : Colors.transparent),
-            ),
+            decoration: BoxDecoration(color: isSelected ? color.withOpacity(0.2) : Colors.white.withOpacity(0.05), shape: BoxShape.circle, border: Border.all(color: isSelected ? color : Colors.transparent)),
             child: Icon(icon, color: isSelected ? color : Colors.white30),
           ),
           const SizedBox(height: 8),

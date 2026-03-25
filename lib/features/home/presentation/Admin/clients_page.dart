@@ -52,6 +52,9 @@ class ClientsPage extends StatelessWidget {
               final String lastName = data['lastName'] ?? '';
               final String fullName = "$firstName $lastName".trim();
               final String email = data['email'] ?? 'No email';
+              final bool isEnabled = data['isActive'] == true;
+              final DateTime? activeUntil = (data['activeUntil'] as Timestamp?)?.toDate();
+              final bool isActiveNow = isEnabled && activeUntil != null && activeUntil.isAfter(DateTime.now());
 
               return Container(
                 margin: const EdgeInsets.only(bottom: 16),
@@ -74,9 +77,38 @@ class ClientsPage extends StatelessWidget {
                       fontSize: 18,
                     ),
                   ),
-                  subtitle: Text(
-                    email,
-                    style: TextStyle(color: Colors.white.withOpacity(0.5), fontSize: 13),
+                  subtitle: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        email,
+                        style: TextStyle(color: Colors.white.withOpacity(0.5), fontSize: 13),
+                      ),
+                      const SizedBox(height: 6),
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                        decoration: BoxDecoration(
+                          color: isActiveNow
+                              ? secondaryColor.withOpacity(0.2)
+                              : Colors.redAccent.withOpacity(0.2),
+                          borderRadius: BorderRadius.circular(8),
+                          border: Border.all(
+                            color: isActiveNow
+                                ? secondaryColor.withOpacity(0.45)
+                                : Colors.redAccent.withOpacity(0.45),
+                          ),
+                        ),
+                        child: Text(
+                          isActiveNow ? 'ACTIVE' : 'EXPIRED',
+                          style: TextStyle(
+                            color: isActiveNow ? secondaryColor : Colors.redAccent,
+                            fontSize: 10,
+                            fontWeight: FontWeight.bold,
+                            letterSpacing: 0.6,
+                          ),
+                        ),
+                      ),
+                    ],
                   ),
                   trailing: ElevatedButton(
                     onPressed: () {

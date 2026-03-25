@@ -17,6 +17,9 @@ class _DashboardPageState extends State<DashboardPage> {
   DateTime _focusedDay = DateTime.now();
   DateTime? _selectedDay;
   final Map<DateTime, List<Map<String, dynamic>>> _routines = {};
+  final Set<String> _completedRoutineIds = {};
+  bool _isAccountActive = true;
+  DateTime? _activeUntil;
   bool _isLoading = true;
 
   // Updated Color Palette
@@ -36,22 +39,48 @@ class _DashboardPageState extends State<DashboardPage> {
     final user = FirebaseAuth.instance.currentUser;
     if (user == null) return;
 
+    if (!mounted) return;
     setState(() => _isLoading = true);
 
     try {
+      // Fetch routines
       final snapshot = await FirebaseFirestore.instance
           .collection('routines')
           .where('clientId', isEqualTo: user.uid)
           .get();
 
+      // Fetch completed routine logs for this user
+      final logsSnapshot = await FirebaseFirestore.instance
+          .collection('routine_logs')
+          .where('userId', isEqualTo: user.uid)
+          .get();
+
+      // Fetch user account status
+      final userDoc = await FirebaseFirestore.instance
+          .collection('users')
+          .doc(user.uid)
+          .get();
+
+       if(!mounted) return;
+
+      final userData = userDoc.data() ?? {};
+
+      final completedIds = <String>{};
+      for (var logDoc in logsSnapshot.docs) {
+        final logData = logDoc.data();
+        final routineId = logData['routineId'];
+        if (routineId != null) {
+          completedIds.add(routineId);
+        }
+      }
+
       final Map<DateTime, List<Map<String, dynamic>>> newRoutines = {};
 
       for (var doc in snapshot.docs) {
         final data = doc.data();
-        data['id'] = doc.id; // Store document ID
+        data['id'] = doc.id;
         final Timestamp timestamp = data['date'];
         final DateTime date = timestamp.toDate();
-        // Normalize to UTC noon to avoid timezone shift issues when selecting days
         final DateTime normalizedDate = DateTime.utc(date.year, date.month, date.day);
 
         if (newRoutines[normalizedDate] == null) {
@@ -60,13 +89,24 @@ class _DashboardPageState extends State<DashboardPage> {
         newRoutines[normalizedDate]!.add(data);
       }
 
+      final activeUntil = (userData['activeUntil'] as Timestamp?)?.toDate();
+      final isEnabled = userData['isActive'] == true;
+      final isAccountActive = isEnabled && activeUntil != null && activeUntil.isAfter(DateTime.now());
+
       setState(() {
         _routines.clear();
         _routines.addAll(newRoutines);
+        _completedRoutineIds.clear();
+        _completedRoutineIds.addAll(completedIds);
+        _activeUntil = activeUntil;
+        _isAccountActive = isAccountActive;
         _isLoading = false;
       });
     } catch (e) {
       debugPrint("Error fetching routines: $e");
+
+      if (!mounted) return;
+
       setState(() => _isLoading = false);
     }
   }
@@ -131,6 +171,8 @@ class _DashboardPageState extends State<DashboardPage> {
                         ],
                       ),
                       const SizedBox(height: 20),
+                      // Account Status Badge
+                      _buildAccessBadge(),
                       // Protocol Cards
                       if (routinesForSelectedDay.isEmpty)
                         Container(
@@ -171,7 +213,11 @@ class _DashboardPageState extends State<DashboardPage> {
         lastDay: DateTime.utc(2030, 12, 31),
         focusedDay: _focusedDay,
         selectedDayPredicate: (day) => isSameDay(_selectedDay, day),
-        eventLoader: _getRoutinesForDay,
+        eventLoader: (day) {
+          // Check if any routine for this day is completed
+          final routines = _getRoutinesForDay(day);
+          return routines;
+        },
         onDaySelected: (selectedDay, focusedDay) {
           setState(() {
             _selectedDay = selectedDay;
@@ -188,7 +234,7 @@ class _DashboardPageState extends State<DashboardPage> {
             shape: BoxShape.circle,
           ),
           markerDecoration: BoxDecoration(
-            color: secondaryColor,
+            color: primaryColor,
             shape: BoxShape.circle,
           ),
           outsideDaysVisible: false,
@@ -202,12 +248,39 @@ class _DashboardPageState extends State<DashboardPage> {
           leftChevronIcon: Icon(Icons.chevron_left, color: primaryColor),
           rightChevronIcon: Icon(Icons.chevron_right, color: primaryColor),
         ),
+        calendarBuilders: CalendarBuilders(
+          markerBuilder: (context, date, events) {
+            if (events.isEmpty) return null;
+            final routines = events.cast<Map<String, dynamic>>();
+            final anyMissed = routines.any((routine) => _isRoutineMissed(routine));
+            final allCompleted = routines.every((routine) => _isRoutineCompleted(routine));
+
+            return Positioned(
+              bottom: 1,
+              child: Container(
+                width: 6,
+                height: 6,
+                decoration: BoxDecoration(
+                  color: anyMissed
+                      ? Colors.redAccent
+                      : allCompleted
+                          ? Colors.greenAccent
+                          : Colors.orangeAccent,
+                  shape: BoxShape.circle,
+                ),
+              ),
+            );
+          },
+        ),
       ),
     );
   }
 
   Widget _buildProtocolCard(Map<String, dynamic> routine) {
     final workouts = routine['workouts'] as List<dynamic>? ?? [];
+    final isCompleted = _isRoutineCompleted(routine);
+    final isMissed = _isRoutineMissed(routine);
+    final canStart = _canStartRoutine(routine);
 
     return Container(
       margin: const EdgeInsets.only(bottom: 24),
@@ -245,6 +318,16 @@ class _DashboardPageState extends State<DashboardPage> {
                       _buildTag("INTENSIDAD ALTA", primaryColor),
                       const SizedBox(width: 8),
                       _buildTag("POWER", secondaryColor),
+                      if (isCompleted)
+                        Padding(
+                          padding: const EdgeInsets.only(left: 8),
+                          child: _buildTag("✓ COMPLETADA", Colors.greenAccent),
+                        ),
+                      if (isMissed)
+                        Padding(
+                          padding: const EdgeInsets.only(left: 8),
+                          child: _buildTag("MISSED", Colors.redAccent),
+                        ),
                     ],
                   ),
                   const SizedBox(height: 16),
@@ -263,35 +346,79 @@ class _DashboardPageState extends State<DashboardPage> {
               subtitle: Padding(
                 padding: const EdgeInsets.only(top: 8.0),
                 child: Text(
-                  "Protocolo enfocado en hipertrofia y potencia muscular.",
-                  style: TextStyle(color: Colors.white.withOpacity(0.7), fontSize: 13),
+                  isCompleted
+                      ? "Esta rutina ya ha sido completada"
+                      : isMissed
+                          ? "Rutina pendiente (Pasada)"
+                          : !canStart
+                              ? "Solo puedes iniciar esta rutina en su dia programado"
+                              : "Protocolo enfocado en hipertrofia y potencia muscular.",
+                  style: TextStyle(
+                    color: isCompleted
+                        ? Colors.greenAccent.withOpacity(0.7)
+                        : isMissed
+                            ? Colors.redAccent.withOpacity(0.8)
+                            : Colors.white.withOpacity(0.7),
+                    fontSize: 13,
+                  ),
                 ),
               ),
               children: [
                 ...workouts.map((workout) {
-                  return ListTile(
-                    contentPadding: const EdgeInsets.symmetric(horizontal: 24, vertical: 4),
-                    title: Text(
-                      workout['workoutName'] ?? 'Unknown Workout',
-                      style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
+                  final exercises = (workout['exercises'] as List?) ?? [];
+                  final isSuperset = exercises.length > 1;
+
+                  return Container(
+                    margin: const EdgeInsets.symmetric(horizontal: 24, vertical: 8),
+                    padding: const EdgeInsets.all(16),
+                    decoration: BoxDecoration(
+                      color: Colors.white.withOpacity(0.05),
+                      borderRadius: BorderRadius.circular(16),
+                      border: isSuperset ? Border.all(color: secondaryColor.withOpacity(0.3)) : null,
                     ),
-                    subtitle: Text(
-                      'Sets: ${workout['sets']} | Reps: ${workout['reps']} | ${workout['weight']}kg',
-                      style: TextStyle(color: primaryColor.withOpacity(0.8), fontSize: 13),
-                    ),
-                    trailing: Icon(Icons.play_circle_fill, color: primaryColor),
-                    onTap: () {
-                      if (workout['workoutId'] != null) {
-                        Navigator.push(
-                          context,
-                          MaterialPageRoute(
-                            builder: (context) => ViewWorkoutPage(
-                              workoutId: workout['workoutId'],
-                            ),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        if (isSuperset)
+                          Padding(
+                            padding: const EdgeInsets.only(bottom: 8.0),
+                            child: _buildTag("SUPERSET", secondaryColor),
                           ),
-                        );
-                      }
-                    },
+                        Text(
+                          'Sets: ${workout['sets'] ?? '0'}',
+                          style: TextStyle(color: primaryColor, fontWeight: FontWeight.bold, fontSize: 14),
+                        ),
+                        const SizedBox(height: 8),
+                        ...exercises.map((ex) {
+                          return ListTile(
+                            contentPadding: EdgeInsets.zero,
+                            title: Text(
+                              ex['workoutName'] ?? 'Unknown Workout',
+                              style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 15),
+                            ),
+                            subtitle: Text(
+                              'Reps: ${ex['reps'] ?? '0'} | ${ex['weight'] ?? '0'}kg',
+                              style: TextStyle(color: Colors.white.withOpacity(0.6), fontSize: 13),
+                            ),
+                            trailing: Icon(Icons.play_circle_fill, color: primaryColor),
+                            onTap: (isCompleted || !canStart)
+                                ? null
+                                : () {
+                                    if (ex['workoutId'] != null) {
+                                      Navigator.push(
+                                        context,
+                                        MaterialPageRoute(
+                                          builder: (context) => ViewWorkoutPage(
+                                            workoutId: ex['workoutId'],
+                                          ),
+                                        ),
+                                      );
+                                    }
+                                  },
+                          );
+                        }).toList(),
+                      ],
+                    ),
                   );
                 }).toList(),
                 Padding(
@@ -307,32 +434,42 @@ class _DashboardPageState extends State<DashboardPage> {
                         ],
                       ),
                       GestureDetector(
-                        onTap: () {
-                          Navigator.push(
-                            context,
-                            MaterialPageRoute(
-                              builder: (context) => StartRoutinePage(
-                                routine: routine,
-                                routineId: routine['id'],
-                              ),
-                            ),
-                          );
-                        },
+                        onTap: (isCompleted || !canStart)
+                            ? null
+                            : () async {
+                                final result = await Navigator.push(
+                                  context,
+                                  MaterialPageRoute(
+                                    builder: (context) => StartRoutinePage(
+                                      routine: routine,
+                                      routineId: routine['id'],
+                                    ),
+                                  ),
+                                );
+
+                                if (result == true) {
+                                  _fetchRoutines();
+                                }
+                              },
                         child: Container(
                           padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
                           decoration: BoxDecoration(
-                            color: primaryColor,
+                            color: (isCompleted || !canStart) ? Colors.grey : (isMissed ? Colors.redAccent : primaryColor),
                             borderRadius: BorderRadius.circular(12),
                             boxShadow: [
                               BoxShadow(
-                                color: primaryColor.withOpacity(0.3),
+                                color: ((isCompleted || !canStart) ? Colors.grey : (isMissed ? Colors.redAccent : primaryColor)).withOpacity(0.3),
                                 blurRadius: 15,
                                 offset: const Offset(0, 5),
                               )
                             ],
                           ),
                           child: Text(
-                            "EMPEZAR",
+                            isCompleted
+                                ? "COMPLETADA"
+                                : canStart
+                                    ? (isMissed ? "COMPLETAR" : "EMPEZAR")
+                                    : "NO DISPONIBLE",
                             style: TextStyle(
                               color: backgroundColor,
                               fontWeight: FontWeight.w900,
@@ -385,6 +522,70 @@ class _DashboardPageState extends State<DashboardPage> {
           style: TextStyle(color: color, fontSize: 16, fontWeight: FontWeight.bold),
         ),
       ],
+    );
+  }
+
+  DateTime _normalizeDay(DateTime date) => DateTime.utc(date.year, date.month, date.day);
+
+  bool _isRoutineCompleted(Map<String, dynamic> routine) {
+    return _completedRoutineIds.contains((routine['id'] ?? '').toString());
+  }
+
+  bool _isRoutineForToday(Map<String, dynamic> routine) {
+    final ts = routine['date'] as Timestamp?;
+    if (ts == null) return false;
+    return _normalizeDay(ts.toDate()) == _normalizeDay(DateTime.now());
+  }
+
+  bool _isRoutineMissed(Map<String, dynamic> routine) {
+    final ts = routine['date'] as Timestamp?;
+    if (ts == null) return false;
+    final routineDay = _normalizeDay(ts.toDate());
+    final today = _normalizeDay(DateTime.now());
+    return routineDay.isBefore(today) && !_isRoutineCompleted(routine);
+  }
+
+  bool _canStartRoutine(Map<String, dynamic> routine) {
+    final isCompleted = _isRoutineCompleted(routine);
+    if (isCompleted) return false;
+
+    final ts = routine['date'] as Timestamp?;
+    if (ts == null) return false;
+    final routineDay = _normalizeDay(ts.toDate());
+    final today = _normalizeDay(DateTime.now());
+
+    // Allow today and any day in the past (locked for future)
+    return !routineDay.isAfter(today);
+  }
+
+  Widget _buildAccessBadge() {
+    if (_isAccountActive) return const SizedBox.shrink();
+
+    final dateText = _activeUntil == null
+        ? 'No active plan'
+        : "Expired on ${DateFormat('dd MMM yyyy').format(_activeUntil!)}";
+
+    return Container(
+      width: double.infinity,
+      margin: const EdgeInsets.only(bottom: 14),
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+      decoration: BoxDecoration(
+        color: Colors.redAccent.withOpacity(0.12),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: Colors.redAccent.withOpacity(0.45)),
+      ),
+      child: Row(
+        children: [
+          const Icon(Icons.warning_amber_rounded, color: Colors.redAccent, size: 18),
+          const SizedBox(width: 8),
+          Expanded(
+            child: Text(
+              'Account expired - $dateText',
+              style: const TextStyle(color: Colors.redAccent, fontWeight: FontWeight.bold, fontSize: 12),
+            ),
+          ),
+        ],
+      ),
     );
   }
 }

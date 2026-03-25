@@ -64,13 +64,19 @@ class _RegisterPageState extends State<RegisterPage> {
         'lastName': lastName,
         'email': email,
         'role': 'user', // default role
+        'isActive': false,
+        'activeUntil': null,
         'createdAt': FieldValue.serverTimestamp(),
       });
 
       if (!mounted) return;
-      
-      // ✅ Go to home
-      Navigator.pushReplacementNamed(context, '/home');
+
+      await FirebaseAuth.instance.signOut();
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Account created. Wait for admin activation to log in.')),
+      );
+      Navigator.pop(context);
     } catch (e) {
       if (kDebugMode) {
         debugPrint('Register error: $e');

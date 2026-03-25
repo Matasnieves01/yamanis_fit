@@ -42,4 +42,3 @@ class AuthGate extends StatelessWidget {
     );
   }
 }
-

@@ -17,6 +17,12 @@ class _CreateWorkoutPageState extends State<CreateWorkoutPage> {
 
   bool isLoading = false;
 
+  // Kinetic Theme Colors
+  final Color backgroundColor = const Color(0xFF11151C);
+  final Color surfaceColor = const Color(0xFF55768C);
+  final Color secondaryColor = const Color(0xFF89AC76);
+  final Color primaryColor = const Color(0xFFAEE084);
+
   @override
   void initState() {
     super.initState();
@@ -111,7 +117,7 @@ class _CreateWorkoutPageState extends State<CreateWorkoutPage> {
     return InputDecoration(
       labelText: label,
       hintText: hint,
-      prefixIcon: Icon(icon, color: Colors.blueAccent),
+      prefixIcon: Icon(icon, color: primaryColor),
       filled: true,
       fillColor: Colors.white.withOpacity(0.05),
       contentPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 18),
@@ -125,9 +131,9 @@ class _CreateWorkoutPageState extends State<CreateWorkoutPage> {
       ),
       focusedBorder: OutlineInputBorder(
         borderRadius: BorderRadius.circular(16),
-        borderSide: const BorderSide(color: Colors.blueAccent, width: 2),
+        borderSide: BorderSide(color: primaryColor, width: 2),
       ),
-      labelStyle: const TextStyle(color: Colors.blueAccent),
+      labelStyle: TextStyle(color: primaryColor),
       hintStyle: TextStyle(color: Colors.white.withOpacity(0.3)),
     );
   }
@@ -135,9 +141,11 @@ class _CreateWorkoutPageState extends State<CreateWorkoutPage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      backgroundColor: backgroundColor,
       appBar: AppBar(
-        title: const Text('Create Workout'),
+        title: const Text('CREATE WORKOUT', style: TextStyle(fontWeight: FontWeight.w900, letterSpacing: 1.5)),
         centerTitle: true,
+        backgroundColor: Colors.transparent,
         elevation: 0,
       ),
       body: SingleChildScrollView(
@@ -146,9 +154,9 @@ class _CreateWorkoutPageState extends State<CreateWorkoutPage> {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             const Text(
-              "New Workout Details",
+              "Workout Details",
               style: TextStyle(
-                fontFamily: 'Poppins',
+                color: Colors.white,
                 fontSize: 22,
                 fontWeight: FontWeight.bold,
                 letterSpacing: 0.5,
@@ -156,15 +164,16 @@ class _CreateWorkoutPageState extends State<CreateWorkoutPage> {
             ),
             const SizedBox(height: 10),
             Text(
-              "Fill in the information below to add a new workout to your collection.",
+              "Add a new exercise to the library for future routines.",
               style: TextStyle(color: Colors.white.withOpacity(0.6), fontSize: 14),
             ),
             const SizedBox(height: 32),
             TextField(
               controller: _nameController,
+              style: const TextStyle(color: Colors.white),
               decoration: _buildInputDecoration(
                 label: 'Workout Name',
-                hint: 'e.g., Morning Yoga',
+                hint: 'e.g., Barbell Squat',
                 icon: Icons.fitness_center_rounded,
               ),
             ),
@@ -172,47 +181,66 @@ class _CreateWorkoutPageState extends State<CreateWorkoutPage> {
             TextField(
               controller: _descController,
               maxLines: 4,
+              style: const TextStyle(color: Colors.white),
               decoration: _buildInputDecoration(
                 label: 'Description',
-                hint: 'Describe the exercises and sets...',
+                hint: 'Explain the form and technique...',
                 icon: Icons.description_rounded,
               ),
             ),
             const SizedBox(height: 20),
             TextField(
               controller: _videoUrlController,
+              style: const TextStyle(color: Colors.white),
               decoration: _buildInputDecoration(
                 label: 'YouTube Video URL',
-                hint: 'https://youtube.com/watch?v=...',
+                hint: 'Paste video link here',
                 icon: Icons.play_circle_fill_rounded,
               ),
             ),
-            const SizedBox(height: 20),
+            const SizedBox(height: 32),
+            const Text(
+              "Video Preview",
+              style: TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.bold),
+            ),
+            const SizedBox(height: 12),
             if (_youtubeController != null)
-              ClipRRect(
-                borderRadius: BorderRadius.circular(16),
-                child: YoutubePlayer(
-                  controller: _youtubeController!,
-                  showVideoProgressIndicator: true,
-                  progressIndicatorColor: Colors.blueAccent,
+              Container(
+                decoration: BoxDecoration(
+                  borderRadius: BorderRadius.circular(24),
+                  boxShadow: [
+                    BoxShadow(
+                      color: primaryColor.withOpacity(0.1),
+                      blurRadius: 20,
+                      spreadRadius: 2,
+                    )
+                  ],
+                ),
+                child: ClipRRect(
+                  borderRadius: BorderRadius.circular(24),
+                  child: YoutubePlayer(
+                    controller: _youtubeController!,
+                    showVideoProgressIndicator: true,
+                    progressIndicatorColor: primaryColor,
+                  ),
                 ),
               )
             else
               Container(
-                height: 150,
+                height: 180,
                 width: double.infinity,
                 decoration: BoxDecoration(
-                  color: Colors.white.withOpacity(0.05),
-                  borderRadius: BorderRadius.circular(16),
-                  border: Border.all(color: Colors.white.withOpacity(0.1)),
+                  color: surfaceColor.withOpacity(0.1),
+                  borderRadius: BorderRadius.circular(24),
+                  border: Border.all(color: surfaceColor.withOpacity(0.2)),
                 ),
                 child: Column(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
                     Icon(Icons.video_library_rounded, 
                       color: Colors.white.withOpacity(0.2), size: 48),
-                    const SizedBox(height: 8),
-                    Text("Video preview will appear here",
+                    const SizedBox(height: 12),
+                    Text("Enter a URL to see the preview",
                       style: TextStyle(color: Colors.white.withOpacity(0.3))),
                   ],
                 ),
@@ -224,21 +252,20 @@ class _CreateWorkoutPageState extends State<CreateWorkoutPage> {
               child: ElevatedButton(
                 onPressed: isLoading ? null : saveWorkout,
                 style: ElevatedButton.styleFrom(
-                  backgroundColor: Colors.blueAccent,
-                  foregroundColor: Colors.white,
+                  backgroundColor: primaryColor,
+                  foregroundColor: backgroundColor,
                   shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(16),
                   ),
-                  elevation: 4,
-                  shadowColor: Colors.blueAccent.withOpacity(0.4),
+                  elevation: 0,
                 ),
                 child: isLoading
-                    ? const SizedBox(
+                    ? SizedBox(
                         width: 24,
                         height: 24,
                         child: CircularProgressIndicator(
                           strokeWidth: 3,
-                          color: Colors.white,
+                          color: backgroundColor,
                         ),
                       )
                     : const Text(
@@ -251,6 +278,7 @@ class _CreateWorkoutPageState extends State<CreateWorkoutPage> {
                       ),
               ),
             ),
+            const SizedBox(height: 40),
           ],
         ),
       ),

@@ -1,4 +1,3 @@
-import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:yamanis_fit/features/auth/auth_service.dart';
 
@@ -43,8 +42,9 @@ class _LoginPageState extends State<LoginPage> {
       if (user != null) {
         Navigator.pushReplacementNamed(context, '/home');
       } else {
+        final message = _authService.lastSignInError ?? 'Login failed. Check your credentials.';
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Login failed. Check your credentials.')),
+          SnackBar(content: Text(message)),
         );
       }
     } catch (e) {
