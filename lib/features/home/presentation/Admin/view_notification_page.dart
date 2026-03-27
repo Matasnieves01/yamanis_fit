@@ -250,27 +250,24 @@ class _ViewNotificationPageState extends State<ViewNotificationPage> {
             ],
           ),
           const SizedBox(height: 12),
-          ...(() {
-            final exercises = res['exercises'] as List<dynamic>? ?? [];
-            return exercises.map((ex) {
-              return Padding(
-                padding: const EdgeInsets.only(bottom: 8),
-                child: Row(
-                  children: [
-                    Expanded(
-                      child: Text(
-                        ex['name'] ?? 'Unknown',
-                        style: const TextStyle(color: Colors.white),
-                      ),
+          ...((res['exercises'] as List<dynamic>? ?? []).map((ex) {
+            return Padding(
+              padding: const EdgeInsets.only(bottom: 8),
+              child: Row(
+                children: [
+                  Expanded(
+                    child: Text(
+                      ex['name'] ?? 'Unknown',
+                      style: const TextStyle(color: Colors.white),
                     ),
-                    _buildSmallStat("PLAN", "${ex['plannedWeight'] ?? 0}kg"),
-                    const SizedBox(width: 10),
-                    _buildSmallStat("REAL", "${ex['actualWeight'] ?? 0}kg"),
-                  ],
-                ),
-              );
-            }).toList();
-          })(),
+                  ),
+                  _buildSmallStat("PLAN", "${ex['plannedWeight'] ?? 0}kg"),
+                  const SizedBox(width: 10),
+                  _buildSmallStat("REAL", "${ex['actualWeight'] ?? 0}kg"),
+                ],
+              ),
+            );
+          }).toList()),
         ],
       ),
     );

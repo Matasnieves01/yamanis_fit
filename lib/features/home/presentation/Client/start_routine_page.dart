@@ -92,63 +92,172 @@ class _StartRoutinePageState extends State<StartRoutinePage> {
     );
   }
 
-  void _checkRoutineCompletion() async {
+  void _checkRoutineCompletion() {
     if (!_canStartToday) return;
     if (completionStatus.every((status) => status)) {
-      final user = FirebaseAuth.instance.currentUser;
-      if (user == null) return;
-
-      try {
-        final userDoc = await FirebaseFirestore.instance.collection('users').doc(user.uid).get();
-        final userData = userDoc.data();
-        final clientName = "${userData?['firstName'] ?? ''} ${userData?['lastName'] ?? ''}".trim();
-
-        final logRef = await FirebaseFirestore.instance.collection('routine_logs').add({
-          'routineId': widget.routineId,
-          'routineName': widget.routine['name'],
-          'userId': user.uid,
-          'userName': clientName,
-          'date': Timestamp.now(),
-          'results': resultsList,
-        });
-
-        await FirebaseFirestore.instance.collection('notifications').add({
-          'type': 'routine_completed',
-          'title': 'Rutina Completada',
-          'message': '$clientName ha terminado la rutina: ${widget.routine['name']}',
-          'userId': user.uid,
-          'userName': clientName,
-          'targetRole': 'admin',
-          'logId': logRef.id,
-          'read': false,
-          'createdAt': FieldValue.serverTimestamp(),
-        });
-
-        if (!mounted) return;
-        Navigator.pop(context, true);
-        _showCompletionDialog();
-      } catch (e) {
-        debugPrint("Error finishing routine: $e");
-      }
+      _showFinalCommentDialog();
     }
   }
 
-  void _showCompletionDialog() {
+  void _showFinalCommentDialog() {
+    final commentController = TextEditingController();
     showDialog(
       context: context,
       barrierDismissible: false,
       builder: (context) => AlertDialog(
         backgroundColor: const Color(0xFF1A1A1A),
-        title: const Text("¡Rutina Completada!", style: TextStyle(color: Colors.white)),
-        content: Text("¡Buen trabajo! Tu progreso ha sido enviado.", 
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
+        title: const Text("¡Rutina Terminada!", style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text("¿Quieres dejar algún comentario sobre el entrenamiento?", 
+              style: TextStyle(color: Colors.white.withOpacity(0.7), fontSize: 14)),
+            const SizedBox(height: 16),
+            TextField(
+              controller: commentController,
+              maxLines: 3,
+              style: const TextStyle(color: Colors.white),
+              decoration: InputDecoration(
+                hintText: "Escribe aquí (opcional)...",
+                hintStyle: TextStyle(color: Colors.white.withOpacity(0.3)),
+                fillColor: Colors.white.withOpacity(0.05),
+                filled: true,
+                border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none),
+              ),
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () {
+              Navigator.pop(context); // Close dialog
+              _finalizeRoutine(commentController.text.trim());
+            },
+            child: Text("ENVIAR", style: TextStyle(color: primaryColor, fontWeight: FontWeight.bold)),
+          )
+        ],
+      ),
+    );
+  }
+
+  Future<void> _finalizeRoutine(String comment) async {
+    final user = FirebaseAuth.instance.currentUser;
+    if (user == null) return;
+
+    setState(() => isLoading = true);
+
+    try {
+      final userDoc = await FirebaseFirestore.instance.collection('users').doc(user.uid).get();
+      final userData = userDoc.data();
+      final clientName = "${userData?['firstName'] ?? ''} ${userData?['lastName'] ?? ''}".trim();
+
+      final logRef = await FirebaseFirestore.instance.collection('routine_logs').add({
+        'routineId': widget.routineId,
+        'routineName': widget.routine['name'],
+        'userId': user.uid,
+        'userName': clientName,
+        'date': Timestamp.now(),
+        'results': resultsList,
+        'clientComment': comment,
+      });
+
+      await FirebaseFirestore.instance.collection('notifications').add({
+        'type': 'routine_completed',
+        'title': 'Rutina Completada',
+        'message': '$clientName ha terminado la rutina: ${widget.routine['name']}${comment.isNotEmpty ? "\nComentario: $comment" : ""}',
+        'userId': user.uid,
+        'userName': clientName,
+        'targetRole': 'admin',
+        'logId': logRef.id,
+        'read': false,
+        'createdAt': FieldValue.serverTimestamp(),
+      });
+
+      if (!mounted) return;
+      
+      // Reset loading state before showing dialog
+      setState(() => isLoading = false);
+      
+      _showSuccessDialog();
+    } catch (e) {
+      debugPrint("Error finishing routine: $e");
+      if(!mounted) return;
+      
+      setState(() => isLoading = false);
+      
+      // Show error dialog to user
+      _showErrorDialog(e.toString());
+    }
+  }
+
+  void _showErrorDialog(String errorMessage) {
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (context) => AlertDialog(
+        backgroundColor: const Color(0xFF1A1A1A),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
+        title: const Text("Error al guardar", style: TextStyle(color: Colors.redAccent, fontWeight: FontWeight.bold)),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              "No pudimos guardar tu progreso. Por favor verifica tu conexión a internet e intenta de nuevo.",
+              style: TextStyle(color: Colors.white.withOpacity(0.7), fontSize: 14),
+            ),
+            const SizedBox(height: 16),
+            Container(
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: Colors.redAccent.withOpacity(0.1),
+                borderRadius: BorderRadius.circular(8),
+                border: Border.all(color: Colors.redAccent.withOpacity(0.3)),
+              ),
+              child: Text(
+                errorMessage.length > 100 ? errorMessage.substring(0, 100) + "..." : errorMessage,
+                style: TextStyle(color: Colors.redAccent.withOpacity(0.8), fontSize: 11, fontFamily: 'monospace'),
+              ),
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: Text("CERRAR", style: TextStyle(color: primaryColor, fontWeight: FontWeight.bold)),
+          ),
+          TextButton(
+            onPressed: () {
+              Navigator.pop(context);
+              // Retry the operation
+              _showFinalCommentDialog();
+            },
+            child: Text("REINTENTAR", style: TextStyle(color: Colors.orangeAccent, fontWeight: FontWeight.bold)),
+          )
+        ],
+      ),
+    );
+  }
+
+  void _showSuccessDialog() {
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (context) => AlertDialog(
+        backgroundColor: const Color(0xFF1A1A1A),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
+        title: const Text("¡Éxito!", style: TextStyle(color: Colors.white)),
+        content: Text("Tu progreso ha sido enviado correctamente.", 
           style: TextStyle(color: Colors.white.withOpacity(0.7))),
         actions: [
           TextButton(
             onPressed: () {
-              Navigator.pop(context);
-              Navigator.pop(context, true);
+              Navigator.pop(context); // Close success dialog
+              Navigator.pop(context, true); // Go back to dashboard with success indicator
             },
-            child: Text("FINALIZAR", style: TextStyle(color: primaryColor, fontWeight: FontWeight.bold)),
+            child: Text("LISTO", style: TextStyle(color: primaryColor, fontWeight: FontWeight.bold)),
           )
         ],
       ),
@@ -160,7 +269,7 @@ class _StartRoutinePageState extends State<StartRoutinePage> {
     return Scaffold(
       backgroundColor: backgroundColor,
       appBar: AppBar(
-        title: Text(widget.routine['name']?.toString().toUpperCase() ?? "ROUTINE"),
+        title: Text(widget.routine['name']?.toString().toUpperCase() ?? "RUTINA"),
         centerTitle: true,
         backgroundColor: Colors.transparent,
         elevation: 0,
@@ -249,12 +358,12 @@ class _StartRoutinePageState extends State<StartRoutinePage> {
                                     crossAxisAlignment: CrossAxisAlignment.start,
                                     children: [
                                       ...exercises.map((ex) => Text(
-                                        ex['workoutName']?.toString().toUpperCase() ?? "UNKNOWN",
+                                        ex['workoutName']?.toString().toUpperCase() ?? "DESCONOCIDO",
                                         style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 15),
                                       )),
                                       const SizedBox(height: 4),
                                       Text(
-                                        "${workoutGroup['sets']} Sets | ${exercises.map((e) => "${e['reps']}r").join(' + ')} | ${exercises.map((e) => "${e['weight']}kg").join(' + ')}",
+                                        "${workoutGroup['sets']} Series | ${exercises.map((e) => "${e['reps']}r").join(' + ')} | ${exercises.map((e) => "${e['weight']}kg").join(' + ')}",
                                         style: TextStyle(color: primaryColor.withOpacity(0.7), fontSize: 12),
                                       ),
                                     ],
@@ -300,7 +409,7 @@ class WorkoutDetailSheet extends StatefulWidget {
 class _WorkoutDetailSheetState extends State<WorkoutDetailSheet> {
   late List<YoutubePlayerController> _ytControllers;
   late List<TextEditingController> _weightControllers;
-  String selectedFeedback = "Good";
+  String selectedFeedback = "Bien";
 
   @override
   void initState() {
@@ -366,7 +475,7 @@ class _WorkoutDetailSheetState extends State<WorkoutDetailSheet> {
                       const SizedBox(height: 16),
                       Row(
                         children: [
-                          _buildStatCard("SETS", widget.workoutGroup['sets']),
+                          _buildStatCard("SERIES", widget.workoutGroup['sets']),
                           const SizedBox(width: 12),
                           _buildStatCard("REPS", ex['reps']),
                           const SizedBox(width: 12),
@@ -403,9 +512,9 @@ class _WorkoutDetailSheetState extends State<WorkoutDetailSheet> {
                 Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
-                    _feedbackBtn("Struggled", Icons.sentiment_very_dissatisfied, Colors.redAccent),
-                    _feedbackBtn("Good", Icons.sentiment_satisfied, widget.primaryColor),
-                    _feedbackBtn("Overperformed", Icons.bolt, Colors.orangeAccent),
+                    _feedbackBtn("Difícil", Icons.sentiment_very_dissatisfied, Colors.redAccent),
+                    _feedbackBtn("Bien", Icons.sentiment_satisfied, widget.primaryColor),
+                    _feedbackBtn("Excelente", Icons.bolt, Colors.orangeAccent),
                   ],
                 ),
                 const SizedBox(height: 40),
@@ -424,11 +533,11 @@ class _WorkoutDetailSheetState extends State<WorkoutDetailSheet> {
                           'reps': e.value['reps'],
                         }).toList(),
                       };
-                      widget.onComplete(results);
                       Navigator.pop(context);
+                      Future.microtask(() => widget.onComplete(results));
                     },
                     style: ElevatedButton.styleFrom(backgroundColor: widget.primaryColor, foregroundColor: Colors.black, shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16))),
-                    child: const Text("COMPLETAR SET", style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
+                    child: const Text("COMPLETAR EJERCICIO", style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
                   ),
                 ),
               ],
@@ -443,11 +552,13 @@ class _WorkoutDetailSheetState extends State<WorkoutDetailSheet> {
     return Expanded(
       child: Container(
         padding: const EdgeInsets.all(12),
-        decoration: BoxDecoration(color: Colors.white.withOpacity(0.05), borderRadius: BorderRadius.circular(16)),
+        decoration: BoxDecoration(
+            color: Colors.white.withOpacity(0.05),
+            borderRadius: BorderRadius.circular(16)),
         child: Column(
           children: [
             Text(label, style: const TextStyle(color: Colors.white38, fontSize: 10, fontWeight: FontWeight.bold)),
-            Text(value, style: const TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.bold)),
+            Text(value?.toString() ?? "-", style: const TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.bold)),
           ],
         ),
       ),

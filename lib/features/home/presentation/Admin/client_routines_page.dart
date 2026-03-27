@@ -117,7 +117,7 @@ class _ClientRoutinesPageState extends State<ClientRoutinesPage> {
       if (!mounted) return;
       setState(() => _isLoading = false);
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Error loading client data: $e')),
+        SnackBar(content: Text('Error cargando datos: $e')),
       );
     }
   }
@@ -140,7 +140,7 @@ class _ClientRoutinesPageState extends State<ClientRoutinesPage> {
 
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Account activated for 30 days')),
+        const SnackBar(content: Text('Cuenta activada por 30 días')),
       );
       await _loadClientData();
       if (!mounted) return;
@@ -148,7 +148,7 @@ class _ClientRoutinesPageState extends State<ClientRoutinesPage> {
     } catch (e) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Error activating account: $e')),
+        SnackBar(content: Text('Error activando cuenta: $e')),
       );
       setState(() => _isActivating = false);
     }
@@ -171,11 +171,11 @@ class _ClientRoutinesPageState extends State<ClientRoutinesPage> {
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (_) => AlertDialog(
-        title: const Text('Delete routine?'),
-        content: const Text('This will remove the routine assignment for this client.'),
+        title: const Text('¿Eliminar rutina?'),
+        content: const Text('Esto eliminará la asignación de rutina para este cliente.'),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(context, false), child: const Text('Cancel')),
-          TextButton(onPressed: () => Navigator.pop(context, true), child: const Text('Delete')),
+          TextButton(onPressed: () => Navigator.pop(context, false), child: const Text('Cancelar')),
+          TextButton(onPressed: () => Navigator.pop(context, true), child: const Text('Eliminar')),
         ],
       ),
     );
@@ -186,13 +186,13 @@ class _ClientRoutinesPageState extends State<ClientRoutinesPage> {
       await FirebaseFirestore.instance.collection('routines').doc(routineId).delete();
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Routine deleted')),
+        const SnackBar(content: Text('Rutina eliminada')),
       );
       await _loadClientData();
     } catch (e) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Error deleting routine: $e')),
+        SnackBar(content: Text('Error eliminando rutina: $e')),
       );
     }
   }
@@ -207,10 +207,10 @@ class _ClientRoutinesPageState extends State<ClientRoutinesPage> {
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: surfaceColor.withValues(alpha: 0.1),
+        color: surfaceColor.withOpacity(0.1),
         borderRadius: BorderRadius.circular(16),
         border: Border.all(
-          color: isActive ? primaryColor.withValues(alpha: 0.5) : Colors.redAccent.withValues(alpha: 0.4),
+          color: isActive ? primaryColor.withOpacity(0.5) : Colors.redAccent.withOpacity(0.4),
         ),
       ),
       child: Column(
@@ -220,17 +220,17 @@ class _ClientRoutinesPageState extends State<ClientRoutinesPage> {
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
               Text(
-                'Account Access',
+                'Acceso a la Cuenta',
                 style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 16),
               ),
               Container(
                 padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
                 decoration: BoxDecoration(
-                  color: isActive ? primaryColor.withValues(alpha: 0.2) : Colors.redAccent.withValues(alpha: 0.2),
+                  color: isActive ? primaryColor.withOpacity(0.2) : Colors.redAccent.withOpacity(0.2),
                   borderRadius: BorderRadius.circular(12),
                 ),
                 child: Text(
-                  isActive ? 'ACTIVE' : 'EXPIRED',
+                  isActive ? 'ACTIVO' : 'EXPIRADO',
                   style: TextStyle(
                     color: isActive ? primaryColor : Colors.redAccent,
                     fontWeight: FontWeight.bold,
@@ -243,8 +243,8 @@ class _ClientRoutinesPageState extends State<ClientRoutinesPage> {
           const SizedBox(height: 8),
           Text(
             _activeUntil == null
-                ? 'No active period set yet.'
-                : 'Active until ${_formatDate(_activeUntil!)}${isActive ? ' ($daysLeft days left)' : ''}',
+                ? 'Sin período activo establecido.'
+                : 'Activo hasta ${_formatDate(_activeUntil!)}${isActive ? ' ($daysLeft días restantes)' : ''}',
             style: TextStyle(color: Colors.white70, fontSize: 13),
           ),
           const SizedBox(height: 12),
@@ -253,7 +253,7 @@ class _ClientRoutinesPageState extends State<ClientRoutinesPage> {
             child: ElevatedButton.icon(
               onPressed: _isActivating ? null : _activateFor30Days,
               icon: const Icon(Icons.verified_user_outlined),
-              label: Text(isActive ? 'REACTIVATE FOR 30 DAYS' : 'ACTIVATE FOR 30 DAYS'),
+              label: Text(isActive ? 'REACTIVAR POR 30 DÍAS' : 'ACTIVAR POR 30 DÍAS'),
               style: ElevatedButton.styleFrom(
                 backgroundColor: primaryColor,
                 foregroundColor: backgroundColor,
@@ -275,12 +275,12 @@ class _ClientRoutinesPageState extends State<ClientRoutinesPage> {
         width: double.infinity,
         padding: const EdgeInsets.all(20),
         decoration: BoxDecoration(
-          color: surfaceColor.withValues(alpha: 0.1),
+          color: surfaceColor.withOpacity(0.1),
           borderRadius: BorderRadius.circular(16),
-          border: Border.all(color: surfaceColor.withValues(alpha: 0.2)),
+          border: Border.all(color: surfaceColor.withOpacity(0.2)),
         ),
         child: const Text(
-          'No routines on this day',
+          'No hay rutinas este día',
           style: TextStyle(color: Colors.white70),
         ),
       );
@@ -301,17 +301,17 @@ class _ClientRoutinesPageState extends State<ClientRoutinesPage> {
           margin: const EdgeInsets.only(bottom: 12),
           decoration: BoxDecoration(
             color: isCompleted
-                ? Colors.greenAccent.withValues(alpha: 0.08)
+                ? Colors.greenAccent.withOpacity(0.08)
                 : isMissed
-                    ? Colors.redAccent.withValues(alpha: 0.08)
-                    : surfaceColor.withValues(alpha: 0.1),
+                    ? Colors.redAccent.withOpacity(0.08)
+                    : surfaceColor.withOpacity(0.1),
             borderRadius: BorderRadius.circular(16),
             border: Border.all(
               color: isCompleted
-                  ? Colors.greenAccent.withValues(alpha: 0.4)
+                  ? Colors.greenAccent.withOpacity(0.4)
                   : isMissed
-                      ? Colors.redAccent.withValues(alpha: 0.4)
-                      : surfaceColor.withValues(alpha: 0.2),
+                      ? Colors.redAccent.withOpacity(0.4)
+                      : surfaceColor.withOpacity(0.2),
             ),
           ),
           child: ExpansionTile(
@@ -321,18 +321,18 @@ class _ClientRoutinesPageState extends State<ClientRoutinesPage> {
               children: [
                 Expanded(
                   child: Text(
-                    (routine['name'] ?? 'Untitled').toString(),
+                    (routine['name'] ?? 'Sin nombre').toString(),
                     style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
                   ),
                 ),
                 if (isCompleted)
                   const Text('✓', style: TextStyle(color: Colors.greenAccent, fontWeight: FontWeight.bold)),
                 if (isMissed)
-                  const Text('MISSED', style: TextStyle(color: Colors.redAccent, fontWeight: FontWeight.bold, fontSize: 10)),
+                  const Text('PERDIDA', style: TextStyle(color: Colors.redAccent, fontWeight: FontWeight.bold, fontSize: 10)),
               ],
             ),
             subtitle: Text(
-              '${workouts.length} workouts ${isCompleted ? '- Completed' : isMissed ? '- Missed' : '- Pending'}',
+              '${workouts.length} ejercicios ${isCompleted ? '- Completada' : isMissed ? '- Perdida' : '- Pendiente'}',
               style: TextStyle(
                 color: isCompleted
                     ? Colors.greenAccent
@@ -363,12 +363,12 @@ class _ClientRoutinesPageState extends State<ClientRoutinesPage> {
                         ).then((_) => _loadClientData());
                       },
                       icon: const Icon(Icons.edit_outlined, size: 18),
-                      label: const Text('Edit'),
+                      label: const Text('Editar'),
                     ),
                     TextButton.icon(
                       onPressed: () => _deleteRoutine(routineId),
                       icon: const Icon(Icons.delete_outline, size: 18, color: Colors.redAccent),
-                      label: const Text('Delete', style: TextStyle(color: Colors.redAccent)),
+                      label: const Text('Eliminar', style: TextStyle(color: Colors.redAccent)),
                     ),
                   ],
                 ),
@@ -377,7 +377,7 @@ class _ClientRoutinesPageState extends State<ClientRoutinesPage> {
                 return ListTile(
                   dense: true,
                   title: Text(
-                    (workout['workoutName'] ?? 'Unknown').toString(),
+                    (workout['workoutName'] ?? 'Desconocido').toString(),
                     style: const TextStyle(color: Colors.white),
                   ),
                   subtitle: Text(
@@ -428,7 +428,7 @@ class _ClientRoutinesPageState extends State<ClientRoutinesPage> {
                         ).then((_) => _loadClientData());
                       },
                       icon: const Icon(Icons.add),
-                      label: const Text('CREATE NEW ROUTINE', style: TextStyle(fontWeight: FontWeight.bold)),
+                      label: const Text('CREAR NUEVA RUTINA', style: TextStyle(fontWeight: FontWeight.bold)),
                       style: ElevatedButton.styleFrom(
                         backgroundColor: primaryColor,
                         foregroundColor: backgroundColor,
@@ -439,9 +439,9 @@ class _ClientRoutinesPageState extends State<ClientRoutinesPage> {
                   const SizedBox(height: 20),
                   Container(
                     decoration: BoxDecoration(
-                      color: surfaceColor.withValues(alpha: 0.1),
+                      color: surfaceColor.withOpacity(0.1),
                       borderRadius: BorderRadius.circular(24),
-                      border: Border.all(color: surfaceColor.withValues(alpha: 0.2)),
+                      border: Border.all(color: surfaceColor.withOpacity(0.2)),
                     ),
                     child: TableCalendar(
                       firstDay: DateTime.utc(2020, 1, 1),
@@ -457,7 +457,7 @@ class _ClientRoutinesPageState extends State<ClientRoutinesPage> {
                       },
                       calendarStyle: CalendarStyle(
                         selectedDecoration: BoxDecoration(color: primaryColor, shape: BoxShape.circle),
-                        todayDecoration: BoxDecoration(color: secondaryColor.withValues(alpha: 0.3), shape: BoxShape.circle),
+                        todayDecoration: BoxDecoration(color: secondaryColor.withOpacity(0.3), shape: BoxShape.circle),
                         defaultTextStyle: const TextStyle(color: Colors.white),
                         weekendTextStyle: const TextStyle(color: Colors.white70),
                         outsideDaysVisible: false,
@@ -500,7 +500,7 @@ class _ClientRoutinesPageState extends State<ClientRoutinesPage> {
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
                       Text(
-                        'Routines for ${_selectedDay == null ? '-' : _formatDate(_selectedDay!)}',
+                        'Rutinas para ${_selectedDay == null ? '-' : _formatDate(_selectedDay!)}',
                         style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 16),
                       ),
                       IconButton(

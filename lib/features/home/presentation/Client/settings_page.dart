@@ -464,8 +464,15 @@ class _SettingsPageState extends State<SettingsPage> {
           ),
           TextButton(
             onPressed: () async {
-              await _deleteAccount(passwordController.text);
-              if (mounted) Navigator.pop(context);
+              final password = passwordController.text;
+              if (password.isEmpty) {
+                _showErrorSnackBar("Por favor ingresa tu contraseña");
+                return;
+              }
+              // Close the dialog before starting the potentially redirecting process
+              // to avoid Navigator assertion errors when the stack is cleared.
+              Navigator.pop(context);
+              await _deleteAccount(password);
             },
             child: const Text('Eliminar', style: TextStyle(color: Colors.redAccent)),
           ),
@@ -502,14 +509,16 @@ class _SettingsPageState extends State<SettingsPage> {
             const SnackBar(
               content: Text("Cuenta eliminada exitosamente"),
               backgroundColor: Colors.green,
-              duration: Duration(seconds: 1),
+              duration: Duration(seconds: 2),
             ),
           );
 
-          // Navigate to login after a brief delay
-          await Future.delayed(const Duration(milliseconds: 500));
+          // Navigate to login using replacement instead of removeUntil
+          // This avoids the red screen issue
+          await Future.delayed(const Duration(milliseconds: 800));
           if (mounted) {
-            Navigator.of(context).pushNamedAndRemoveUntil('/', (route) => false);
+            // Use pushReplacementNamed with clean navigation
+            Navigator.of(context).pushReplacementNamed('/');
           }
         }
       }
@@ -630,4 +639,3 @@ class _SettingsPageState extends State<SettingsPage> {
     );
   }
 }
-
