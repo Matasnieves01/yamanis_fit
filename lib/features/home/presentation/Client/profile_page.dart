@@ -3,6 +3,8 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:yamanis_fit/features/auth/auth_service.dart';
 import 'settings_page.dart';
+import 'help_support_page.dart';
+import 'privacy_policy_page.dart';
 
 class ProfilePage extends StatefulWidget {
   const ProfilePage({super.key});
@@ -12,7 +14,7 @@ class ProfilePage extends StatefulWidget {
 }
 
 class _ProfilePageState extends State<ProfilePage> {
-  String _displayName = "Loading...";
+  String _displayName = "Cargando...";
   String _email = "";
   bool _isLoading = true;
 
@@ -58,12 +60,15 @@ class _ProfilePageState extends State<ProfilePage> {
     await authService.signOut();
   }
 
-  void _navigateToSettings(BuildContext context) {
-    Navigator.of(context).push(
+  Future<void> _navigateToSettings(BuildContext context) async {
+    await Navigator.of(context).push(
       MaterialPageRoute(
-        builder: (context) => SettingsPage(),
+        builder: (context) => const SettingsPage(),
       ),
     );
+    if (mounted) {
+      _loadUserData(); // Refresh data when returning from settings
+    }
   }
 
   @override
@@ -71,7 +76,14 @@ class _ProfilePageState extends State<ProfilePage> {
     return Scaffold(
       backgroundColor: backgroundColor,
       appBar: AppBar(
-        title: const Text('PERFIL', style: TextStyle(fontWeight: FontWeight.w900, letterSpacing: 1.5)),
+        title: Image.asset(
+          'assets/logos/logo.png',
+          height: 40,
+          errorBuilder: (context, error, stackTrace) => const Text(
+            'PERFIL',
+            style: TextStyle(fontWeight: FontWeight.w900, letterSpacing: 1.5),
+          ),
+        ),
         centerTitle: true,
         backgroundColor: Colors.transparent,
         elevation: 0,
@@ -124,10 +136,21 @@ class _ProfilePageState extends State<ProfilePage> {
               ),
               const SizedBox(height: 40),
               // Menu Options
-              _buildProfileOption(icon: Icons.settings_outlined, title: "Configuración", onTap: () => _navigateToSettings(context)),
-              _buildProfileOption(icon: Icons.notifications_none_rounded, title: "Notificaciones"),
-              _buildProfileOption(icon: Icons.help_outline_rounded, title: "Ayuda y Soporte"),
-              _buildProfileOption(icon: Icons.privacy_tip_outlined, title: "Política de Privacidad"),
+              _buildProfileOption(
+                icon: Icons.settings_outlined, 
+                title: "Configuración", 
+                onTap: () => _navigateToSettings(context)
+              ),
+              _buildProfileOption(
+                icon: Icons.help_outline_rounded, 
+                title: "Ayuda y Soporte",
+                onTap: () => Navigator.push(context, MaterialPageRoute(builder: (context) => const HelpSupportPage()))
+              ),
+              _buildProfileOption(
+                icon: Icons.privacy_tip_outlined, 
+                title: "Política de Privacidad",
+                onTap: () => Navigator.push(context, MaterialPageRoute(builder: (context) => const PrivacyPolicyPage()))
+              ),
               const SizedBox(height: 40),
               // Logout Button
               SizedBox(

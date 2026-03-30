@@ -42,7 +42,6 @@ class _ViewNotificationPageState extends State<ViewNotificationPage> {
 
     setState(() => _isSaving = true);
     try {
-      // 1. Update the log with trainer feedback
       await FirebaseFirestore.instance
           .collection('routine_logs')
           .doc(widget.logId)
@@ -51,13 +50,12 @@ class _ViewNotificationPageState extends State<ViewNotificationPage> {
         'feedbackAt': FieldValue.serverTimestamp(),
       });
 
-      // 2. Create notification for the client
       await FirebaseFirestore.instance.collection('notifications').add({
         'type': 'trainer_feedback',
-        'title': 'Nuevo Feedback de tu Trainer',
-        'message': 'Tu trainer ha comentado en tu rutina: $routineName',
+        'title': '¡Tu Trainer ha respondido!',
+        'message': 'Feedback sobre tu rutina: $routineName',
         'trainerFeedback': feedbackText,
-        'userId': userId, // The client\'s ID
+        'userId': userId,
         'targetRole': 'client',
         'logId': widget.logId,
         'read': false,
@@ -66,13 +64,13 @@ class _ViewNotificationPageState extends State<ViewNotificationPage> {
 
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Feedback enviado al cliente')),
+        const SnackBar(content: Text('Feedback enviado al cliente'), behavior: SnackBarBehavior.floating),
       );
       Navigator.pop(context);
     } catch (e) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Error: $e')),
+        SnackBar(content: Text('Error: $e'), behavior: SnackBarBehavior.floating),
       );
     } finally {
       if (mounted) setState(() => _isSaving = false);
@@ -112,6 +110,7 @@ class _ViewNotificationPageState extends State<ViewNotificationPage> {
           final clientName = data['userName'] ?? 'Cliente';
           final routineName = data['routineName'] ?? 'Rutina';
           final clientId = data['userId'];
+          final clientGeneralFeedback = (data['clientFeedback'] ?? '').toString().trim();
 
           return SingleChildScrollView(
             padding: const EdgeInsets.all(24),
@@ -120,32 +119,77 @@ class _ViewNotificationPageState extends State<ViewNotificationPage> {
               children: [
                 _buildHeader(clientName, routineName, date),
                 const SizedBox(height: 32),
+                
+                const Text("COMENTARIO DEL CLIENTE",
+                    style: TextStyle(
+                        color: Colors.white,
+                        fontSize: 14,
+                        fontWeight: FontWeight.w900,
+                        letterSpacing: 1.0)),
+                const SizedBox(height: 12),
+                Container(
+                  width: double.infinity,
+                  padding: const EdgeInsets.all(20),
+                  decoration: BoxDecoration(
+                    color: clientGeneralFeedback.isNotEmpty 
+                        ? Colors.orangeAccent.withOpacity(0.1)
+                        : Colors.white.withOpacity(0.02),
+                    borderRadius: BorderRadius.circular(20),
+                    border: Border.all(
+                      color: clientGeneralFeedback.isNotEmpty 
+                          ? Colors.orangeAccent.withOpacity(0.3)
+                          : Colors.white.withOpacity(0.05)
+                    ),
+                  ),
+                  child: Text(
+                    clientGeneralFeedback.isNotEmpty 
+                        ? clientGeneralFeedback 
+                        : "El cliente no dejó comentarios adicionales.",
+                    style: TextStyle(
+                      color: clientGeneralFeedback.isNotEmpty ? Colors.white : Colors.white24, 
+                      fontSize: 14, 
+                      fontStyle: clientGeneralFeedback.isNotEmpty ? FontStyle.normal : FontStyle.italic,
+                      height: 1.5
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 32),
+
                 const Text("DESGLOSE DE EJERCICIOS",
                     style: TextStyle(
                         color: Colors.white,
-                        fontSize: 16,
-                        fontWeight: FontWeight.bold)),
+                        fontSize: 14,
+                        fontWeight: FontWeight.w900,
+                        letterSpacing: 1.0)),
                 const SizedBox(height: 16),
                 ...results.map((res) => _buildWorkoutResultCard(res)).toList(),
                 const SizedBox(height: 40),
                 const Text("TU FEEDBACK (TRAINER)",
                     style: TextStyle(
                         color: Colors.white,
-                        fontSize: 16,
-                        fontWeight: FontWeight.bold)),
+                        fontSize: 14,
+                        fontWeight: FontWeight.w900,
+                        letterSpacing: 1.0)),
                 const SizedBox(height: 16),
                 TextField(
                   controller: _trainerFeedbackController,
-                  maxLines: 3,
+                  maxLines: 4,
                   style: const TextStyle(color: Colors.white),
                   decoration: InputDecoration(
                     hintText: "Escribe algo motivador o correcciones...",
                     hintStyle: TextStyle(color: Colors.white.withOpacity(0.2)),
                     filled: true,
                     fillColor: Colors.white.withOpacity(0.05),
+                    contentPadding: const EdgeInsets.all(20),
                     border: OutlineInputBorder(
                         borderRadius: BorderRadius.circular(16),
                         borderSide: BorderSide.none),
+                    enabledBorder: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(16),
+                        borderSide: BorderSide(color: Colors.white.withOpacity(0.05))),
+                    focusedBorder: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(16),
+                        borderSide: BorderSide(color: primaryColor.withOpacity(0.5))),
                   ),
                 ),
                 const SizedBox(height: 24),
@@ -159,12 +203,13 @@ class _ViewNotificationPageState extends State<ViewNotificationPage> {
                       foregroundColor: backgroundColor,
                       shape: RoundedRectangleBorder(
                           borderRadius: BorderRadius.circular(16)),
+                      elevation: 0,
                     ),
                     child: _isSaving
-                        ? CircularProgressIndicator(color: backgroundColor)
+                        ? const SizedBox(width: 24, height: 24, child: CircularProgressIndicator(strokeWidth: 3, color: Colors.black))
                         : const Text("ENVIAR FEEDBACK",
                             style: TextStyle(
-                                fontWeight: FontWeight.bold, letterSpacing: 1.2)),
+                                fontWeight: FontWeight.w900, letterSpacing: 1.5)),
                   ),
                 ),
                 const SizedBox(height: 40),
@@ -186,10 +231,13 @@ class _ViewNotificationPageState extends State<ViewNotificationPage> {
       ),
       child: Row(
         children: [
-          CircleAvatar(
-            radius: 30,
-            backgroundColor: primaryColor.withOpacity(0.2),
-            child: Icon(Icons.person, color: primaryColor, size: 30),
+          Container(
+            padding: const EdgeInsets.all(12),
+            decoration: BoxDecoration(
+              color: primaryColor.withOpacity(0.1),
+              shape: BoxShape.circle,
+            ),
+            child: Icon(Icons.person_rounded, color: primaryColor, size: 32),
           ),
           const SizedBox(width: 20),
           Expanded(
@@ -199,13 +247,16 @@ class _ViewNotificationPageState extends State<ViewNotificationPage> {
                 Text(name.toUpperCase(),
                     style: const TextStyle(
                         color: Colors.white,
-                        fontSize: 20,
-                        fontWeight: FontWeight.w900)),
+                        fontSize: 18,
+                        fontWeight: FontWeight.w900,
+                        letterSpacing: 0.5)),
+                const SizedBox(height: 4),
                 Text(routine,
-                    style: TextStyle(color: primaryColor, fontWeight: FontWeight.bold)),
+                    style: TextStyle(color: primaryColor, fontWeight: FontWeight.bold, fontSize: 14)),
+                const SizedBox(height: 4),
                 Text(DateFormat('dd MMM yyyy, HH:mm').format(date),
                     style: TextStyle(
-                        color: Colors.white.withOpacity(0.4), fontSize: 12)),
+                        color: Colors.white.withOpacity(0.4), fontSize: 11)),
               ],
             ),
           ),
@@ -233,8 +284,8 @@ class _ViewNotificationPageState extends State<ViewNotificationPage> {
       margin: const EdgeInsets.only(bottom: 16),
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
-        color: Colors.white.withOpacity(0.03),
-        borderRadius: BorderRadius.circular(20),
+        color: Colors.white.withOpacity(0.02),
+        borderRadius: BorderRadius.circular(24),
         border: Border.all(color: Colors.white.withOpacity(0.05)),
       ),
       child: Column(
@@ -245,26 +296,49 @@ class _ViewNotificationPageState extends State<ViewNotificationPage> {
             children: [
               Text(res['workoutName'].toString().toUpperCase(),
                   style: const TextStyle(
-                      color: Colors.white, fontWeight: FontWeight.bold)),
-              Icon(feedbackIcon, color: feedbackColor, size: 20),
+                      color: Colors.white, fontWeight: FontWeight.w900, fontSize: 13, letterSpacing: 0.5)),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                decoration: BoxDecoration(
+                  color: feedbackColor.withOpacity(0.1),
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: Row(
+                  children: [
+                    Icon(feedbackIcon, color: feedbackColor, size: 14),
+                    const SizedBox(width: 6),
+                    Text(
+                      res['feedback'].toString().toUpperCase(),
+                      style: TextStyle(color: feedbackColor, fontSize: 10, fontWeight: FontWeight.bold),
+                    ),
+                  ],
+                ),
+              ),
             ],
           ),
-          const SizedBox(height: 12),
+          const SizedBox(height: 20),
           ...((res['exercises'] as List<dynamic>? ?? []).map((ex) {
             return Padding(
-              padding: const EdgeInsets.only(bottom: 8),
-              child: Row(
-                children: [
-                  Expanded(
-                    child: Text(
-                      ex['name'] ?? 'Unknown',
-                      style: const TextStyle(color: Colors.white),
+              padding: const EdgeInsets.only(bottom: 12),
+              child: Container(
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: Colors.white.withOpacity(0.03),
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: Row(
+                  children: [
+                    Expanded(
+                      child: Text(
+                        ex['name'] ?? 'Unknown',
+                        style: const TextStyle(color: Colors.white, fontSize: 13),
+                      ),
                     ),
-                  ),
-                  _buildSmallStat("PLAN", "${ex['plannedWeight'] ?? 0}kg"),
-                  const SizedBox(width: 10),
-                  _buildSmallStat("REAL", "${ex['actualWeight'] ?? 0}kg"),
-                ],
+                    _buildSmallStat("PLAN", "${ex['plannedWeight'] ?? 0}kg"),
+                    const SizedBox(width: 16),
+                    _buildSmallStat("REAL", "${ex['actualWeight'] ?? 0}kg", highlight: true),
+                  ],
+                ),
               ),
             );
           }).toList()),
@@ -276,18 +350,18 @@ class _ViewNotificationPageState extends State<ViewNotificationPage> {
   Widget _buildSmallStat(String label, String value,
       {bool highlight = false, Color? color}) {
     return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
+      crossAxisAlignment: CrossAxisAlignment.end,
       children: [
         Text(label,
             style: TextStyle(
                 color: Colors.white.withOpacity(0.3),
-                fontSize: 10,
+                fontSize: 9,
                 fontWeight: FontWeight.bold)),
         Text(value,
             style: TextStyle(
                 color: color ?? (highlight ? primaryColor : Colors.white70),
-                fontSize: 14,
-                fontWeight: FontWeight.bold)),
+                fontSize: 13,
+                fontWeight: FontWeight.w900)),
       ],
     );
   }

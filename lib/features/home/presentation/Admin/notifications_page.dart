@@ -11,8 +11,10 @@ class NotificationsPage extends StatelessWidget {
   final Color primaryColor = const Color(0xFFAEE084);
 
   Stream<QuerySnapshot> _getNotifications() {
+    // Updated query to match security rules: only fetch notifications targeted to admin
     return FirebaseFirestore.instance
         .collection('notifications')
+        .where('targetRole', isEqualTo: 'admin')
         .orderBy('createdAt', descending: true)
         .snapshots();
   }
@@ -34,11 +36,12 @@ class NotificationsPage extends StatelessWidget {
       body: StreamBuilder<QuerySnapshot>(
         stream: _getNotifications(),
         builder: (context, snapshot) {
+          if (snapshot.hasError) {
+            return Center(child: Text("Error: ${snapshot.error}", style: const TextStyle(color: Colors.redAccent)));
+          }
           if (!snapshot.hasData) return const Center(child: CircularProgressIndicator());
           
-          final docs = snapshot.data!.docs
-              .where((doc) => (doc.data() as Map<String, dynamic>)['type'] == 'routine_completed')
-              .toList();
+          final docs = snapshot.data!.docs;
           if (docs.isEmpty) {
             return const Center(child: Text("No hay notificaciones", style: TextStyle(color: Colors.white54)));
           }

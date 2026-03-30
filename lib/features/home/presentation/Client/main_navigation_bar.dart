@@ -46,26 +46,26 @@ class _MainNavigationBarState extends State<MainNavigationBar> {
         const BottomNavigationBarItem(
           icon: Icon(Icons.dashboard_outlined),
           activeIcon: Icon(Icons.dashboard),
-          label: 'Home',
+          label: 'Inicio',
         ),
         const BottomNavigationBarItem(
           icon: Icon(Icons.fitness_center_outlined),
           activeIcon: Icon(Icons.fitness_center),
-          label: 'Workouts',
+          label: 'Ejercicios',
         ),
         const BottomNavigationBarItem(
           icon: Icon(Icons.people_outline),
           activeIcon: Icon(Icons.people),
-          label: 'Clients',
+          label: 'Clientes',
         ),
         BottomNavigationBarItem(
           icon: _buildNotificationIcon(isAdmin: true),
-          label: 'Alerts',
+          label: 'Alertas',
         ),
         const BottomNavigationBarItem(
           icon: Icon(Icons.person_outline),
           activeIcon: Icon(Icons.person),
-          label: 'Profile',
+          label: 'Perfil',
         ),
       ];
     }
@@ -74,16 +74,16 @@ class _MainNavigationBarState extends State<MainNavigationBar> {
       const BottomNavigationBarItem(
         icon: Icon(Icons.dashboard_outlined),
         activeIcon: Icon(Icons.dashboard),
-        label: 'Home',
+        label: 'Inicio',
       ),
       BottomNavigationBarItem(
         icon: _buildNotificationIcon(isAdmin: false),
-        label: 'Alerts',
+        label: 'Alertas',
       ),
       const BottomNavigationBarItem(
         icon: Icon(Icons.person_outline),
         activeIcon: Icon(Icons.person),
-        label: 'Profile',
+        label: 'Perfil',
       ),
     ];
   }
@@ -91,32 +91,31 @@ class _MainNavigationBarState extends State<MainNavigationBar> {
   Widget _buildNotificationIcon({required bool isAdmin}) {
     final uid = FirebaseAuth.instance.currentUser?.uid;
 
-    if (!isAdmin && uid == null) {
+    if (uid == null) {
       return const Icon(Icons.notifications_outlined);
     }
 
+    // Update queries to match security rules:
+    // 1. Admins only see notifications where targetRole == 'admin'
+    // 2. Clients only see notifications where userId == currentUid
     final stream = isAdmin
         ? FirebaseFirestore.instance
             .collection('notifications')
+            .where('targetRole', isEqualTo: 'admin')
             .where('read', isEqualTo: false)
             .snapshots()
         : FirebaseFirestore.instance
             .collection('notifications')
             .where('userId', isEqualTo: uid)
+            .where('read', isEqualTo: false)
             .snapshots();
 
     return StreamBuilder<QuerySnapshot>(
       stream: stream,
       builder: (context, snapshot) {
         final docs = snapshot.data?.docs ?? [];
-        final hasUnread = docs.any((doc) {
-          final data = doc.data() as Map<String, dynamic>;
-          final isUnread = data['read'] != true;
-          if (isAdmin) {
-            return data['type'] == 'routine_completed' && isUnread;
-          }
-          return data['type'] == 'trainer_feedback' && isUnread;
-        });
+        // The where clauses in the query already handle most filtering
+        final hasUnread = docs.isNotEmpty;
 
         return Stack(
           children: [
@@ -153,7 +152,6 @@ class _MainNavigationBarState extends State<MainNavigationBar> {
   Widget build(BuildContext context) {
     final pages = _pages;
     
-    // Safety check for index
     if (_currentIndex >= pages.length) {
       _currentIndex = 0;
     }

@@ -210,7 +210,7 @@ class _CreateRoutinePageState extends State<CreateRoutinePage> {
 
   void _addExerciseToSuperset(int index, String workoutId, String workoutName) {
     if (selectedWorkouts[index].exercises.length >= 2) {
-      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Máximo 2 ejercicios por serie')));
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Máximo 2 ejercicios por serie'), behavior: SnackBarBehavior.floating));
       return;
     }
     setState(() {
@@ -220,9 +220,25 @@ class _CreateRoutinePageState extends State<CreateRoutinePage> {
 
   Future<void> _saveRoutine() async {
     final user = FirebaseAuth.instance.currentUser;
-    if (_selectedDay == null) { _showErrorSnackBar('Selecciona un día'); return; }
-    if (_nameController.text.trim().isEmpty || selectedWorkouts.isEmpty) { _showErrorSnackBar('Completa el nombre y añade ejercicios'); return; }
     if (user == null) return;
+
+    if (_selectedDay == null) { _showErrorSnackBar('Selecciona un día en el calendario'); return; }
+    if (_nameController.text.trim().isEmpty) { _showErrorSnackBar('Ingresa un nombre para la rutina'); return; }
+    if (_selectedMuscles.isEmpty) { _showErrorSnackBar('Selecciona al menos un enfoque muscular'); return; }
+    if (selectedWorkouts.isEmpty) { _showErrorSnackBar('Añade al menos un ejercicio'); return; }
+
+    for (var workout in selectedWorkouts) {
+      if (workout.sets.trim().isEmpty) {
+        _showErrorSnackBar('Ingresa el número de series para todos los ejercicios');
+        return;
+      }
+      for (var exercise in workout.exercises) {
+        if (exercise.reps.trim().isEmpty || exercise.weight.trim().isEmpty) {
+          _showErrorSnackBar('Completa repeticiones y peso para ${exercise.workoutName}');
+          return;
+        }
+      }
+    }
 
     setState(() => isLoading = true);
     try {
@@ -269,8 +285,8 @@ class _CreateRoutinePageState extends State<CreateRoutinePage> {
     }
   }
 
-  void _showErrorSnackBar(String message) => ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(message), backgroundColor: Colors.redAccent));
-  void _showSuccessSnackBar(String message) => ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(message), backgroundColor: Colors.green));
+  void _showErrorSnackBar(String message) => ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(message), backgroundColor: Colors.redAccent, behavior: SnackBarBehavior.floating));
+  void _showSuccessSnackBar(String message) => ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(message), backgroundColor: Colors.green, behavior: SnackBarBehavior.floating));
 
   @override
   Widget build(BuildContext context) {
@@ -355,7 +371,20 @@ class _CreateRoutinePageState extends State<CreateRoutinePage> {
               },
             ),
             const SizedBox(height: 32),
-            const Text("Añadir Ejercicio", style: TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold)),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                const Text("Ejercicios Disponibles", style: TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold)),
+                TextButton.icon(
+                  onPressed: () async {
+                    await Navigator.push(context, MaterialPageRoute(builder: (context) => const CreateWorkoutPage()));
+                    loadWorkouts();
+                  },
+                  icon: Icon(Icons.add_circle_outline, color: primaryColor, size: 20),
+                  label: Text("CREAR NUEVO", style: TextStyle(color: primaryColor, fontWeight: FontWeight.bold, fontSize: 12)),
+                ),
+              ],
+            ),
             const SizedBox(height: 12),
             SizedBox(
               height: 44,
@@ -398,8 +427,62 @@ class _CreateRoutinePageState extends State<CreateRoutinePage> {
   }
 
   void _showAddExerciseToSupersetDialog(int routineIndex) {
-    showModalBottomSheet(context: context, backgroundColor: backgroundColor, shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(32))), builder: (context) {
-      return Container(padding: const EdgeInsets.all(24), child: Column(mainAxisSize: MainAxisSize.min, children: [const Text("Añadir Ejercicio al Superset", style: TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold)), const SizedBox(height: 24), Expanded(child: ListView.builder(itemCount: availableWorkouts.length, itemBuilder: (context, index) { final workout = availableWorkouts[index]; return ListTile(title: Text(workout['name'], style: const TextStyle(color: Colors.white)), onTap: () { _addExerciseToSuperset(routineIndex, workout.id, workout['name']); Navigator.pop(context); }); }))]));
-    });
+    showModalBottomSheet(
+      context: context, 
+      backgroundColor: Colors.transparent, 
+      isScrollControlled: true,
+      builder: (context) {
+        return Container(
+          decoration: BoxDecoration(
+            color: backgroundColor,
+            borderRadius: const BorderRadius.vertical(top: Radius.circular(32)),
+          ),
+          padding: const EdgeInsets.fromLTRB(24, 12, 24, 24),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Container(width: 40, height: 4, decoration: BoxDecoration(color: Colors.white24, borderRadius: BorderRadius.circular(2))),
+              const SizedBox(height: 24),
+              const Text("AÑADIR AL SUPERSET", style: TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.w900, letterSpacing: 1.2)),
+              const SizedBox(height: 12),
+              Text("Selecciona un segundo ejercicio para esta serie", style: TextStyle(color: Colors.white.withOpacity(0.5), fontSize: 14)),
+              const SizedBox(height: 24),
+              ConstrainedBox(
+                constraints: BoxConstraints(maxHeight: MediaQuery.of(context).size.height * 0.4),
+                child: ListView.builder(
+                  shrinkWrap: true,
+                  itemCount: availableWorkouts.length,
+                  itemBuilder: (context, index) {
+                    final workout = availableWorkouts[index];
+                    return Container(
+                      margin: const EdgeInsets.only(bottom: 12),
+                      decoration: BoxDecoration(
+                        color: surfaceColor.withOpacity(0.05),
+                        borderRadius: BorderRadius.circular(16),
+                        border: Border.all(color: surfaceColor.withOpacity(0.1)),
+                      ),
+                      child: ListTile(
+                        leading: Container(
+                          padding: const EdgeInsets.all(8),
+                          decoration: BoxDecoration(color: primaryColor.withOpacity(0.1), borderRadius: BorderRadius.circular(10)),
+                          child: Icon(Icons.fitness_center_rounded, color: primaryColor, size: 20),
+                        ),
+                        title: Text(workout['name'], style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+                        onTap: () {
+                          _addExerciseToSuperset(routineIndex, workout.id, workout['name']);
+                          Navigator.pop(context);
+                        },
+                      ),
+                    );
+                  },
+                ),
+              ),
+              const SizedBox(height: 16),
+              TextButton(onPressed: () => Navigator.pop(context), child: Text("CANCELAR", style: TextStyle(color: Colors.white.withOpacity(0.3), fontWeight: FontWeight.bold))),
+            ],
+          ),
+        );
+      }
+    );
   }
 }

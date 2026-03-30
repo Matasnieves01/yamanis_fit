@@ -26,4 +26,9 @@ plugins {
     id("org.jetbrains.kotlin.android") version "2.2.20" apply false
 }
 
+rootProject.name = "yamanis_fit"
+
+// Only include the app module, don't auto-discover subdirectories
 include(":app")
+project(":app").projectDir = File("app")
+

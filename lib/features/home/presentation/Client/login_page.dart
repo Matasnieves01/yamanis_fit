@@ -15,7 +15,6 @@ class _LoginPageState extends State<LoginPage> {
   final AuthService _authService = AuthService();
   bool isLoading = false;
 
-  // Dashboard Color Palette
   final Color backgroundColor = const Color(0xFF11151C);
   final Color surfaceColor = const Color(0xFF55768C);
   final Color secondaryColor = const Color(0xFF89AC76);
@@ -27,7 +26,7 @@ class _LoginPageState extends State<LoginPage> {
 
     if (email.isEmpty || password.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Please fill all fields')),
+        const SnackBar(content: Text('Por favor, completa todos los campos'), behavior: SnackBarBehavior.floating),
       );
       return;
     }
@@ -42,14 +41,23 @@ class _LoginPageState extends State<LoginPage> {
       if (user != null) {
         Navigator.pushReplacementNamed(context, '/home');
       } else {
-        final message = _authService.lastSignInError ?? 'Login failed. Check your credentials.';
+        String message = 'Error al iniciar sesión. Verifica tus credenciales.';
+        if (_authService.lastSignInError != null) {
+          if (_authService.lastSignInError!.contains('user-not-found')) {
+            message = 'Usuario no encontrado.';
+          } else if (_authService.lastSignInError!.contains('wrong-password')) {
+            message = 'Contraseña incorrecta.';
+          } else if (_authService.lastSignInError!.contains('Account not active')) {
+             message = 'Tu cuenta aún no ha sido activada por el administrador.';
+          }
+        }
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text(message)),
+          SnackBar(content: Text(message), behavior: SnackBarBehavior.floating),
         );
       }
     } catch (e) {
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Error: $e')),
+        SnackBar(content: Text('Error: $e'), behavior: SnackBarBehavior.floating),
       );
     } finally {
       if (mounted) setState(() => isLoading = false);
@@ -59,23 +67,14 @@ class _LoginPageState extends State<LoginPage> {
   InputDecoration _buildInputDecoration(String label, IconData icon) {
     return InputDecoration(
       labelText: label,
-      labelStyle: TextStyle(color: primaryColor.withOpacity(0.8)),
-      prefixIcon: Icon(icon, color: primaryColor),
+      labelStyle: TextStyle(color: primaryColor.withOpacity(0.8), fontSize: 14),
+      prefixIcon: Icon(icon, color: primaryColor, size: 20),
       filled: true,
-      fillColor: Colors.white.withOpacity(0.05),
-      contentPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 18),
-      border: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(16),
-        borderSide: BorderSide.none,
-      ),
-      enabledBorder: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(16),
-        borderSide: BorderSide(color: Colors.white.withOpacity(0.1)),
-      ),
-      focusedBorder: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(16),
-        borderSide: BorderSide(color: primaryColor, width: 2),
-      ),
+      fillColor: Colors.transparent,
+      contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+      border: InputBorder.none,
+      enabledBorder: InputBorder.none,
+      focusedBorder: InputBorder.none,
     );
   }
 
@@ -83,83 +82,144 @@ class _LoginPageState extends State<LoginPage> {
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: backgroundColor,
-      appBar: AppBar(
-        title: const Text('Login'),
-        centerTitle: true,
-        backgroundColor: Colors.transparent,
-        elevation: 0,
-      ),
-      body: SingleChildScrollView(
-        child: Padding(
-          padding: const EdgeInsets.all(24),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              const SizedBox(height: 40),
-              Text(
-                "Welcome Back",
-                style: TextStyle(
-                  color: Colors.white,
-                  fontSize: 32,
-                  fontWeight: FontWeight.bold,
-                  letterSpacing: -1.0,
-                ),
-              ),
-              const SizedBox(height: 10),
-              Text(
-                "Sign in to continue your journey.",
-                style: TextStyle(color: Colors.white.withOpacity(0.6), fontSize: 16),
-              ),
-              const SizedBox(height: 48),
-              TextField(
-                controller: _emailController,
-                style: const TextStyle(color: Colors.white),
-                decoration: _buildInputDecoration('Email', Icons.email_outlined),
-                keyboardType: TextInputType.emailAddress,
-              ),
-              const SizedBox(height: 20),
-              TextField(
-                controller: _passwordController,
-                style: const TextStyle(color: Colors.white),
-                decoration: _buildInputDecoration('Password', Icons.lock_outline),
-                obscureText: true,
-              ),
-              const SizedBox(height: 40),
-              SizedBox(
-                width: double.infinity,
-                height: 60,
-                child: ElevatedButton(
-                  onPressed: isLoading ? null : login,
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: primaryColor,
-                    foregroundColor: backgroundColor,
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(16),
+      body: Container(
+        width: double.infinity,
+        height: double.infinity,
+        decoration: BoxDecoration(
+          gradient: LinearGradient(
+            begin: Alignment.topCenter,
+            end: Alignment.bottomCenter,
+            colors: [backgroundColor, backgroundColor.withOpacity(0.8)],
+          ),
+        ),
+        child: Center(
+          child: SingleChildScrollView(
+            padding: const EdgeInsets.all(24),
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              crossAxisAlignment: CrossAxisAlignment.center,
+              children: [
+                // Logo
+                Container(
+                  height: 140,
+                  width: 140,
+                  padding: const EdgeInsets.all(10),
+                  child: Image.asset(
+                    'assets/logos/logo.png',
+                    fit: BoxFit.contain,
+                    errorBuilder: (context, error, stackTrace) => Container(
+                      padding: const EdgeInsets.all(20),
+                      decoration: BoxDecoration(
+                        color: primaryColor.withOpacity(0.1),
+                        shape: BoxShape.circle,
+                      ),
+                      child: Icon(Icons.fitness_center_rounded, size: 64, color: primaryColor),
                     ),
-                    elevation: 4,
-                    shadowColor: primaryColor.withOpacity(0.4),
                   ),
-                  child: isLoading
-                      ? CircularProgressIndicator(color: backgroundColor)
-                      : const Text(
-                          'LOGIN',
-                          style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, letterSpacing: 1.2),
+                ),
+                const SizedBox(height: 32),
+                const Text(
+                  "BIENVENIDO",
+                  style: TextStyle(
+                    color: Colors.white,
+                    fontSize: 28,
+                    fontWeight: FontWeight.w900,
+                    letterSpacing: 2.0,
+                  ),
+                ),
+                const SizedBox(height: 8),
+                Text(
+                  "ENTRENA CON PROPÓSITO",
+                  style: TextStyle(
+                    color: primaryColor,
+                    fontSize: 12,
+                    fontWeight: FontWeight.bold,
+                    letterSpacing: 4.0,
+                  ),
+                ),
+                const SizedBox(height: 48),
+                
+                // TextFields in a Fixed Size Box
+                SizedBox(
+                  width: 350, // Fixed width
+                  child: Container(
+                    decoration: BoxDecoration(
+                      color: surfaceColor.withOpacity(0.1),
+                      borderRadius: BorderRadius.circular(24),
+                      border: Border.all(color: surfaceColor.withOpacity(0.2)),
+                    ),
+                    child: Column(
+                      children: [
+                        TextField(
+                          controller: _emailController,
+                          style: const TextStyle(color: Colors.white, fontSize: 15),
+                          decoration: _buildInputDecoration('CORREO ELECTRÓNICO', Icons.email_outlined),
+                          keyboardType: TextInputType.emailAddress,
                         ),
-                ),
-              ),
-              const SizedBox(height: 24),
-              Center(
-                child: TextButton(
-                  onPressed: () {
-                    Navigator.pushNamed(context, '/register');
-                  },
-                  child: Text(
-                    "Don't have an account? Register",
-                    style: TextStyle(color: secondaryColor, fontWeight: FontWeight.bold),
+                        Divider(height: 1, color: surfaceColor.withOpacity(0.2), indent: 20, endIndent: 20),
+                        TextField(
+                          controller: _passwordController,
+                          style: const TextStyle(color: Colors.white, fontSize: 15),
+                          decoration: _buildInputDecoration('CONTRASEÑA', Icons.lock_outline_rounded),
+                          obscureText: true,
+                        ),
+                      ],
+                    ),
                   ),
                 ),
-              ),
-            ],
+                
+                const SizedBox(height: 40),
+                
+                SizedBox(
+                  width: 350, // Fixed width matching the input box
+                  height: 60,
+                  child: ElevatedButton(
+                    onPressed: isLoading ? null : login,
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: primaryColor,
+                      foregroundColor: backgroundColor,
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(16),
+                      ),
+                      elevation: 0,
+                    ),
+                    child: isLoading
+                        ? const SizedBox(
+                            width: 24,
+                            height: 24,
+                            child: CircularProgressIndicator(strokeWidth: 3, color: Colors.black),
+                          )
+                        : const Text(
+                            'INICIAR SESIÓN',
+                            style: TextStyle(fontSize: 16, fontWeight: FontWeight.w900, letterSpacing: 1.5),
+                          ),
+                  ),
+                ),
+                
+                const SizedBox(height: 32),
+                
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Text(
+                      "¿No tienes cuenta? ",
+                      style: TextStyle(color: Colors.white.withOpacity(0.6)),
+                    ),
+                    GestureDetector(
+                      onTap: () => Navigator.pushNamed(context, '/register'),
+                      child: Text(
+                        "REGÍSTRATE",
+                        style: TextStyle(
+                          color: primaryColor,
+                          fontWeight: FontWeight.w900,
+                          letterSpacing: 1.0,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ],
+            ),
           ),
         ),
       ),

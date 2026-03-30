@@ -21,8 +21,8 @@ class _DashboardPageState extends State<DashboardPage> {
   bool _isAccountActive = true;
   DateTime? _activeUntil;
   bool _isLoading = true;
+  String _userRole = 'user';
 
-  // Updated Color Palette
   final Color backgroundColor = const Color(0xFF11151C);
   final Color surfaceColor = const Color(0xFF55768C);
   final Color secondaryColor = const Color(0xFF89AC76);
@@ -43,19 +43,16 @@ class _DashboardPageState extends State<DashboardPage> {
     setState(() => _isLoading = true);
 
     try {
-      // Fetch routines
       final snapshot = await FirebaseFirestore.instance
           .collection('routines')
           .where('clientId', isEqualTo: user.uid)
           .get();
 
-      // Fetch completed routine logs for this user
       final logsSnapshot = await FirebaseFirestore.instance
           .collection('routine_logs')
           .where('userId', isEqualTo: user.uid)
           .get();
 
-      // Fetch user account status
       final userDoc = await FirebaseFirestore.instance
           .collection('users')
           .doc(user.uid)
@@ -64,6 +61,7 @@ class _DashboardPageState extends State<DashboardPage> {
        if(!mounted) return;
 
       final userData = userDoc.data() ?? {};
+      _userRole = (userData['role'] ?? 'user').toString().toLowerCase();
 
       final completedIds = <String>{};
       for (var logDoc in logsSnapshot.docs) {
@@ -91,7 +89,9 @@ class _DashboardPageState extends State<DashboardPage> {
 
       final activeUntil = (userData['activeUntil'] as Timestamp?)?.toDate();
       final isEnabled = userData['isActive'] == true;
-      final isAccountActive = isEnabled && activeUntil != null && activeUntil.isAfter(DateTime.now());
+      
+      // Admin bypass: Admins are always active and don't need expiration dates
+      final isAccountActive = _userRole == 'admin' || (isEnabled && (activeUntil == null || activeUntil.isAfter(DateTime.now())));
 
       setState(() {
         _routines.clear();
@@ -103,10 +103,7 @@ class _DashboardPageState extends State<DashboardPage> {
         _isLoading = false;
       });
     } catch (e) {
-      debugPrint("Error fetching routines: $e");
-
       if (!mounted) return;
-
       setState(() => _isLoading = false);
     }
   }
@@ -131,14 +128,23 @@ class _DashboardPageState extends State<DashboardPage> {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       const SizedBox(height: 20),
-                      // Top Bar (Simplified)
                       Row(
                         mainAxisAlignment: MainAxisAlignment.spaceBetween,
                         children: [
-                          CircleAvatar(
-                            radius: 20,
-                            backgroundColor: surfaceColor.withOpacity(0.3),
-                            child: const Icon(Icons.person, color: Colors.white),
+                          // App Logo instead of text
+                          Image.asset(
+                            'assets/logos/logo.png',
+                            height: 60,
+                            fit: BoxFit.contain,
+                            errorBuilder: (context, error, stackTrace) => Text(
+                              "YAMANI'S FIT",
+                              style: TextStyle(
+                                color: primaryColor,
+                                fontWeight: FontWeight.w900,
+                                fontSize: 20,
+                                letterSpacing: 1.2,
+                              ),
+                            ),
                           ),
                           IconButton(
                             icon: Icon(Icons.refresh, color: primaryColor),
@@ -147,10 +153,8 @@ class _DashboardPageState extends State<DashboardPage> {
                         ],
                       ),
                       const SizedBox(height: 32),
-                      // Month Calendar Section
                       _buildMonthCalendar(),
                       const SizedBox(height: 40),
-                      // Today's Protocol Title
                       Row(
                         mainAxisAlignment: MainAxisAlignment.spaceBetween,
                         children: [
@@ -171,9 +175,7 @@ class _DashboardPageState extends State<DashboardPage> {
                         ],
                       ),
                       const SizedBox(height: 20),
-                      // Account Status Badge
                       _buildAccessBadge(),
-                      // Protocol Cards
                       if (routinesForSelectedDay.isEmpty)
                         Container(
                           width: double.infinity,
@@ -213,11 +215,7 @@ class _DashboardPageState extends State<DashboardPage> {
         lastDay: DateTime.utc(2030, 12, 31),
         focusedDay: _focusedDay,
         selectedDayPredicate: (day) => isSameDay(_selectedDay, day),
-        eventLoader: (day) {
-          // Check if any routine for this day is completed
-          final routines = _getRoutinesForDay(day);
-          return routines;
-        },
+        eventLoader: (day) => _getRoutinesForDay(day),
         onDaySelected: (selectedDay, focusedDay) {
           setState(() {
             _selectedDay = selectedDay;
@@ -531,12 +529,6 @@ class _DashboardPageState extends State<DashboardPage> {
     return _completedRoutineIds.contains((routine['id'] ?? '').toString());
   }
 
-  bool _isRoutineForToday(Map<String, dynamic> routine) {
-    final ts = routine['date'] as Timestamp?;
-    if (ts == null) return false;
-    return _normalizeDay(ts.toDate()) == _normalizeDay(DateTime.now());
-  }
-
   bool _isRoutineMissed(Map<String, dynamic> routine) {
     final ts = routine['date'] as Timestamp?;
     if (ts == null) return false;
@@ -554,7 +546,6 @@ class _DashboardPageState extends State<DashboardPage> {
     final routineDay = _normalizeDay(ts.toDate());
     final today = _normalizeDay(DateTime.now());
 
-    // Allow today and any day in the past (locked for future)
     return !routineDay.isAfter(today);
   }
 

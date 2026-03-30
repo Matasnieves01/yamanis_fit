@@ -6,8 +6,9 @@ class ClientNotificationsPage extends StatelessWidget {
   const ClientNotificationsPage({super.key});
 
   static const Color _backgroundColor = Color(0xFF11151C);
-  static const Color _surfaceColor = Color(0xFF55768C);
+  static const Color _surfaceColor = Color(0xFF1B222C);
   static const Color _primaryColor = Color(0xFFAEE084);
+  static const Color _secondaryColor = Color(0xFF55768C);
 
   Stream<QuerySnapshot<Map<String, dynamic>>> _getNotifications(String userId) {
     return FirebaseFirestore.instance
@@ -25,10 +26,15 @@ class ClientNotificationsPage extends StatelessWidget {
 
   String _formatDate(DateTime date) {
     final day = date.day.toString().padLeft(2, '0');
-    final month = date.month.toString().padLeft(2, '0');
+    final month = _getMonthName(date.month);
     final hour = date.hour.toString().padLeft(2, '0');
     final minute = date.minute.toString().padLeft(2, '0');
-    return '$hour:$minute - $day/$month';
+    return '$day $month • $hour:$minute';
+  }
+
+  String _getMonthName(int month) {
+    const months = ['Ene', 'Feb', 'Mar', 'Abr', 'May', 'Jun', 'Jul', 'Ago', 'Sep', 'Oct', 'Nov', 'Dic'];
+    return months[month - 1];
   }
 
   @override
@@ -39,7 +45,7 @@ class ClientNotificationsPage extends StatelessWidget {
         backgroundColor: _backgroundColor,
         body: Center(
           child: Text(
-            'Inicia sesion para ver notificaciones',
+            'Inicia sesión para ver notificaciones',
             style: TextStyle(color: Colors.white70),
           ),
         ),
@@ -50,8 +56,8 @@ class ClientNotificationsPage extends StatelessWidget {
       backgroundColor: _backgroundColor,
       appBar: AppBar(
         title: const Text(
-          'MIS NOTIFICACIONES',
-          style: TextStyle(fontWeight: FontWeight.w900, letterSpacing: 1.2),
+          'FEEDBACK DEL TRAINER',
+          style: TextStyle(fontWeight: FontWeight.w900, letterSpacing: 1.5, fontSize: 18),
         ),
         centerTitle: true,
         backgroundColor: Colors.transparent,
@@ -60,8 +66,12 @@ class ClientNotificationsPage extends StatelessWidget {
       body: StreamBuilder<QuerySnapshot<Map<String, dynamic>>>(
         stream: _getNotifications(user.uid),
         builder: (context, snapshot) {
-          if (!snapshot.hasData) {
-            return const Center(child: CircularProgressIndicator());
+          if (snapshot.connectionState == ConnectionState.waiting) {
+            return const Center(child: CircularProgressIndicator(color: _primaryColor));
+          }
+
+          if (snapshot.hasError) {
+            return const Center(child: Text('Error al cargar notificaciones', style: TextStyle(color: Colors.white54)));
           }
 
           final docs = snapshot.data!.docs
@@ -74,13 +84,20 @@ class ClientNotificationsPage extends StatelessWidget {
             });
 
           if (docs.isEmpty) {
-            return const Center(
-              child: Text('Aun no tienes feedback del trainer', style: TextStyle(color: Colors.white54)),
+            return Center(
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Icon(Icons.notifications_off_outlined, size: 64, color: Colors.white.withOpacity(0.1)),
+                  const SizedBox(height: 16),
+                  const Text('Aún no tienes feedback del trainer', style: TextStyle(color: Colors.white54, fontSize: 16)),
+                ],
+              ),
             );
           }
 
           return ListView.builder(
-            padding: const EdgeInsets.all(20),
+            padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
             itemCount: docs.length,
             itemBuilder: (context, index) {
               final doc = docs[index];
@@ -88,82 +105,106 @@ class ClientNotificationsPage extends StatelessWidget {
               final isRead = data['read'] == true;
               final feedback = (data['trainerFeedback'] ?? '').toString().trim();
               final date = (data['createdAt'] as Timestamp?)?.toDate() ?? DateTime.now();
+              final title = data['title'] ?? 'Feedback de tu rutina';
 
-              return Container(
-                margin: const EdgeInsets.only(bottom: 12),
-                decoration: BoxDecoration(
-                  color: isRead ? Colors.transparent : _surfaceColor.withOpacity(0.1),
-                  borderRadius: BorderRadius.circular(16),
-                  border: Border.all(
-                    color: isRead ? Colors.white10 : _primaryColor.withOpacity(0.35),
-                  ),
-                ),
-                child: ListTile(
+              return Padding(
+                padding: const EdgeInsets.only(bottom: 16),
+                child: InkWell(
                   onTap: () async {
-                    await _markAsRead(doc.id);
+                    if (!isRead) await _markAsRead(doc.id);
                     if (!context.mounted) return;
 
-                    await showDialog<void>(
-                      context: context,
-                      builder: (_) => AlertDialog(
-                        backgroundColor: const Color(0xFF1A1A1A),
-                        title: Text(
-                          data['title'] ?? 'Feedback de tu trainer',
-                          style: const TextStyle(color: Colors.white),
-                        ),
-                        content: Text(
-                          feedback.isEmpty ? (data['message'] ?? '') : feedback,
-                          style: const TextStyle(color: Colors.white70),
-                        ),
-                        actions: [
-                          TextButton(
-                            onPressed: () => Navigator.pop(context),
-                            child: const Text('OK'),
-                          ),
-                        ],
-                      ),
-                    );
+                    _showFeedbackDetail(context, title, feedback.isEmpty ? (data['message'] ?? '') : feedback, date);
                   },
-                  leading: CircleAvatar(
-                    backgroundColor: isRead ? Colors.white10 : _primaryColor.withOpacity(0.2),
-                    child: Icon(
-                      Icons.message_outlined,
-                      color: isRead ? Colors.white38 : _primaryColor,
-                    ),
-                  ),
-                  title: Text(
-                    data['title'] ?? 'Feedback de tu trainer',
-                    style: TextStyle(
-                      color: isRead ? Colors.white60 : Colors.white,
-                      fontWeight: isRead ? FontWeight.normal : FontWeight.bold,
-                    ),
-                  ),
-                  subtitle: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        feedback.isEmpty ? (data['message'] ?? '') : feedback,
-                        maxLines: 2,
-                        overflow: TextOverflow.ellipsis,
-                        style: const TextStyle(color: Colors.white38, fontSize: 12),
+                  borderRadius: BorderRadius.circular(20),
+                  child: Container(
+                    padding: const EdgeInsets.all(16),
+                    decoration: BoxDecoration(
+                      color: isRead ? _surfaceColor.withOpacity(0.4) : _surfaceColor,
+                      borderRadius: BorderRadius.circular(20),
+                      border: Border.all(
+                        color: isRead ? Colors.white.withOpacity(0.05) : _primaryColor.withOpacity(0.3),
+                        width: 1,
                       ),
-                      const SizedBox(height: 4),
-                      Text(
-                        _formatDate(date),
-                        style: const TextStyle(color: Colors.white24, fontSize: 10),
-                      ),
-                    ],
-                  ),
-                  trailing: isRead
-                      ? null
-                      : Container(
-                          width: 8,
-                          height: 8,
-                          decoration: const BoxDecoration(
-                            color: _primaryColor,
+                      boxShadow: isRead ? [] : [
+                        BoxShadow(
+                          color: _primaryColor.withOpacity(0.05),
+                          blurRadius: 10,
+                          offset: const Offset(0, 4),
+                        ),
+                      ],
+                    ),
+                    child: Row(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Container(
+                          padding: const EdgeInsets.all(10),
+                          decoration: BoxDecoration(
+                            color: isRead ? Colors.white.withOpacity(0.05) : _primaryColor.withOpacity(0.1),
                             shape: BoxShape.circle,
                           ),
+                          child: Icon(
+                            isRead ? Icons.mark_email_read_outlined : Icons.mark_email_unread_rounded,
+                            color: isRead ? Colors.white38 : _primaryColor,
+                            size: 22,
+                          ),
                         ),
+                        const SizedBox(width: 16),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Row(
+                                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                children: [
+                                  Expanded(
+                                    child: Text(
+                                      title.toUpperCase(),
+                                      style: TextStyle(
+                                        color: isRead ? Colors.white60 : Colors.white,
+                                        fontWeight: isRead ? FontWeight.w600 : FontWeight.w900,
+                                        fontSize: 14,
+                                        letterSpacing: 0.5,
+                                      ),
+                                    ),
+                                  ),
+                                  if (!isRead)
+                                    Container(
+                                      width: 8,
+                                      height: 8,
+                                      decoration: const BoxDecoration(
+                                        color: _primaryColor,
+                                        shape: BoxShape.circle,
+                                      ),
+                                    ),
+                                ],
+                              ),
+                              const SizedBox(height: 6),
+                              Text(
+                                feedback.isEmpty ? (data['message'] ?? '') : feedback,
+                                maxLines: 2,
+                                overflow: TextOverflow.ellipsis,
+                                style: TextStyle(
+                                  color: isRead ? Colors.white38 : Colors.white70,
+                                  fontSize: 13,
+                                  height: 1.4,
+                                ),
+                              ),
+                              const SizedBox(height: 12),
+                              Text(
+                                _formatDate(date),
+                                style: TextStyle(
+                                  color: isRead ? Colors.white24 : _primaryColor.withOpacity(0.5),
+                                  fontSize: 11,
+                                  fontWeight: FontWeight.w500,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
                 ),
               );
             },
@@ -172,5 +213,115 @@ class ClientNotificationsPage extends StatelessWidget {
       ),
     );
   }
-}
 
+  void _showFeedbackDetail(BuildContext context, String title, String message, DateTime date) {
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: Colors.transparent,
+      isScrollControlled: true,
+      builder: (context) => Container(
+        decoration: const BoxDecoration(
+          color: Color(0xFF1A1F26),
+          borderRadius: BorderRadius.vertical(top: Radius.circular(32)),
+        ),
+        padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 32),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Center(
+              child: Container(
+                width: 40,
+                height: 4,
+                decoration: BoxDecoration(
+                  color: Colors.white24,
+                  borderRadius: BorderRadius.circular(2),
+                ),
+              ),
+            ),
+            const SizedBox(height: 24),
+            Row(
+              children: [
+                Container(
+                  padding: const EdgeInsets.all(12),
+                  decoration: BoxDecoration(
+                    color: _primaryColor.withOpacity(0.1),
+                    borderRadius: BorderRadius.circular(16),
+                  ),
+                  child: const Icon(Icons.forum_rounded, color: _primaryColor),
+                ),
+                const SizedBox(width: 16),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        title.toUpperCase(),
+                        style: const TextStyle(
+                          color: Colors.white,
+                          fontSize: 18,
+                          fontWeight: FontWeight.w900,
+                        ),
+                      ),
+                      Text(
+                        _formatDate(date),
+                        style: TextStyle(color: Colors.white.withOpacity(0.3), fontSize: 12),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 24),
+            const Text(
+              'MENSAJE DEL TRAINER:',
+              style: TextStyle(
+                color: _primaryColor,
+                fontSize: 11,
+                fontWeight: FontWeight.bold,
+                letterSpacing: 1,
+              ),
+            ),
+            const SizedBox(height: 12),
+            Container(
+              width: double.infinity,
+              padding: const EdgeInsets.all(20),
+              decoration: BoxDecoration(
+                color: Colors.white.withOpacity(0.03),
+                borderRadius: BorderRadius.circular(20),
+                border: Border.all(color: Colors.white.withOpacity(0.05)),
+              ),
+              child: Text(
+                message,
+                style: TextStyle(
+                  color: Colors.white.withOpacity(0.87),
+                  fontSize: 15,
+                  height: 1.6,
+                ),
+              ),
+            ),
+            const SizedBox(height: 32),
+            SizedBox(
+              width: double.infinity,
+              height: 56,
+              child: ElevatedButton(
+                onPressed: () => Navigator.pop(context),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: _primaryColor,
+                  foregroundColor: _backgroundColor,
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                  elevation: 0,
+                ),
+                child: const Text(
+                  'ENTENDIDO',
+                  style: TextStyle(fontWeight: FontWeight.bold, letterSpacing: 1),
+                ),
+              ),
+            ),
+            const SizedBox(height: 16),
+          ],
+        ),
+      ),
+    );
+  }
+}

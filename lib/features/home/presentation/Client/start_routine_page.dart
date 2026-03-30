@@ -160,7 +160,7 @@ class _StartRoutinePageState extends State<StartRoutinePage> {
         'userName': clientName,
         'date': Timestamp.now(),
         'results': resultsList,
-        'clientComment': comment,
+        'clientFeedback': comment, // Changed from clientComment to clientFeedback to match Admin view
       });
 
       await FirebaseFirestore.instance.collection('notifications').add({
@@ -177,17 +177,12 @@ class _StartRoutinePageState extends State<StartRoutinePage> {
 
       if (!mounted) return;
       
-      // Reset loading state before showing dialog
       setState(() => isLoading = false);
-      
       _showSuccessDialog();
     } catch (e) {
       debugPrint("Error finishing routine: $e");
       if(!mounted) return;
-      
       setState(() => isLoading = false);
-      
-      // Show error dialog to user
       _showErrorDialog(e.toString());
     }
   }
@@ -231,7 +226,6 @@ class _StartRoutinePageState extends State<StartRoutinePage> {
           TextButton(
             onPressed: () {
               Navigator.pop(context);
-              // Retry the operation
               _showFinalCommentDialog();
             },
             child: Text("REINTENTAR", style: TextStyle(color: Colors.orangeAccent, fontWeight: FontWeight.bold)),
@@ -409,7 +403,7 @@ class WorkoutDetailSheet extends StatefulWidget {
 class _WorkoutDetailSheetState extends State<WorkoutDetailSheet> {
   late List<YoutubePlayerController> _ytControllers;
   late List<TextEditingController> _weightControllers;
-  String selectedFeedback = "Bien";
+  String selectedFeedback = "Good";
 
   @override
   void initState() {
@@ -512,9 +506,9 @@ class _WorkoutDetailSheetState extends State<WorkoutDetailSheet> {
                 Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
-                    _feedbackBtn("Difícil", Icons.sentiment_very_dissatisfied, Colors.redAccent),
-                    _feedbackBtn("Bien", Icons.sentiment_satisfied, widget.primaryColor),
-                    _feedbackBtn("Excelente", Icons.bolt, Colors.orangeAccent),
+                    _feedbackBtn("Struggled", Icons.sentiment_very_dissatisfied, Colors.redAccent, "Difícil"),
+                    _feedbackBtn("Good", Icons.sentiment_satisfied, widget.primaryColor, "Bien"),
+                    _feedbackBtn("Overperformed", Icons.bolt, Colors.orangeAccent, "Excelente"),
                   ],
                 ),
                 const SizedBox(height: 40),
@@ -565,10 +559,10 @@ class _WorkoutDetailSheetState extends State<WorkoutDetailSheet> {
     );
   }
 
-  Widget _feedbackBtn(String label, IconData icon, Color color) {
-    bool isSelected = selectedFeedback == label;
+  Widget _feedbackBtn(String value, IconData icon, Color color, String displayLabel) {
+    bool isSelected = selectedFeedback == value;
     return GestureDetector(
-      onTap: () => setState(() => selectedFeedback = label),
+      onTap: () => setState(() => selectedFeedback = value),
       child: Column(
         children: [
           Container(
@@ -577,7 +571,7 @@ class _WorkoutDetailSheetState extends State<WorkoutDetailSheet> {
             child: Icon(icon, color: isSelected ? color : Colors.white30),
           ),
           const SizedBox(height: 8),
-          Text(label, style: TextStyle(color: isSelected ? color : Colors.white30, fontSize: 10, fontWeight: FontWeight.bold)),
+          Text(displayLabel, style: TextStyle(color: isSelected ? color : Colors.white30, fontSize: 10, fontWeight: FontWeight.bold)),
         ],
       ),
     );
