@@ -162,7 +162,7 @@ class _ViewNotificationPageState extends State<ViewNotificationPage> {
                         fontWeight: FontWeight.w900,
                         letterSpacing: 1.0)),
                 const SizedBox(height: 16),
-                ...results.map((res) => _buildWorkoutResultCard(res)).toList(),
+                ...results.map((res) => _buildWorkoutResultCard(res)),
                 const SizedBox(height: 40),
                 const Text("TU FEEDBACK (TRAINER)",
                     style: TextStyle(

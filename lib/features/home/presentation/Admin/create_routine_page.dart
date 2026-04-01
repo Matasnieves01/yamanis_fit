@@ -415,7 +415,7 @@ class _CreateRoutinePageState extends State<CreateRoutinePage> {
       decoration: BoxDecoration(color: Colors.white.withOpacity(0.05), borderRadius: BorderRadius.circular(16), border: Border.all(color: Colors.white.withOpacity(0.1))),
       child: DropdownButtonHideUnderline(
         child: DropdownButtonFormField<String>(
-          value: value, items: items.map((i) => DropdownMenuItem(value: i, child: Text(i, style: const TextStyle(color: Colors.white)))).toList(), onChanged: onChanged,
+          initialValue: value, items: items.map((i) => DropdownMenuItem(value: i, child: Text(i, style: const TextStyle(color: Colors.white)))).toList(), onChanged: onChanged,
           dropdownColor: backgroundColor, decoration: InputDecoration(labelText: label, labelStyle: TextStyle(color: primaryColor), border: InputBorder.none),
         ),
       ),

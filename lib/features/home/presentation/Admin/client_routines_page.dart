@@ -385,7 +385,7 @@ class _ClientRoutinesPageState extends State<ClientRoutinesPage> {
                     style: TextStyle(color: primaryColor, fontSize: 12),
                   ),
                 );
-              }).toList(),
+              }),
             ],
           ),
         );

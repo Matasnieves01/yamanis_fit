@@ -35,14 +35,14 @@ class HelpSupportPage extends StatelessWidget {
             _buildContactCard(
               icon: Icons.email_outlined,
               title: "Correo Electrónico",
-              subtitle: "soporte@yamanisfit.com",
+              subtitle: "vyofitsoporte@gmail.com",
               onTap: () {},
             ),
             const SizedBox(height: 16),
             _buildContactCard(
               icon: Icons.message_outlined,
               title: "WhatsApp",
-              subtitle: "+1 234 567 890",
+              subtitle: "+507 6918-4836",
               onTap: () {},
             ),
             const SizedBox(height: 40),

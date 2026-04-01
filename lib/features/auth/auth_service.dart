@@ -1,6 +1,7 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/foundation.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 enum UserRole { admin, user }
 
@@ -11,7 +12,7 @@ class AuthService {
 
   String? get lastSignInError => _lastSignInError;
 
-  Future<User?> signIn(String email, String password) async {
+  Future<User?> signIn(String email, String password, {bool stayLoggedIn = true}) async {
     _lastSignInError = null;
     try {
       final credential = await _auth.signInWithEmailAndPassword(
@@ -25,6 +26,10 @@ class AuthService {
         return null;
       }
 
+      // Save the stayLoggedIn preference
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setBool('stayLoggedIn', stayLoggedIn);
+
       return user;
     } catch (e) {
       _lastSignInError = 'Login failed. Check your credentials.';
@@ -33,6 +38,11 @@ class AuthService {
       }
       return null;
     }
+  }
+
+  Future<bool> shouldStayLoggedIn() async {
+    final prefs = await SharedPreferences.getInstance();
+    return prefs.getBool('stayLoggedIn') ?? true;
   }
 
   Future<bool> isUserAccessActive(String uid) async {
@@ -71,6 +81,8 @@ class AuthService {
 
   Future<void> signOut() async {
     try {
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.remove('stayLoggedIn');
       await _auth.signOut();
     } catch (e) {
       if (kDebugMode) {

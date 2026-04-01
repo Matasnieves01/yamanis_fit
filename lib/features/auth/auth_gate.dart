@@ -25,17 +25,38 @@ class AuthGate extends StatelessWidget {
           return const LoginPage();
         }
 
-        return FutureBuilder<UserRole>(
-          future: authService.getUserRole(user.uid),
-          builder: (context, roleSnapshot) {
-            if (roleSnapshot.connectionState == ConnectionState.waiting) {
+        // If we have a user, check if they should stay logged in
+        return FutureBuilder<bool>(
+          future: authService.shouldStayLoggedIn(),
+          builder: (context, stayLoggedInSnapshot) {
+            if (stayLoggedInSnapshot.connectionState == ConnectionState.waiting) {
               return const Scaffold(
                 body: Center(child: CircularProgressIndicator()),
               );
             }
 
-            final role = roleSnapshot.data ?? UserRole.user;
-            return MainNavigationBar(role: role);
+            final stayLoggedIn = stayLoggedInSnapshot.data ?? true;
+
+            if (!stayLoggedIn) {
+              // If they shouldn't stay logged in, sign them out and show login page
+              authService.signOut();
+              return const LoginPage();
+            }
+
+            // If they should stay logged in, proceed to check role and show home
+            return FutureBuilder<UserRole>(
+              future: authService.getUserRole(user.uid),
+              builder: (context, roleSnapshot) {
+                if (roleSnapshot.connectionState == ConnectionState.waiting) {
+                  return const Scaffold(
+                    body: Center(child: CircularProgressIndicator()),
+                  );
+                }
+
+                final role = roleSnapshot.data ?? UserRole.user;
+                return MainNavigationBar(role: role);
+              },
+            );
           },
         );
       },

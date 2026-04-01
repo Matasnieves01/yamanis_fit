@@ -18,7 +18,9 @@ dependencies:
   youtube_player_flutter: 9.1.3
   cupertino_icons: ^1.0.8
   firebase_messaging: ^16.1.3
+  shared_preferences: ^2.2.2
 
+  intl: any
 dev_dependencies:
   flutter_test:
     sdk: flutter
@@ -26,6 +28,7 @@ dev_dependencies:
   flutter_launcher_icons: ^0.13.1
   flutter_native_splash: ^2.4.0
 
+  firebase_core_platform_interface: any
 flutter_launcher_icons:
   android: "launcher_icon"
   ios: true
@@ -34,9 +37,9 @@ flutter_launcher_icons:
 
 flutter_native_splash:
   color: "#11151C"
-  image: assets/logos/logo.png
+  image: assets/logos/logo_padding.png
   android_12:
-    image: assets/logos/logo.png
+    image: assets/logos/logo_padding.png
     color: "#11151C"
 
 flutter:
@@ -44,6 +47,7 @@ flutter:
 
   assets:
     - assets/logos/logo.png
+    - assets/logos/logo_padding.png
 
   fonts:
     - family: Poppins

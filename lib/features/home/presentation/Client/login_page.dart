@@ -14,6 +14,7 @@ class _LoginPageState extends State<LoginPage> {
 
   final AuthService _authService = AuthService();
   bool isLoading = false;
+  bool _stayLoggedIn = true;
 
   final Color backgroundColor = const Color(0xFF11151C);
   final Color surfaceColor = const Color(0xFF55768C);
@@ -34,7 +35,7 @@ class _LoginPageState extends State<LoginPage> {
     setState(() => isLoading = true);
 
     try {
-      final user = await _authService.signIn(email, password);
+      final user = await _authService.signIn(email, password, stayLoggedIn: _stayLoggedIn);
 
       if (!mounted) return;
 
@@ -168,7 +169,37 @@ class _LoginPageState extends State<LoginPage> {
                   ),
                 ),
                 
-                const SizedBox(height: 40),
+                const SizedBox(height: 16),
+
+                // Stay logged in checkbox
+                SizedBox(
+                  width: 350,
+                  child: Row(
+                    children: [
+                      Theme(
+                        data: ThemeData(
+                          unselectedWidgetColor: primaryColor.withOpacity(0.5),
+                        ),
+                        child: Checkbox(
+                          value: _stayLoggedIn,
+                          onChanged: (value) {
+                            setState(() {
+                              _stayLoggedIn = value ?? true;
+                            });
+                          },
+                          activeColor: primaryColor,
+                          checkColor: backgroundColor,
+                        ),
+                      ),
+                      const Text(
+                        "Mantener sesión iniciada",
+                        style: TextStyle(color: Colors.white, fontSize: 14),
+                      ),
+                    ],
+                  ),
+                ),
+
+                const SizedBox(height: 24),
                 
                 SizedBox(
                   width: 350, // Fixed width matching the input box

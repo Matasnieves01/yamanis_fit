@@ -21,7 +21,7 @@ android {
 
     defaultConfig {
         applicationId = "com.vyofitness.yamanis_fit"
-        minSdk = 23 // Updated from 21 to meet Flutter's minimum requirement
+        minSdk = flutter.minSdkVersion // Updated from 21 to meet Flutter's minimum requirement
         targetSdk = flutter.targetSdkVersion
         versionCode = flutter.versionCode
         versionName = flutter.versionName

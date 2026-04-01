@@ -193,7 +193,7 @@ class _DashboardPageState extends State<DashboardPage> {
                           ),
                         )
                       else
-                        ...routinesForSelectedDay.map((routine) => _buildProtocolCard(routine)).toList(),
+                        ...routinesForSelectedDay.map((routine) => _buildProtocolCard(routine)),
                       const SizedBox(height: 40),
                     ],
                   ),
@@ -414,11 +414,11 @@ class _DashboardPageState extends State<DashboardPage> {
                                     }
                                   },
                           );
-                        }).toList(),
+                        }),
                       ],
                     ),
                   );
-                }).toList(),
+                }),
                 Padding(
                   padding: const EdgeInsets.all(24.0),
                   child: Row(

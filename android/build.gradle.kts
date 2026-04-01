@@ -19,17 +19,19 @@ subprojects {
 subprojects {
     // AGP 8+ requires namespace; some older Flutter plugins do not declare it.
     afterEvaluate {
-        val androidExt = extensions.findByName("android") ?: return@afterEvaluate
-        try {
-            val getNamespace = androidExt.javaClass.getMethod("getNamespace")
-            val currentNamespace = getNamespace.invoke(androidExt) as? String
-            if (currentNamespace.isNullOrBlank()) {
-                androidExt.javaClass
-                    .getMethod("setNamespace", String::class.java)
-                    .invoke(androidExt, "com.yamanisfit.${project.name.replace('-', '_')}")
+        if (project.extensions.findByName("android") != null) {
+            val androidExt = project.extensions.getByName("android")
+            try {
+                val getNamespace = androidExt.javaClass.getMethod("getNamespace")
+                val currentNamespace = getNamespace.invoke(androidExt) as? String
+                if (currentNamespace.isNullOrBlank()) {
+                    androidExt.javaClass
+                        .getMethod("setNamespace", String::class.java)
+                        .invoke(androidExt, "com.yamanisfit.${project.name.replace('-', '_')}")
+                }
+            } catch (_: Exception) {
+                // Non-Android module or AGP API mismatch; skip safely.
             }
-        } catch (_: Exception) {
-            // Non-Android module or AGP API mismatch; skip safely.
         }
     }
 }

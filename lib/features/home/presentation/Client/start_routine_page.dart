@@ -212,7 +212,7 @@ class _StartRoutinePageState extends State<StartRoutinePage> {
                 border: Border.all(color: Colors.redAccent.withOpacity(0.3)),
               ),
               child: Text(
-                errorMessage.length > 100 ? errorMessage.substring(0, 100) + "..." : errorMessage,
+                errorMessage.length > 100 ? "${errorMessage.substring(0, 100)}..." : errorMessage,
                 style: TextStyle(color: Colors.redAccent.withOpacity(0.8), fontSize: 11, fontFamily: 'monospace'),
               ),
             ),
@@ -552,7 +552,7 @@ class _WorkoutDetailSheetState extends State<WorkoutDetailSheet> {
         child: Column(
           children: [
             Text(label, style: const TextStyle(color: Colors.white38, fontSize: 10, fontWeight: FontWeight.bold)),
-            Text(value?.toString() ?? "-", style: const TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.bold)),
+            Text(value.toString() ?? "-", style: const TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.bold)),
           ],
         ),
       ),
