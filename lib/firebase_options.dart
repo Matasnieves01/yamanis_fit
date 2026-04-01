@@ -65,4 +65,5 @@ class DefaultFirebaseOptions {
     storageBucket: 'vyofit-5eedf.firebasestorage.app',
     iosBundleId: 'com.vyofitness.yamanisFit',
   );
+
 }

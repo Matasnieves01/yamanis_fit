@@ -1,0 +1,64 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    
+    // Helper: Check if user is logged in
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    // Helper: Fetch user data and check role safely
+    function isAdmin() {
+      return isSignedIn() && 
+             get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin';
+    }
+
+    // Helper: Check if user owns the document
+    function isOwner(userId) {
+      return isSignedIn() && request.auth.uid == userId;
+    }
+
+    // Users Collection
+    match /users/{userId} {
+      allow read: if isSignedIn();
+      
+      allow create: if isSignedIn() && 
+                    request.resource.data.role == 'user' && 
+                    request.resource.data.isActive == false;
+      
+      allow update: if isAdmin() || (isOwner(userId) && 
+                    !request.resource.data.diff(request.resource.data).affectedKeys()
+                    .hasAny(['role', 'isActive', 'activeUntil']));
+    }
+
+    // Workouts Collection
+    match /workouts/{workoutId} {
+      allow read: if isSignedIn();
+      allow write: if isAdmin();
+    }
+
+    // Routines Collection
+    match /routines/{routineId} {
+      allow read: if isSignedIn() && (isAdmin() || resource.data.clientId == request.auth.uid);
+      allow write: if isAdmin();
+    }
+
+    // Routine Logs
+    match /routine_logs/{logId} {
+      allow read: if isSignedIn() && (isAdmin() || resource.data.userId == request.auth.uid);
+      allow create: if isSignedIn() && request.resource.data.userId == request.auth.uid;
+      allow update, delete: if isAdmin();
+    }
+
+    // Notifications
+    match /notifications/{notifId} {
+      // Allow users to read their own, or admins to read notifications targeted to them
+      allow read, update: if isSignedIn() && (
+        (request.auth.uid == resource.data.userId) || 
+        (isAdmin() && resource.data.targetRole == 'admin')
+      );
+      allow create: if isSignedIn();
+      allow delete: if isAdmin();
+    }
+  }
+}
