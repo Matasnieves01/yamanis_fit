@@ -8,7 +8,6 @@ class ClientNotificationsPage extends StatelessWidget {
   static const Color _backgroundColor = Color(0xFF11151C);
   static const Color _surfaceColor = Color(0xFF1B222C);
   static const Color _primaryColor = Color(0xFFAEE084);
-  static const Color _secondaryColor = Color(0xFF55768C);
 
   Stream<QuerySnapshot<Map<String, dynamic>>> _getNotifications(String userId) {
     return FirebaseFirestore.instance
@@ -88,7 +87,7 @@ class ClientNotificationsPage extends StatelessWidget {
               child: Column(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  Icon(Icons.notifications_off_outlined, size: 64, color: Colors.white.withOpacity(0.1)),
+                  Icon(Icons.notifications_off_outlined, size: 64, color: Colors.white.withValues(alpha: 0.1)),
                   const SizedBox(height: 16),
                   const Text('Aún no tienes feedback del trainer', style: TextStyle(color: Colors.white54, fontSize: 16)),
                 ],
@@ -120,15 +119,15 @@ class ClientNotificationsPage extends StatelessWidget {
                   child: Container(
                     padding: const EdgeInsets.all(16),
                     decoration: BoxDecoration(
-                      color: isRead ? _surfaceColor.withOpacity(0.4) : _surfaceColor,
+                      color: isRead ? _surfaceColor.withValues(alpha: 0.4) : _surfaceColor,
                       borderRadius: BorderRadius.circular(20),
                       border: Border.all(
-                        color: isRead ? Colors.white.withOpacity(0.05) : _primaryColor.withOpacity(0.3),
+                        color: isRead ? Colors.white.withValues(alpha: 0.05) : _primaryColor.withValues(alpha: 0.3),
                         width: 1,
                       ),
                       boxShadow: isRead ? [] : [
                         BoxShadow(
-                          color: _primaryColor.withOpacity(0.05),
+                          color: _primaryColor.withValues(alpha: 0.05),
                           blurRadius: 10,
                           offset: const Offset(0, 4),
                         ),
@@ -140,7 +139,7 @@ class ClientNotificationsPage extends StatelessWidget {
                         Container(
                           padding: const EdgeInsets.all(10),
                           decoration: BoxDecoration(
-                            color: isRead ? Colors.white.withOpacity(0.05) : _primaryColor.withOpacity(0.1),
+                            color: isRead ? Colors.white.withValues(alpha: 0.05) : _primaryColor.withValues(alpha: 0.1),
                             shape: BoxShape.circle,
                           ),
                           child: Icon(
@@ -194,7 +193,7 @@ class ClientNotificationsPage extends StatelessWidget {
                               Text(
                                 _formatDate(date),
                                 style: TextStyle(
-                                  color: isRead ? Colors.white24 : _primaryColor.withOpacity(0.5),
+                                  color: isRead ? Colors.white24 : _primaryColor.withValues(alpha: 0.5),
                                   fontSize: 11,
                                   fontWeight: FontWeight.w500,
                                 ),
@@ -245,7 +244,7 @@ class ClientNotificationsPage extends StatelessWidget {
                 Container(
                   padding: const EdgeInsets.all(12),
                   decoration: BoxDecoration(
-                    color: _primaryColor.withOpacity(0.1),
+                    color: _primaryColor.withValues(alpha: 0.1),
                     borderRadius: BorderRadius.circular(16),
                   ),
                   child: const Icon(Icons.forum_rounded, color: _primaryColor),
@@ -265,7 +264,7 @@ class ClientNotificationsPage extends StatelessWidget {
                       ),
                       Text(
                         _formatDate(date),
-                        style: TextStyle(color: Colors.white.withOpacity(0.3), fontSize: 12),
+                        style: TextStyle(color: Colors.white.withValues(alpha: 0.3), fontSize: 12),
                       ),
                     ],
                   ),
@@ -287,14 +286,14 @@ class ClientNotificationsPage extends StatelessWidget {
               width: double.infinity,
               padding: const EdgeInsets.all(20),
               decoration: BoxDecoration(
-                color: Colors.white.withOpacity(0.03),
+                color: Colors.white.withValues(alpha: 0.03),
                 borderRadius: BorderRadius.circular(20),
-                border: Border.all(color: Colors.white.withOpacity(0.05)),
+                border: Border.all(color: Colors.white.withValues(alpha: 0.05)),
               ),
               child: Text(
                 message,
                 style: TextStyle(
-                  color: Colors.white.withOpacity(0.87),
+                  color: Colors.white.withValues(alpha: 0.87),
                   fontSize: 15,
                   height: 1.6,
                 ),

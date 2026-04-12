@@ -94,14 +94,14 @@ class _SettingsPageState extends State<SettingsPage> {
               style: const TextStyle(color: Colors.white),
               decoration: InputDecoration(
                 hintText: 'Nombre',
-                hintStyle: TextStyle(color: Colors.white.withOpacity(0.5)),
+                hintStyle: TextStyle(color: Colors.white.withValues(alpha: 0.5)),
                 border: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(12),
-                  borderSide: BorderSide(color: surfaceColor.withOpacity(0.3)),
+                  borderSide: BorderSide(color: surfaceColor.withValues(alpha: 0.3)),
                 ),
                 enabledBorder: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(12),
-                  borderSide: BorderSide(color: surfaceColor.withOpacity(0.3)),
+                  borderSide: BorderSide(color: surfaceColor.withValues(alpha: 0.3)),
                 ),
                 focusedBorder: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(12),
@@ -115,14 +115,14 @@ class _SettingsPageState extends State<SettingsPage> {
               style: const TextStyle(color: Colors.white),
               decoration: InputDecoration(
                 hintText: 'Apellido',
-                hintStyle: TextStyle(color: Colors.white.withOpacity(0.5)),
+                hintStyle: TextStyle(color: Colors.white.withValues(alpha: 0.5)),
                 border: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(12),
-                  borderSide: BorderSide(color: surfaceColor.withOpacity(0.3)),
+                  borderSide: BorderSide(color: surfaceColor.withValues(alpha: 0.3)),
                 ),
                 enabledBorder: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(12),
-                  borderSide: BorderSide(color: surfaceColor.withOpacity(0.3)),
+                  borderSide: BorderSide(color: surfaceColor.withValues(alpha: 0.3)),
                 ),
                 focusedBorder: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(12),
@@ -140,7 +140,7 @@ class _SettingsPageState extends State<SettingsPage> {
           TextButton(
             onPressed: () async {
               await _updateName(firstNameController.text, lastNameController.text);
-              if (mounted) Navigator.pop(context);
+              if (context.mounted) Navigator.pop(context);
             },
             child: const Text('Guardar', style: TextStyle(color: Colors.green)),
           ),
@@ -188,14 +188,14 @@ class _SettingsPageState extends State<SettingsPage> {
               style: const TextStyle(color: Colors.white),
               decoration: InputDecoration(
                 hintText: 'Nuevo correo',
-                hintStyle: TextStyle(color: Colors.white.withOpacity(0.5)),
+                hintStyle: TextStyle(color: Colors.white.withValues(alpha: 0.5)),
                 border: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(12),
-                  borderSide: BorderSide(color: surfaceColor.withOpacity(0.3)),
+                  borderSide: BorderSide(color: surfaceColor.withValues(alpha: 0.3)),
                 ),
                 enabledBorder: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(12),
-                  borderSide: BorderSide(color: surfaceColor.withOpacity(0.3)),
+                  borderSide: BorderSide(color: surfaceColor.withValues(alpha: 0.3)),
                 ),
                 focusedBorder: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(12),
@@ -210,14 +210,14 @@ class _SettingsPageState extends State<SettingsPage> {
               style: const TextStyle(color: Colors.white),
               decoration: InputDecoration(
                 hintText: 'Contraseña actual',
-                hintStyle: TextStyle(color: Colors.white.withOpacity(0.5)),
+                hintStyle: TextStyle(color: Colors.white.withValues(alpha: 0.5)),
                 border: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(12),
-                  borderSide: BorderSide(color: surfaceColor.withOpacity(0.3)),
+                  borderSide: BorderSide(color: surfaceColor.withValues(alpha: 0.3)),
                 ),
                 enabledBorder: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(12),
-                  borderSide: BorderSide(color: surfaceColor.withOpacity(0.3)),
+                  borderSide: BorderSide(color: surfaceColor.withValues(alpha: 0.3)),
                 ),
                 focusedBorder: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(12),
@@ -235,7 +235,7 @@ class _SettingsPageState extends State<SettingsPage> {
           TextButton(
             onPressed: () async {
               await _updateEmail(emailController.text, passwordController.text);
-              if (mounted) Navigator.pop(context);
+              if (context.mounted) Navigator.pop(context);
             },
             child: const Text('Guardar', style: TextStyle(color: Colors.green)),
           ),
@@ -297,14 +297,14 @@ class _SettingsPageState extends State<SettingsPage> {
               style: const TextStyle(color: Colors.white),
               decoration: InputDecoration(
                 hintText: 'Contraseña actual',
-                hintStyle: TextStyle(color: Colors.white.withOpacity(0.5)),
+                hintStyle: TextStyle(color: Colors.white.withValues(alpha: 0.5)),
                 border: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(12),
-                  borderSide: BorderSide(color: surfaceColor.withOpacity(0.3)),
+                  borderSide: BorderSide(color: surfaceColor.withValues(alpha: 0.3)),
                 ),
                 enabledBorder: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(12),
-                  borderSide: BorderSide(color: surfaceColor.withOpacity(0.3)),
+                  borderSide: BorderSide(color: surfaceColor.withValues(alpha: 0.3)),
                 ),
                 focusedBorder: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(12),
@@ -319,14 +319,14 @@ class _SettingsPageState extends State<SettingsPage> {
               style: const TextStyle(color: Colors.white),
               decoration: InputDecoration(
                 hintText: 'Nueva contraseña',
-                hintStyle: TextStyle(color: Colors.white.withOpacity(0.5)),
+                hintStyle: TextStyle(color: Colors.white.withValues(alpha: 0.5)),
                 border: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(12),
-                  borderSide: BorderSide(color: surfaceColor.withOpacity(0.3)),
+                  borderSide: BorderSide(color: surfaceColor.withValues(alpha: 0.3)),
                 ),
                 enabledBorder: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(12),
-                  borderSide: BorderSide(color: surfaceColor.withOpacity(0.3)),
+                  borderSide: BorderSide(color: surfaceColor.withValues(alpha: 0.3)),
                 ),
                 focusedBorder: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(12),
@@ -341,14 +341,14 @@ class _SettingsPageState extends State<SettingsPage> {
               style: const TextStyle(color: Colors.white),
               decoration: InputDecoration(
                 hintText: 'Confirmar contraseña',
-                hintStyle: TextStyle(color: Colors.white.withOpacity(0.5)),
+                hintStyle: TextStyle(color: Colors.white.withValues(alpha: 0.5)),
                 border: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(12),
-                  borderSide: BorderSide(color: surfaceColor.withOpacity(0.3)),
+                  borderSide: BorderSide(color: surfaceColor.withValues(alpha: 0.3)),
                 ),
                 enabledBorder: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(12),
-                  borderSide: BorderSide(color: surfaceColor.withOpacity(0.3)),
+                  borderSide: BorderSide(color: surfaceColor.withValues(alpha: 0.3)),
                 ),
                 focusedBorder: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(12),
@@ -370,7 +370,7 @@ class _SettingsPageState extends State<SettingsPage> {
                 newPasswordController.text,
                 confirmPasswordController.text,
               );
-              if (mounted) Navigator.pop(context);
+              if (context.mounted) Navigator.pop(context);
             },
             child: const Text('Guardar', style: TextStyle(color: Colors.green)),
           ),
@@ -440,14 +440,14 @@ class _SettingsPageState extends State<SettingsPage> {
               style: const TextStyle(color: Colors.white),
               decoration: InputDecoration(
                 hintText: 'Contraseña',
-                hintStyle: TextStyle(color: Colors.white.withOpacity(0.5)),
+                hintStyle: TextStyle(color: Colors.white.withValues(alpha: 0.5)),
                 border: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(12),
-                  borderSide: BorderSide(color: surfaceColor.withOpacity(0.3)),
+                  borderSide: BorderSide(color: surfaceColor.withValues(alpha: 0.3)),
                 ),
                 enabledBorder: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(12),
-                  borderSide: BorderSide(color: surfaceColor.withOpacity(0.3)),
+                  borderSide: BorderSide(color: surfaceColor.withValues(alpha: 0.3)),
                 ),
                 focusedBorder: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(12),
@@ -593,7 +593,7 @@ class _SettingsPageState extends State<SettingsPage> {
                           style: TextStyle(fontWeight: FontWeight.bold, letterSpacing: 1.2),
                         ),
                         style: ElevatedButton.styleFrom(
-                          backgroundColor: Colors.redAccent.withOpacity(0.8),
+                          backgroundColor: Colors.redAccent.withValues(alpha: 0.8),
                           foregroundColor: Colors.white,
                           elevation: 0,
                           shape: RoundedRectangleBorder(
@@ -618,9 +618,9 @@ class _SettingsPageState extends State<SettingsPage> {
   }) {
     return Container(
       decoration: BoxDecoration(
-        color: surfaceColor.withOpacity(0.05),
+        color: surfaceColor.withValues(alpha: 0.05),
         borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: surfaceColor.withOpacity(0.1)),
+        border: Border.all(color: surfaceColor.withValues(alpha: 0.1)),
       ),
       child: ListTile(
         contentPadding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
@@ -631,9 +631,9 @@ class _SettingsPageState extends State<SettingsPage> {
         ),
         subtitle: Text(
           subtitle,
-          style: TextStyle(color: Colors.white.withOpacity(0.6), fontSize: 14),
+          style: TextStyle(color: Colors.white.withValues(alpha: 0.6), fontSize: 14),
         ),
-        trailing: Icon(Icons.arrow_forward_ios_rounded, size: 16, color: Colors.white.withOpacity(0.2)),
+        trailing: Icon(Icons.arrow_forward_ios_rounded, size: 16, color: Colors.white.withValues(alpha: 0.2)),
         onTap: onTap,
       ),
     );

@@ -51,10 +51,10 @@ class _ClientsPageState extends State<ClientsPage> {
               style: const TextStyle(color: Colors.white),
               decoration: InputDecoration(
                 hintText: "Buscar por nombre o correo...",
-                hintStyle: TextStyle(color: Colors.white.withOpacity(0.3)),
+                hintStyle: TextStyle(color: Colors.white.withValues(alpha: 0.3)),
                 prefixIcon: Icon(Icons.search, color: primaryColor),
                 filled: true,
-                fillColor: surfaceColor.withOpacity(0.1),
+                fillColor: surfaceColor.withValues(alpha: 0.1),
                 border: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(20),
                   borderSide: BorderSide.none,
@@ -108,14 +108,14 @@ class _ClientsPageState extends State<ClientsPage> {
                     return Container(
                       margin: const EdgeInsets.only(bottom: 16),
                       decoration: BoxDecoration(
-                        color: surfaceColor.withOpacity(0.1),
+                        color: surfaceColor.withValues(alpha: 0.1),
                         borderRadius: BorderRadius.circular(20),
-                        border: Border.all(color: surfaceColor.withOpacity(0.2)),
+                        border: Border.all(color: surfaceColor.withValues(alpha: 0.2)),
                       ),
                       child: ListTile(
                         contentPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
                         leading: CircleAvatar(
-                          backgroundColor: secondaryColor.withOpacity(0.2),
+                          backgroundColor: secondaryColor.withValues(alpha: 0.2),
                           child: Icon(Icons.person, color: secondaryColor),
                         ),
                         title: Text(
@@ -131,20 +131,20 @@ class _ClientsPageState extends State<ClientsPage> {
                           children: [
                             Text(
                               email,
-                              style: TextStyle(color: Colors.white.withOpacity(0.5), fontSize: 13),
+                              style: TextStyle(color: Colors.white.withValues(alpha: 0.5), fontSize: 13),
                             ),
                             const SizedBox(height: 6),
                             Container(
                               padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
                               decoration: BoxDecoration(
                                 color: isActiveNow
-                                    ? secondaryColor.withOpacity(0.2)
-                                    : Colors.redAccent.withOpacity(0.2),
+                                    ? secondaryColor.withValues(alpha: 0.2)
+                                    : Colors.redAccent.withValues(alpha: 0.2),
                                 borderRadius: BorderRadius.circular(8),
                                 border: Border.all(
                                   color: isActiveNow
-                                      ? secondaryColor.withOpacity(0.45)
-                                      : Colors.redAccent.withOpacity(0.45),
+                                      ? secondaryColor.withValues(alpha: 0.45)
+                                      : Colors.redAccent.withValues(alpha: 0.45),
                                 ),
                               ),
                               child: Text(

@@ -113,7 +113,7 @@ class _StartRoutinePageState extends State<StartRoutinePage> {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text("¿Quieres dejar algún comentario sobre el entrenamiento?", 
-              style: TextStyle(color: Colors.white.withOpacity(0.7), fontSize: 14)),
+              style: TextStyle(color: Colors.white.withValues(alpha: 0.7), fontSize: 14)),
             const SizedBox(height: 16),
             TextField(
               controller: commentController,
@@ -121,8 +121,8 @@ class _StartRoutinePageState extends State<StartRoutinePage> {
               style: const TextStyle(color: Colors.white),
               decoration: InputDecoration(
                 hintText: "Escribe aquí (opcional)...",
-                hintStyle: TextStyle(color: Colors.white.withOpacity(0.3)),
-                fillColor: Colors.white.withOpacity(0.05),
+                hintStyle: TextStyle(color: Colors.white.withValues(alpha: 0.3)),
+                fillColor: Colors.white.withValues(alpha: 0.05),
                 filled: true,
                 border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none),
               ),
@@ -201,19 +201,19 @@ class _StartRoutinePageState extends State<StartRoutinePage> {
           children: [
             Text(
               "No pudimos guardar tu progreso. Por favor verifica tu conexión a internet e intenta de nuevo.",
-              style: TextStyle(color: Colors.white.withOpacity(0.7), fontSize: 14),
+              style: TextStyle(color: Colors.white.withValues(alpha: 0.7), fontSize: 14),
             ),
             const SizedBox(height: 16),
             Container(
               padding: const EdgeInsets.all(12),
               decoration: BoxDecoration(
-                color: Colors.redAccent.withOpacity(0.1),
+                color: Colors.redAccent.withValues(alpha: 0.1),
                 borderRadius: BorderRadius.circular(8),
-                border: Border.all(color: Colors.redAccent.withOpacity(0.3)),
+                border: Border.all(color: Colors.redAccent.withValues(alpha: 0.3)),
               ),
               child: Text(
                 errorMessage.length > 100 ? "${errorMessage.substring(0, 100)}..." : errorMessage,
-                style: TextStyle(color: Colors.redAccent.withOpacity(0.8), fontSize: 11, fontFamily: 'monospace'),
+                style: TextStyle(color: Colors.redAccent.withValues(alpha: 0.8), fontSize: 11, fontFamily: 'monospace'),
               ),
             ),
           ],
@@ -244,7 +244,7 @@ class _StartRoutinePageState extends State<StartRoutinePage> {
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
         title: const Text("¡Éxito!", style: TextStyle(color: Colors.white)),
         content: Text("Tu progreso ha sido enviado correctamente.", 
-          style: TextStyle(color: Colors.white.withOpacity(0.7))),
+          style: TextStyle(color: Colors.white.withValues(alpha: 0.7))),
         actions: [
           TextButton(
             onPressed: () {
@@ -305,7 +305,7 @@ class _StartRoutinePageState extends State<StartRoutinePage> {
                   const SizedBox(height: 8),
                   Text(
                     "Puedes completar los ejercicios en cualquier orden.",
-                    style: TextStyle(color: Colors.white.withOpacity(0.5), fontSize: 13),
+                    style: TextStyle(color: Colors.white.withValues(alpha: 0.5), fontSize: 13),
                   ),
                   const SizedBox(height: 24),
                   Expanded(
@@ -323,13 +323,13 @@ class _StartRoutinePageState extends State<StartRoutinePage> {
                             padding: const EdgeInsets.all(20),
                             decoration: BoxDecoration(
                               color: isCompleted 
-                                ? primaryColor.withOpacity(0.1) 
-                                : surfaceColor.withOpacity(0.15),
+                                ? primaryColor.withValues(alpha: 0.1) 
+                                : surfaceColor.withValues(alpha: 0.15),
                               borderRadius: BorderRadius.circular(24),
                               border: Border.all(
                                 color: isCompleted 
-                                  ? primaryColor.withOpacity(0.3) 
-                                  : primaryColor.withOpacity(0.1)
+                                  ? primaryColor.withValues(alpha: 0.3) 
+                                  : primaryColor.withValues(alpha: 0.1)
                               ),
                             ),
                             child: Row(
@@ -358,7 +358,7 @@ class _StartRoutinePageState extends State<StartRoutinePage> {
                                       const SizedBox(height: 4),
                                       Text(
                                         "${workoutGroup['sets']} Series | ${exercises.map((e) => "${e['reps']}r").join(' + ')} | ${exercises.map((e) => "${e['weight']}kg").join(' + ')}",
-                                        style: TextStyle(color: primaryColor.withOpacity(0.7), fontSize: 12),
+                                        style: TextStyle(color: primaryColor.withValues(alpha: 0.7), fontSize: 12),
                                       ),
                                     ],
                                   ),
@@ -476,7 +476,7 @@ class _WorkoutDetailSheetState extends State<WorkoutDetailSheet> {
                           Expanded(
                             child: Container(
                               padding: const EdgeInsets.all(12),
-                              decoration: BoxDecoration(color: widget.primaryColor.withOpacity(0.1), borderRadius: BorderRadius.circular(16), border: Border.all(color: widget.primaryColor.withOpacity(0.2))),
+                              decoration: BoxDecoration(color: widget.primaryColor.withValues(alpha: 0.1), borderRadius: BorderRadius.circular(16), border: Border.all(color: widget.primaryColor.withValues(alpha: 0.2))),
                               child: Column(
                                 children: [
                                   const Text("PESO REAL", style: TextStyle(color: Colors.white38, fontSize: 10, fontWeight: FontWeight.bold)),
@@ -496,7 +496,7 @@ class _WorkoutDetailSheetState extends State<WorkoutDetailSheet> {
                       const SizedBox(height: 16),
                       const Text("INSTRUCCIONES", style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 12)),
                       const SizedBox(height: 8),
-                      Text(details?['description'] ?? "Sin instrucciones.", style: TextStyle(color: Colors.white.withOpacity(0.6), height: 1.5, fontSize: 13)),
+                      Text(details?['description'] ?? "Sin instrucciones.", style: TextStyle(color: Colors.white.withValues(alpha: 0.6), height: 1.5, fontSize: 13)),
                     ],
                   );
                 }),
@@ -547,12 +547,12 @@ class _WorkoutDetailSheetState extends State<WorkoutDetailSheet> {
       child: Container(
         padding: const EdgeInsets.all(12),
         decoration: BoxDecoration(
-            color: Colors.white.withOpacity(0.05),
+            color: Colors.white.withValues(alpha: 0.05),
             borderRadius: BorderRadius.circular(16)),
         child: Column(
           children: [
             Text(label, style: const TextStyle(color: Colors.white38, fontSize: 10, fontWeight: FontWeight.bold)),
-            Text(value.toString() ?? "-", style: const TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.bold)),
+            Text(value.toString(), style: const TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.bold)),
           ],
         ),
       ),
@@ -567,7 +567,7 @@ class _WorkoutDetailSheetState extends State<WorkoutDetailSheet> {
         children: [
           Container(
             padding: const EdgeInsets.all(16),
-            decoration: BoxDecoration(color: isSelected ? color.withOpacity(0.2) : Colors.white.withOpacity(0.05), shape: BoxShape.circle, border: Border.all(color: isSelected ? color : Colors.transparent)),
+            decoration: BoxDecoration(color: isSelected ? color.withValues(alpha: 0.2) : Colors.white.withValues(alpha: 0.05), shape: BoxShape.circle, border: Border.all(color: isSelected ? color : Colors.transparent)),
             child: Icon(icon, color: isSelected ? color : Colors.white30),
           ),
           const SizedBox(height: 8),

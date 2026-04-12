@@ -18,6 +18,8 @@ class _DashboardPageState extends State<DashboardPage> {
   DateTime? _selectedDay;
   final Map<DateTime, List<Map<String, dynamic>>> _routines = {};
   final Set<String> _completedRoutineIds = {};
+  final Set<DateTime> _completedDates = {};
+  int _currentStreak = 0;
   bool _isAccountActive = true;
   DateTime? _activeUntil;
   bool _isLoading = true;
@@ -58,17 +60,23 @@ class _DashboardPageState extends State<DashboardPage> {
           .doc(user.uid)
           .get();
 
-       if(!mounted) return;
+      if (!mounted) return;
 
       final userData = userDoc.data() ?? {};
       _userRole = (userData['role'] ?? 'user').toString().toLowerCase();
 
       final completedIds = <String>{};
+      final completedDates = <DateTime>{};
       for (var logDoc in logsSnapshot.docs) {
         final logData = logDoc.data();
         final routineId = logData['routineId'];
         if (routineId != null) {
           completedIds.add(routineId);
+        }
+        final Timestamp? logTs = logData['date'];
+        if (logTs != null) {
+          final logDate = logTs.toDate();
+          completedDates.add(DateTime.utc(logDate.year, logDate.month, logDate.day));
         }
       }
 
@@ -90,14 +98,34 @@ class _DashboardPageState extends State<DashboardPage> {
       final activeUntil = (userData['activeUntil'] as Timestamp?)?.toDate();
       final isEnabled = userData['isActive'] == true;
       
-      // Admin bypass: Admins are always active and don't need expiration dates
       final isAccountActive = _userRole == 'admin' || (isEnabled && (activeUntil == null || activeUntil.isAfter(DateTime.now())));
+
+      // Calculate streak
+      int streak = 0;
+      DateTime today = DateTime.now();
+      DateTime checkDate = DateTime.utc(today.year, today.month, today.day);
+      
+      if (completedDates.contains(checkDate)) {
+        while (completedDates.contains(checkDate)) {
+          streak++;
+          checkDate = checkDate.subtract(const Duration(days: 1));
+        }
+      } else {
+        checkDate = checkDate.subtract(const Duration(days: 1));
+        while (completedDates.contains(checkDate)) {
+          streak++;
+          checkDate = checkDate.subtract(const Duration(days: 1));
+        }
+      }
 
       setState(() {
         _routines.clear();
         _routines.addAll(newRoutines);
         _completedRoutineIds.clear();
         _completedRoutineIds.addAll(completedIds);
+        _completedDates.clear();
+        _completedDates.addAll(completedDates);
+        _currentStreak = streak;
         _activeUntil = activeUntil;
         _isAccountActive = isAccountActive;
         _isLoading = false;
@@ -131,7 +159,6 @@ class _DashboardPageState extends State<DashboardPage> {
                       Row(
                         mainAxisAlignment: MainAxisAlignment.spaceBetween,
                         children: [
-                          // App Logo instead of text
                           Image.asset(
                             'assets/logos/logo.png',
                             height: 60,
@@ -153,6 +180,8 @@ class _DashboardPageState extends State<DashboardPage> {
                         ],
                       ),
                       const SizedBox(height: 32),
+                      _buildStreakWidget(),
+                      const SizedBox(height: 24),
                       _buildMonthCalendar(),
                       const SizedBox(height: 40),
                       Row(
@@ -203,6 +232,107 @@ class _DashboardPageState extends State<DashboardPage> {
     );
   }
 
+  Widget _buildStreakWidget() {
+    return Container(
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          colors: [primaryColor.withOpacity(0.2), secondaryColor.withOpacity(0.1)],
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+        ),
+        borderRadius: BorderRadius.circular(24),
+        border: Border.all(color: primaryColor.withOpacity(0.3)),
+      ),
+      child: Row(
+        children: [
+          Container(
+            padding: const EdgeInsets.all(12),
+            decoration: BoxDecoration(
+              color: Colors.orange.withOpacity(0.2),
+              shape: BoxShape.circle,
+            ),
+            child: const Text(
+              '🔥',
+              style: TextStyle(fontSize: 24),
+            ),
+          ),
+          const SizedBox(width: 16),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  "TU RACHA ACTUAL",
+                  style: TextStyle(
+                    color: primaryColor,
+                    fontSize: 12,
+                    fontWeight: FontWeight.bold,
+                    letterSpacing: 1.2,
+                  ),
+                ),
+                Row(
+                  crossAxisAlignment: CrossAxisAlignment.end,
+                  children: [
+                    Text(
+                      '$_currentStreak',
+                      style: const TextStyle(
+                        color: Colors.white,
+                        fontSize: 32,
+                        fontWeight: FontWeight.w900,
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    Padding(
+                      padding: const EdgeInsets.only(bottom: 6.0),
+                      child: Text(
+                        _currentStreak == 1 ? "DÍA" : "DÍAS",
+                        style: TextStyle(
+                          color: Colors.white.withOpacity(0.7),
+                          fontSize: 16,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ],
+            ),
+          ),
+          Column(
+            crossAxisAlignment: CrossAxisAlignment.end,
+            children: [
+              if (_currentStreak > 0) ...[
+                Text(
+                  _currentStreak >= 7 ? "¡IMPARABLE!" : (_currentStreak >= 3 ? "¡EXCELENTE!" : "¡SIGUE ASÍ!"),
+                  style: TextStyle(
+                    color: _currentStreak >= 7 ? primaryColor : (_currentStreak >= 3 ? Colors.greenAccent : Colors.orangeAccent),
+                    fontSize: 10,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+                Icon(
+                  Icons.trending_up,
+                  color: _currentStreak >= 7 ? primaryColor : (_currentStreak >= 3 ? Colors.greenAccent : Colors.orangeAccent),
+                ),
+              ] else ...[
+                Text(
+                  "INICIA HOY",
+                  style: TextStyle(
+                    color: Colors.white.withOpacity(0.5),
+                    fontSize: 10,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+                Icon(Icons.bolt, color: Colors.white.withOpacity(0.3)),
+              ],
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
   Widget _buildMonthCalendar() {
     return Container(
       decoration: BoxDecoration(
@@ -248,25 +378,41 @@ class _DashboardPageState extends State<DashboardPage> {
         ),
         calendarBuilders: CalendarBuilders(
           markerBuilder: (context, date, events) {
-            if (events.isEmpty) return null;
-            final routines = events.cast<Map<String, dynamic>>();
-            final anyMissed = routines.any((routine) => _isRoutineMissed(routine));
-            final allCompleted = routines.every((routine) => _isRoutineCompleted(routine));
-
-            return Positioned(
-              bottom: 1,
-              child: Container(
-                width: 6,
-                height: 6,
-                decoration: BoxDecoration(
-                  color: anyMissed
-                      ? Colors.redAccent
-                      : allCompleted
-                          ? Colors.greenAccent
-                          : Colors.orangeAccent,
-                  shape: BoxShape.circle,
-                ),
-              ),
+            final normalizedDate = DateTime.utc(date.year, date.month, date.day);
+            final isCompletedDay = _completedDates.contains(normalizedDate);
+            
+            return Stack(
+              children: [
+                if (isCompletedDay)
+                  Positioned(
+                    top: 2,
+                    right: 2,
+                    child: const Text(
+                      '🔥',
+                      style: TextStyle(fontSize: 10),
+                    ),
+                  ),
+                if (events.isNotEmpty)
+                  Positioned(
+                    bottom: 4,
+                    left: 0,
+                    right: 0,
+                    child: Center(
+                      child: Container(
+                        width: 5,
+                        height: 5,
+                        decoration: BoxDecoration(
+                          color: events.cast<Map<String, dynamic>>().any((r) => _isRoutineMissed(r))
+                              ? Colors.redAccent
+                              : events.cast<Map<String, dynamic>>().every((r) => _isRoutineCompleted(r))
+                                  ? Colors.greenAccent
+                                  : Colors.orangeAccent,
+                          shape: BoxShape.circle,
+                        ),
+                      ),
+                    ),
+                  ),
+              ],
             );
           },
         ),

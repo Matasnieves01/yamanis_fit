@@ -29,7 +29,7 @@ class HelpSupportPage extends StatelessWidget {
             const SizedBox(height: 16),
             Text(
               "Estamos aquí para apoyarte en tu camino fitness. Si tienes problemas con la app o tus rutinas, contáctanos.",
-              style: TextStyle(color: Colors.white.withOpacity(0.6), fontSize: 16),
+              style: TextStyle(color: Colors.white.withValues(alpha: 0.6), fontSize: 16),
             ),
             const SizedBox(height: 40),
             _buildContactCard(
@@ -63,14 +63,14 @@ class HelpSupportPage extends StatelessWidget {
   Widget _buildContactCard({required IconData icon, required String title, required String subtitle, required VoidCallback onTap}) {
     return Container(
       decoration: BoxDecoration(
-        color: surfaceColor.withOpacity(0.1),
+        color: surfaceColor.withValues(alpha: 0.1),
         borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: surfaceColor.withOpacity(0.2)),
+        border: Border.all(color: surfaceColor.withValues(alpha: 0.2)),
       ),
       child: ListTile(
         leading: Icon(icon, color: primaryColor),
         title: Text(title, style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
-        subtitle: Text(subtitle, style: TextStyle(color: Colors.white.withOpacity(0.5))),
+        subtitle: Text(subtitle, style: TextStyle(color: Colors.white.withValues(alpha: 0.5))),
         onTap: onTap,
       ),
     );
@@ -84,7 +84,7 @@ class HelpSupportPage extends StatelessWidget {
         children: [
           Text(question, style: TextStyle(color: primaryColor, fontWeight: FontWeight.bold, fontSize: 14)),
           const SizedBox(height: 8),
-          Text(answer, style: TextStyle(color: Colors.white.withOpacity(0.7), fontSize: 14, height: 1.4)),
+          Text(answer, style: TextStyle(color: Colors.white.withValues(alpha: 0.7), fontSize: 14, height: 1.4)),
         ],
       ),
     );

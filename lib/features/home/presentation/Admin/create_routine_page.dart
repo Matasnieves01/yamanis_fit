@@ -89,7 +89,6 @@ class _CreateRoutinePageState extends State<CreateRoutinePage> {
 
   final Map<DateTime, List<Map<String, dynamic>>> _clientRoutines = {};
   final Set<String> _completedRoutineIds = {};
-  bool _loadingRoutines = false;
 
   final List<String> _muscleGroups = [
     'Piernas', 'Pecho', 'Espalda', 'Hombros', 'Bíceps', 'Tríceps', 'Abdominales', 'Cardio', 'Cuerpo Completo'
@@ -171,7 +170,6 @@ class _CreateRoutinePageState extends State<CreateRoutinePage> {
   }
 
   Future<void> _fetchClientRoutines() async {
-    setState(() => _loadingRoutines = true);
     try {
       final routinesSnapshot = await FirebaseFirestore.instance.collection('routines').where('clientId', isEqualTo: widget.clientId).get();
       final logsSnapshot = await FirebaseFirestore.instance.collection('routine_logs').where('userId', isEqualTo: widget.clientId).get();
@@ -194,11 +192,9 @@ class _CreateRoutinePageState extends State<CreateRoutinePage> {
         _clientRoutines.addAll(newRoutines);
         _completedRoutineIds.clear();
         _completedRoutineIds.addAll(completedIds);
-        _loadingRoutines = false;
       });
     } catch (e) {
       if (!mounted) return;
-      setState(() => _loadingRoutines = false);
     }
   }
 
@@ -306,13 +302,13 @@ class _CreateRoutinePageState extends State<CreateRoutinePage> {
             Text("Rutina para ${widget.clientEmail}", style: const TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold)),
             const SizedBox(height: 32),
             Container(
-              decoration: BoxDecoration(color: surfaceColor.withOpacity(0.1), borderRadius: BorderRadius.circular(24), border: Border.all(color: surfaceColor.withOpacity(0.2))),
+              decoration: BoxDecoration(color: surfaceColor.withValues(alpha: 0.1), borderRadius: BorderRadius.circular(24), border: Border.all(color: surfaceColor.withValues(alpha: 0.2))),
               child: TableCalendar(
                 firstDay: DateTime.utc(2020, 1, 1), lastDay: DateTime.utc(2030, 12, 31), focusedDay: _focusedDay,
                 selectedDayPredicate: (day) => isSameDay(_selectedDay, day),
                 eventLoader: (day) => _clientRoutines[_dateOnlyLocal(day)] ?? [],
                 onDaySelected: (selectedDay, focusedDay) => setState(() { _selectedDay = _dateOnlyLocal(selectedDay); _focusedDay = focusedDay; }),
-                calendarStyle: CalendarStyle(selectedDecoration: BoxDecoration(color: primaryColor, shape: BoxShape.circle), todayDecoration: BoxDecoration(color: secondaryColor.withOpacity(0.3), shape: BoxShape.circle), defaultTextStyle: const TextStyle(color: Colors.white)),
+                calendarStyle: CalendarStyle(selectedDecoration: BoxDecoration(color: primaryColor, shape: BoxShape.circle), todayDecoration: BoxDecoration(color: secondaryColor.withValues(alpha: 0.3), shape: BoxShape.circle), defaultTextStyle: const TextStyle(color: Colors.white)),
                 headerStyle: HeaderStyle(formatButtonVisible: false, titleCentered: true, titleTextStyle: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold), leftChevronIcon: Icon(Icons.chevron_left, color: primaryColor), rightChevronIcon: Icon(Icons.chevron_right, color: primaryColor)),
               ),
             ),
@@ -335,8 +331,8 @@ class _CreateRoutinePageState extends State<CreateRoutinePage> {
                 final isSelected = _selectedMuscles.contains(muscle);
                 return FilterChip(
                   label: Text(muscle), selected: isSelected, onSelected: (s) => setState(() => s ? _selectedMuscles.add(muscle) : _selectedMuscles.remove(muscle)),
-                  selectedColor: primaryColor.withOpacity(0.3), checkmarkColor: primaryColor, labelStyle: TextStyle(color: isSelected ? primaryColor : Colors.white70),
-                  backgroundColor: surfaceColor.withOpacity(0.1), shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12), side: BorderSide(color: isSelected ? primaryColor : surfaceColor.withOpacity(0.2))),
+                  selectedColor: primaryColor.withValues(alpha: 0.3), checkmarkColor: primaryColor, labelStyle: TextStyle(color: isSelected ? primaryColor : Colors.white70),
+                  backgroundColor: surfaceColor.withValues(alpha: 0.1), shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12), side: BorderSide(color: isSelected ? primaryColor : surfaceColor.withValues(alpha: 0.2))),
                 );
               }).toList(),
             ),
@@ -349,7 +345,7 @@ class _CreateRoutinePageState extends State<CreateRoutinePage> {
                 final item = selectedWorkouts[index];
                 return Container(
                   margin: const EdgeInsets.only(bottom: 24), padding: const EdgeInsets.all(20),
-                  decoration: BoxDecoration(color: surfaceColor.withOpacity(0.1), borderRadius: BorderRadius.circular(24), border: Border.all(color: surfaceColor.withOpacity(0.2))),
+                  decoration: BoxDecoration(color: surfaceColor.withValues(alpha: 0.1), borderRadius: BorderRadius.circular(24), border: Border.all(color: surfaceColor.withValues(alpha: 0.2))),
                   child: Column(
                     children: [
                       Row(children: [ _buildSmallField(label: 'Series', initialValue: item.sets, onChanged: (v) => item.sets = v), const SizedBox(width: 20), IconButton(icon: const Icon(Icons.delete_outline, color: Colors.redAccent), onPressed: () => setState(() => selectedWorkouts.removeAt(index)))]),
@@ -392,7 +388,7 @@ class _CreateRoutinePageState extends State<CreateRoutinePage> {
                 scrollDirection: Axis.horizontal, itemCount: availableWorkouts.length,
                 itemBuilder: (context, index) {
                   final workout = availableWorkouts[index];
-                  return Padding(padding: const EdgeInsets.only(right: 8), child: ActionChip(backgroundColor: surfaceColor.withOpacity(0.1), label: Text(workout['name'], style: const TextStyle(color: Colors.white)), onPressed: () => _addWorkoutToRoutine(workout.id, workout['name'])));
+                  return Padding(padding: const EdgeInsets.only(right: 8), child: ActionChip(backgroundColor: surfaceColor.withValues(alpha: 0.1), label: Text(workout['name'], style: const TextStyle(color: Colors.white)), onPressed: () => _addWorkoutToRoutine(workout.id, workout['name'])));
                 },
               ),
             ),
@@ -406,13 +402,13 @@ class _CreateRoutinePageState extends State<CreateRoutinePage> {
   }
 
   InputDecoration _buildInputDecoration({required String label, required String hint, required IconData icon}) {
-    return InputDecoration(labelText: label, hintText: hint, prefixIcon: Icon(icon, color: primaryColor), filled: true, fillColor: Colors.white.withOpacity(0.05), border: OutlineInputBorder(borderRadius: BorderRadius.circular(16), borderSide: BorderSide.none), enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(16), borderSide: BorderSide(color: Colors.white.withOpacity(0.1))), focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(16), borderSide: BorderSide(color: primaryColor, width: 2)), labelStyle: TextStyle(color: primaryColor));
+    return InputDecoration(labelText: label, hintText: hint, prefixIcon: Icon(icon, color: primaryColor), filled: true, fillColor: Colors.white.withValues(alpha: 0.05), border: OutlineInputBorder(borderRadius: BorderRadius.circular(16), borderSide: BorderSide.none), enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(16), borderSide: BorderSide(color: Colors.white.withValues(alpha: 0.1))), focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(16), borderSide: BorderSide(color: primaryColor, width: 2)), labelStyle: TextStyle(color: primaryColor));
   }
 
   Widget _buildDropdownField({required String label, required String value, required List<String> items, required void Function(String?) onChanged}) {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 16),
-      decoration: BoxDecoration(color: Colors.white.withOpacity(0.05), borderRadius: BorderRadius.circular(16), border: Border.all(color: Colors.white.withOpacity(0.1))),
+      decoration: BoxDecoration(color: Colors.white.withValues(alpha: 0.05), borderRadius: BorderRadius.circular(16), border: Border.all(color: Colors.white.withValues(alpha: 0.1))),
       child: DropdownButtonHideUnderline(
         child: DropdownButtonFormField<String>(
           initialValue: value, items: items.map((i) => DropdownMenuItem(value: i, child: Text(i, style: const TextStyle(color: Colors.white)))).toList(), onChanged: onChanged,
@@ -423,7 +419,7 @@ class _CreateRoutinePageState extends State<CreateRoutinePage> {
   }
 
   Widget _buildSmallField({required String label, required String initialValue, required Function(String) onChanged}) {
-    return Expanded(child: TextFormField(initialValue: initialValue, keyboardType: TextInputType.text, style: const TextStyle(color: Colors.white, fontSize: 14), onChanged: onChanged, decoration: InputDecoration(labelText: label, isDense: true, contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12), filled: true, fillColor: Colors.white.withOpacity(0.05), border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none), enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide(color: Colors.white.withOpacity(0.1))), labelStyle: TextStyle(color: primaryColor, fontSize: 12))));
+    return Expanded(child: TextFormField(initialValue: initialValue, keyboardType: TextInputType.text, style: const TextStyle(color: Colors.white, fontSize: 14), onChanged: onChanged, decoration: InputDecoration(labelText: label, isDense: true, contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12), filled: true, fillColor: Colors.white.withValues(alpha: 0.05), border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none), enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide(color: Colors.white.withValues(alpha: 0.1))), labelStyle: TextStyle(color: primaryColor, fontSize: 12))));
   }
 
   void _showAddExerciseToSupersetDialog(int routineIndex) {
@@ -445,7 +441,7 @@ class _CreateRoutinePageState extends State<CreateRoutinePage> {
               const SizedBox(height: 24),
               const Text("AÑADIR AL SUPERSET", style: TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.w900, letterSpacing: 1.2)),
               const SizedBox(height: 12),
-              Text("Selecciona un segundo ejercicio para esta serie", style: TextStyle(color: Colors.white.withOpacity(0.5), fontSize: 14)),
+              Text("Selecciona un segundo ejercicio para esta serie", style: TextStyle(color: Colors.white.withValues(alpha: 0.5), fontSize: 14)),
               const SizedBox(height: 24),
               ConstrainedBox(
                 constraints: BoxConstraints(maxHeight: MediaQuery.of(context).size.height * 0.4),
@@ -457,14 +453,14 @@ class _CreateRoutinePageState extends State<CreateRoutinePage> {
                     return Container(
                       margin: const EdgeInsets.only(bottom: 12),
                       decoration: BoxDecoration(
-                        color: surfaceColor.withOpacity(0.05),
+                        color: surfaceColor.withValues(alpha: 0.05),
                         borderRadius: BorderRadius.circular(16),
-                        border: Border.all(color: surfaceColor.withOpacity(0.1)),
+                        border: Border.all(color: surfaceColor.withValues(alpha: 0.1)),
                       ),
                       child: ListTile(
                         leading: Container(
                           padding: const EdgeInsets.all(8),
-                          decoration: BoxDecoration(color: primaryColor.withOpacity(0.1), borderRadius: BorderRadius.circular(10)),
+                          decoration: BoxDecoration(color: primaryColor.withValues(alpha: 0.1), borderRadius: BorderRadius.circular(10)),
                           child: Icon(Icons.fitness_center_rounded, color: primaryColor, size: 20),
                         ),
                         title: Text(workout['name'], style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
@@ -478,7 +474,7 @@ class _CreateRoutinePageState extends State<CreateRoutinePage> {
                 ),
               ),
               const SizedBox(height: 16),
-              TextButton(onPressed: () => Navigator.pop(context), child: Text("CANCELAR", style: TextStyle(color: Colors.white.withOpacity(0.3), fontWeight: FontWeight.bold))),
+              TextButton(onPressed: () => Navigator.pop(context), child: Text("CANCELAR", style: TextStyle(color: Colors.white.withValues(alpha: 0.3), fontWeight: FontWeight.bold))),
             ],
           ),
         );

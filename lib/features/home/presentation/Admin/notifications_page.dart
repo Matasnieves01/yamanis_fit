@@ -58,9 +58,9 @@ class NotificationsPage extends StatelessWidget {
               return Container(
                 margin: const EdgeInsets.only(bottom: 12),
                 decoration: BoxDecoration(
-                  color: isRead ? Colors.transparent : surfaceColor.withOpacity(0.1),
+                  color: isRead ? Colors.transparent : surfaceColor.withValues(alpha: 0.1),
                   borderRadius: BorderRadius.circular(16),
-                  border: Border.all(color: isRead ? Colors.white10 : primaryColor.withOpacity(0.3)),
+                  border: Border.all(color: isRead ? Colors.white10 : primaryColor.withValues(alpha: 0.3)),
                 ),
                 child: ListTile(
                   onTap: () {
@@ -78,7 +78,7 @@ class NotificationsPage extends StatelessWidget {
                     );
                   },
                   leading: CircleAvatar(
-                    backgroundColor: isRead ? Colors.white10 : primaryColor.withOpacity(0.2),
+                    backgroundColor: isRead ? Colors.white10 : primaryColor.withValues(alpha: 0.2),
                     child: Icon(
                       data['type'] == 'routine_completed' ? Icons.fitness_center : Icons.notifications,
                       color: isRead ? Colors.white38 : primaryColor,

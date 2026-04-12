@@ -99,15 +99,15 @@ class _ProfilePageState extends State<ProfilePage> {
                 width: double.infinity,
                 padding: const EdgeInsets.all(32),
                 decoration: BoxDecoration(
-                  color: surfaceColor.withOpacity(0.1),
+                  color: surfaceColor.withValues(alpha: 0.1),
                   borderRadius: BorderRadius.circular(32),
-                  border: Border.all(color: surfaceColor.withOpacity(0.2)),
+                  border: Border.all(color: surfaceColor.withValues(alpha: 0.2)),
                 ),
                 child: Column(
                   children: [
                     CircleAvatar(
                       radius: 50,
-                      backgroundColor: primaryColor.withOpacity(0.2),
+                      backgroundColor: primaryColor.withValues(alpha: 0.2),
                       child: Icon(Icons.person, size: 60, color: primaryColor),
                     ),
                     const SizedBox(height: 24),
@@ -127,7 +127,7 @@ class _ProfilePageState extends State<ProfilePage> {
                     Text(
                       _email,
                       style: TextStyle(
-                        color: Colors.white.withOpacity(0.5),
+                        color: Colors.white.withValues(alpha: 0.5),
                         fontSize: 14,
                       ),
                     ),
@@ -164,7 +164,7 @@ class _ProfilePageState extends State<ProfilePage> {
                     style: TextStyle(fontWeight: FontWeight.bold, letterSpacing: 1.2),
                   ),
                   style: ElevatedButton.styleFrom(
-                    backgroundColor: Colors.redAccent.withOpacity(0.8),
+                    backgroundColor: Colors.redAccent.withValues(alpha: 0.8),
                     foregroundColor: Colors.white,
                     elevation: 0,
                     shape: RoundedRectangleBorder(
@@ -185,9 +185,9 @@ class _ProfilePageState extends State<ProfilePage> {
     return Container(
       margin: const EdgeInsets.only(bottom: 16),
       decoration: BoxDecoration(
-        color: surfaceColor.withOpacity(0.05),
+        color: surfaceColor.withValues(alpha: 0.05),
         borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: surfaceColor.withOpacity(0.1)),
+        border: Border.all(color: surfaceColor.withValues(alpha: 0.1)),
       ),
       child: ListTile(
         contentPadding: const EdgeInsets.symmetric(horizontal: 24, vertical: 4),
@@ -196,7 +196,7 @@ class _ProfilePageState extends State<ProfilePage> {
           title,
           style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
         ),
-        trailing: Icon(Icons.arrow_forward_ios_rounded, size: 16, color: Colors.white.withOpacity(0.2)),
+        trailing: Icon(Icons.arrow_forward_ios_rounded, size: 16, color: Colors.white.withValues(alpha: 0.2)),
         onTap: onTap ?? () {},
       ),
     );

@@ -68,7 +68,7 @@ class _LoginPageState extends State<LoginPage> {
   InputDecoration _buildInputDecoration(String label, IconData icon) {
     return InputDecoration(
       labelText: label,
-      labelStyle: TextStyle(color: primaryColor.withOpacity(0.8), fontSize: 14),
+      labelStyle: TextStyle(color: primaryColor.withValues(alpha: 0.8), fontSize: 14),
       prefixIcon: Icon(icon, color: primaryColor, size: 20),
       filled: true,
       fillColor: Colors.transparent,
@@ -90,7 +90,7 @@ class _LoginPageState extends State<LoginPage> {
           gradient: LinearGradient(
             begin: Alignment.topCenter,
             end: Alignment.bottomCenter,
-            colors: [backgroundColor, backgroundColor.withOpacity(0.8)],
+            colors: [backgroundColor, backgroundColor.withValues(alpha: 0.8)],
           ),
         ),
         child: Center(
@@ -111,7 +111,7 @@ class _LoginPageState extends State<LoginPage> {
                     errorBuilder: (context, error, stackTrace) => Container(
                       padding: const EdgeInsets.all(20),
                       decoration: BoxDecoration(
-                        color: primaryColor.withOpacity(0.1),
+                        color: primaryColor.withValues(alpha: 0.1),
                         shape: BoxShape.circle,
                       ),
                       child: Icon(Icons.fitness_center_rounded, size: 64, color: primaryColor),
@@ -145,9 +145,9 @@ class _LoginPageState extends State<LoginPage> {
                   width: 350, // Fixed width
                   child: Container(
                     decoration: BoxDecoration(
-                      color: surfaceColor.withOpacity(0.1),
+                      color: surfaceColor.withValues(alpha: 0.1),
                       borderRadius: BorderRadius.circular(24),
-                      border: Border.all(color: surfaceColor.withOpacity(0.2)),
+                      border: Border.all(color: surfaceColor.withValues(alpha: 0.2)),
                     ),
                     child: Column(
                       children: [
@@ -157,7 +157,7 @@ class _LoginPageState extends State<LoginPage> {
                           decoration: _buildInputDecoration('CORREO ELECTRÓNICO', Icons.email_outlined),
                           keyboardType: TextInputType.emailAddress,
                         ),
-                        Divider(height: 1, color: surfaceColor.withOpacity(0.2), indent: 20, endIndent: 20),
+                        Divider(height: 1, color: surfaceColor.withValues(alpha: 0.2), indent: 20, endIndent: 20),
                         TextField(
                           controller: _passwordController,
                           style: const TextStyle(color: Colors.white, fontSize: 15),
@@ -178,7 +178,7 @@ class _LoginPageState extends State<LoginPage> {
                     children: [
                       Theme(
                         data: ThemeData(
-                          unselectedWidgetColor: primaryColor.withOpacity(0.5),
+                          unselectedWidgetColor: primaryColor.withValues(alpha: 0.5),
                         ),
                         child: Checkbox(
                           value: _stayLoggedIn,
@@ -234,7 +234,7 @@ class _LoginPageState extends State<LoginPage> {
                   children: [
                     Text(
                       "¿No tienes cuenta? ",
-                      style: TextStyle(color: Colors.white.withOpacity(0.6)),
+                      style: TextStyle(color: Colors.white.withValues(alpha: 0.6)),
                     ),
                     GestureDetector(
                       onTap: () => Navigator.pushNamed(context, '/register'),

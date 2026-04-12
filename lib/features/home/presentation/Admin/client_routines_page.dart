@@ -29,6 +29,7 @@ class _ClientRoutinesPageState extends State<ClientRoutinesPage> {
 
   bool _isLoading = true;
   bool _isActivating = false;
+  bool _isDeletingUser = false;
 
   bool _accountEnabled = false;
   DateTime? _activeUntil;
@@ -154,6 +155,94 @@ class _ClientRoutinesPageState extends State<ClientRoutinesPage> {
     }
   }
 
+  Future<void> _handleDeleteUser() async {
+    final passwordController = TextEditingController();
+    
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        backgroundColor: backgroundColor,
+        title: const Text('Confirmar Eliminación', style: TextStyle(color: Colors.white)),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text('Para eliminar a ${widget.clientName}, ingresa tu contraseña de administrador:',
+                style: const TextStyle(color: Colors.white70)),
+            const SizedBox(height: 16),
+            TextField(
+              controller: passwordController,
+              obscureText: true,
+              style: const TextStyle(color: Colors.white),
+              decoration: InputDecoration(
+                hintText: 'Contraseña',
+                hintStyle: const TextStyle(color: Colors.white24),
+                filled: true,
+                fillColor: Colors.white.withValues(alpha: 0.05),
+                border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+              ),
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('CANCELAR', style: TextStyle(color: Colors.white60)),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(context, true),
+            child: const Text('ELIMINAR USUARIO', style: TextStyle(color: Colors.redAccent)),
+          ),
+        ],
+      ),
+    );
+
+    if (confirmed == true) {
+      if (!mounted) return;
+      final password = passwordController.text;
+      if (password.isEmpty) {
+        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Debes ingresar la contraseña')));
+        return;
+      }
+
+      setState(() => _isDeletingUser = true);
+
+      try {
+        // Re-authenticate admin
+        final User? admin = FirebaseAuth.instance.currentUser;
+        if (admin != null && admin.email != null) {
+          AuthCredential credential = EmailAuthProvider.credential(
+            email: admin.email!,
+            password: password,
+          );
+          
+          await admin.reauthenticateWithCredential(credential);
+          
+          // Delete from Firestore
+          await FirebaseFirestore.instance.collection('users').doc(widget.clientId).delete();
+          
+          // Note: This only deletes the document. Full Auth deletion usually requires 
+          // a Cloud Function for security, but we'll delete the profile first.
+          
+          if (mounted) {
+            Navigator.pop(context); // Go back to clients list
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(content: Text('Usuario eliminado correctamente')),
+            );
+          }
+        }
+      } catch (e) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text('Error de validación: Contraseña incorrecta o error de red')),
+          );
+        }
+      } finally {
+        if (mounted) setState(() => _isDeletingUser = false);
+      }
+    }
+  }
+
   bool _isRoutineCompleted(Map<String, dynamic> routine) {
     final id = (routine['id'] ?? '').toString();
     return _completedRoutineIds.contains(id);
@@ -207,10 +296,10 @@ class _ClientRoutinesPageState extends State<ClientRoutinesPage> {
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: surfaceColor.withOpacity(0.1),
+        color: surfaceColor.withValues(alpha: 0.1),
         borderRadius: BorderRadius.circular(16),
         border: Border.all(
-          color: isActive ? primaryColor.withOpacity(0.5) : Colors.redAccent.withOpacity(0.4),
+          color: isActive ? primaryColor.withValues(alpha: 0.5) : Colors.redAccent.withValues(alpha: 0.4),
         ),
       ),
       child: Column(
@@ -226,7 +315,7 @@ class _ClientRoutinesPageState extends State<ClientRoutinesPage> {
               Container(
                 padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
                 decoration: BoxDecoration(
-                  color: isActive ? primaryColor.withOpacity(0.2) : Colors.redAccent.withOpacity(0.2),
+                  color: isActive ? primaryColor.withValues(alpha: 0.2) : Colors.redAccent.withValues(alpha: 0.2),
                   borderRadius: BorderRadius.circular(12),
                 ),
                 child: Text(
@@ -275,9 +364,9 @@ class _ClientRoutinesPageState extends State<ClientRoutinesPage> {
         width: double.infinity,
         padding: const EdgeInsets.all(20),
         decoration: BoxDecoration(
-          color: surfaceColor.withOpacity(0.1),
+          color: surfaceColor.withValues(alpha: 0.1),
           borderRadius: BorderRadius.circular(16),
-          border: Border.all(color: surfaceColor.withOpacity(0.2)),
+          border: Border.all(color: surfaceColor.withValues(alpha: 0.2)),
         ),
         child: const Text(
           'No hay rutinas este día',
@@ -301,17 +390,17 @@ class _ClientRoutinesPageState extends State<ClientRoutinesPage> {
           margin: const EdgeInsets.only(bottom: 12),
           decoration: BoxDecoration(
             color: isCompleted
-                ? Colors.greenAccent.withOpacity(0.08)
+                ? Colors.greenAccent.withValues(alpha: 0.08)
                 : isMissed
-                    ? Colors.redAccent.withOpacity(0.08)
-                    : surfaceColor.withOpacity(0.1),
+                    ? Colors.redAccent.withValues(alpha: 0.08)
+                    : surfaceColor.withValues(alpha: 0.1),
             borderRadius: BorderRadius.circular(16),
             border: Border.all(
               color: isCompleted
-                  ? Colors.greenAccent.withOpacity(0.4)
+                  ? Colors.greenAccent.withValues(alpha: 0.4)
                   : isMissed
-                      ? Colors.redAccent.withOpacity(0.4)
-                      : surfaceColor.withOpacity(0.2),
+                      ? Colors.redAccent.withValues(alpha: 0.4)
+                      : surfaceColor.withValues(alpha: 0.2),
             ),
           ),
           child: ExpansionTile(
@@ -439,9 +528,9 @@ class _ClientRoutinesPageState extends State<ClientRoutinesPage> {
                   const SizedBox(height: 20),
                   Container(
                     decoration: BoxDecoration(
-                      color: surfaceColor.withOpacity(0.1),
+                      color: surfaceColor.withValues(alpha: 0.1),
                       borderRadius: BorderRadius.circular(24),
-                      border: Border.all(color: surfaceColor.withOpacity(0.2)),
+                      border: Border.all(color: surfaceColor.withValues(alpha: 0.2)),
                     ),
                     child: TableCalendar(
                       firstDay: DateTime.utc(2020, 1, 1),
@@ -457,7 +546,7 @@ class _ClientRoutinesPageState extends State<ClientRoutinesPage> {
                       },
                       calendarStyle: CalendarStyle(
                         selectedDecoration: BoxDecoration(color: primaryColor, shape: BoxShape.circle),
-                        todayDecoration: BoxDecoration(color: secondaryColor.withOpacity(0.3), shape: BoxShape.circle),
+                        todayDecoration: BoxDecoration(color: secondaryColor.withValues(alpha: 0.3), shape: BoxShape.circle),
                         defaultTextStyle: const TextStyle(color: Colors.white),
                         weekendTextStyle: const TextStyle(color: Colors.white70),
                         outsideDaysVisible: false,
@@ -511,6 +600,47 @@ class _ClientRoutinesPageState extends State<ClientRoutinesPage> {
                   ),
                   const SizedBox(height: 8),
                   _buildSelectedDayRoutines(),
+                  const SizedBox(height: 40),
+                  // DANGER ZONE
+                  Container(
+                    width: double.infinity,
+                    padding: const EdgeInsets.all(20),
+                    decoration: BoxDecoration(
+                      color: Colors.redAccent.withValues(alpha: 0.05),
+                      borderRadius: BorderRadius.circular(16),
+                      border: Border.all(color: Colors.redAccent.withValues(alpha: 0.2)),
+                    ),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        const Text(
+                          'ZONA DE PELIGRO',
+                          style: TextStyle(color: Colors.redAccent, fontWeight: FontWeight.bold, letterSpacing: 1.2, fontSize: 12),
+                        ),
+                        const SizedBox(height: 8),
+                        const Text(
+                          'Eliminar este usuario borrará permanentemente su perfil de la base de datos.',
+                          style: TextStyle(color: Colors.white60, fontSize: 12),
+                        ),
+                        const SizedBox(height: 16),
+                        SizedBox(
+                          width: double.infinity,
+                          child: OutlinedButton(
+                            onPressed: _isDeletingUser ? null : _handleDeleteUser,
+                            style: OutlinedButton.styleFrom(
+                              foregroundColor: Colors.redAccent,
+                              side: const BorderSide(color: Colors.redAccent),
+                              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                            ),
+                            child: _isDeletingUser 
+                              ? const SizedBox(height: 20, width: 20, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.redAccent))
+                              : const Text('ELIMINAR USUARIO DEFINITIVAMENTE'),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(height: 40),
                 ],
               ),
             ),

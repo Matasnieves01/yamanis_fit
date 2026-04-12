@@ -119,7 +119,7 @@ class _CreateWorkoutPageState extends State<CreateWorkoutPage> {
       hintText: hint,
       prefixIcon: Icon(icon, color: primaryColor),
       filled: true,
-      fillColor: Colors.white.withOpacity(0.05),
+      fillColor: Colors.white.withValues(alpha: 0.05),
       contentPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 18),
       border: OutlineInputBorder(
         borderRadius: BorderRadius.circular(16),
@@ -127,14 +127,14 @@ class _CreateWorkoutPageState extends State<CreateWorkoutPage> {
       ),
       enabledBorder: OutlineInputBorder(
         borderRadius: BorderRadius.circular(16),
-        borderSide: BorderSide(color: Colors.white.withOpacity(0.1)),
+        borderSide: BorderSide(color: Colors.white.withValues(alpha: 0.1)),
       ),
       focusedBorder: OutlineInputBorder(
         borderRadius: BorderRadius.circular(16),
         borderSide: BorderSide(color: primaryColor, width: 2),
       ),
       labelStyle: TextStyle(color: primaryColor),
-      hintStyle: TextStyle(color: Colors.white.withOpacity(0.3)),
+      hintStyle: TextStyle(color: Colors.white.withValues(alpha: 0.3)),
     );
   }
 
@@ -165,7 +165,7 @@ class _CreateWorkoutPageState extends State<CreateWorkoutPage> {
             const SizedBox(height: 10),
             Text(
               "Add a new exercise to the library for future routines.",
-              style: TextStyle(color: Colors.white.withOpacity(0.6), fontSize: 14),
+              style: TextStyle(color: Colors.white.withValues(alpha: 0.6), fontSize: 14),
             ),
             const SizedBox(height: 32),
             TextField(
@@ -210,7 +210,7 @@ class _CreateWorkoutPageState extends State<CreateWorkoutPage> {
                   borderRadius: BorderRadius.circular(24),
                   boxShadow: [
                     BoxShadow(
-                      color: primaryColor.withOpacity(0.1),
+                      color: primaryColor.withValues(alpha: 0.1),
                       blurRadius: 20,
                       spreadRadius: 2,
                     )
@@ -230,18 +230,18 @@ class _CreateWorkoutPageState extends State<CreateWorkoutPage> {
                 height: 180,
                 width: double.infinity,
                 decoration: BoxDecoration(
-                  color: surfaceColor.withOpacity(0.1),
+                  color: surfaceColor.withValues(alpha: 0.1),
                   borderRadius: BorderRadius.circular(24),
-                  border: Border.all(color: surfaceColor.withOpacity(0.2)),
+                  border: Border.all(color: surfaceColor.withValues(alpha: 0.2)),
                 ),
                 child: Column(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
                     Icon(Icons.video_library_rounded, 
-                      color: Colors.white.withOpacity(0.2), size: 48),
+                      color: Colors.white.withValues(alpha: 0.2), size: 48),
                     const SizedBox(height: 12),
                     Text("Enter a URL to see the preview",
-                      style: TextStyle(color: Colors.white.withOpacity(0.3))),
+                      style: TextStyle(color: Colors.white.withValues(alpha: 0.3))),
                   ],
                 ),
               ),

@@ -41,6 +41,45 @@ class _WorkoutsPageState extends State<WorkoutsPage> {
     return videoId != null ? 'https://img.youtube.com/vi/$videoId/0.jpg' : null;
   }
 
+  Future<void> _deleteWorkout(String workoutId, String workoutName) async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        backgroundColor: backgroundColor,
+        title: const Text('Eliminar Ejercicio', style: TextStyle(color: Colors.white)),
+        content: Text('¿Estás seguro de que quieres eliminar "$workoutName"?', 
+          style: const TextStyle(color: Colors.white70)),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('CANCELAR', style: TextStyle(color: Colors.white60)),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(context, true),
+            child: const Text('ELIMINAR', style: TextStyle(color: Colors.redAccent)),
+          ),
+        ],
+      ),
+    );
+
+    if (confirmed == true) {
+      try {
+        await FirebaseFirestore.instance.collection('workouts').doc(workoutId).delete();
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('Ejercicio eliminado correctamente')),
+          );
+        }
+      } catch (e) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text('Error al eliminar: $e')),
+          );
+        }
+      }
+    }
+  }
+
   @override
   void dispose() {
     _searchController.dispose();
@@ -67,10 +106,10 @@ class _WorkoutsPageState extends State<WorkoutsPage> {
               style: const TextStyle(color: Colors.white),
               decoration: InputDecoration(
                 hintText: "Buscar ejercicios por nombre...",
-                hintStyle: TextStyle(color: Colors.white.withOpacity(0.3)),
+                hintStyle: TextStyle(color: Colors.white.withValues(alpha: 0.3)),
                 prefixIcon: Icon(Icons.search, color: primaryColor),
                 filled: true,
-                fillColor: surfaceColor.withOpacity(0.1),
+                fillColor: surfaceColor.withValues(alpha: 0.1),
                 border: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(20),
                   borderSide: BorderSide.none,
@@ -116,7 +155,7 @@ class _WorkoutsPageState extends State<WorkoutsPage> {
                         Navigator.push(
                           context,
                           MaterialPageRoute(
-                            builder: (_) => ViewWorkoutPage(workoutId: workoutDoc.id),
+                            builder: (_) => ViewWorkoutPage(workoutId: workoutDoc.id, isAdmin: true),
                           ),
                         );
                       },
@@ -124,7 +163,7 @@ class _WorkoutsPageState extends State<WorkoutsPage> {
                         margin: const EdgeInsets.only(bottom: 24),
                         width: double.infinity,
                         decoration: BoxDecoration(
-                          color: surfaceColor.withOpacity(0.2),
+                          color: surfaceColor.withValues(alpha: 0.2),
                           borderRadius: BorderRadius.circular(32),
                           image: thumbnailUrl != null
                               ? DecorationImage(
@@ -142,30 +181,36 @@ class _WorkoutsPageState extends State<WorkoutsPage> {
                               gradient: LinearGradient(
                                 begin: Alignment.topCenter,
                                 end: Alignment.bottomCenter,
-                                colors: [Colors.transparent, backgroundColor.withOpacity(0.9)],
+                                colors: [Colors.transparent, backgroundColor.withValues(alpha: 0.9)],
                               ),
                             ),
                             child: Column(
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
-                                const SizedBox(height: 60),
                                 Row(
+                                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
                                   children: [
                                     Container(
                                       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
                                       decoration: BoxDecoration(
-                                        color: primaryColor.withOpacity(0.2),
+                                        color: primaryColor.withValues(alpha: 0.2),
                                         borderRadius: BorderRadius.circular(20),
-                                        border: Border.all(color: primaryColor.withOpacity(0.3)),
+                                        border: Border.all(color: primaryColor.withValues(alpha: 0.3)),
                                       ),
                                       child: Text(
                                         "EJERCICIO",
                                         style: TextStyle(color: primaryColor, fontSize: 9, fontWeight: FontWeight.bold),
                                       ),
                                     ),
+                                    IconButton(
+                                      onPressed: () => _deleteWorkout(workoutDoc.id, name),
+                                      icon: const Icon(Icons.delete_outline, color: Colors.redAccent),
+                                      padding: EdgeInsets.zero,
+                                      constraints: const BoxConstraints(),
+                                    ),
                                   ],
                                 ),
-                                const SizedBox(height: 12),
+                                const SizedBox(height: 60),
                                 Text(
                                   name.toUpperCase(),
                                   style: const TextStyle(
@@ -181,7 +226,7 @@ class _WorkoutsPageState extends State<WorkoutsPage> {
                                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                                   children: [
                                     const Text(
-                                      "Toca para ver video",
+                                      "Toca para ver detalles",
                                       style: TextStyle(color: Colors.white60, fontSize: 12),
                                     ),
                                     Icon(Icons.play_circle_fill, color: primaryColor, size: 32),

@@ -132,13 +132,13 @@ class _ViewNotificationPageState extends State<ViewNotificationPage> {
                   padding: const EdgeInsets.all(20),
                   decoration: BoxDecoration(
                     color: clientGeneralFeedback.isNotEmpty 
-                        ? Colors.orangeAccent.withOpacity(0.1)
-                        : Colors.white.withOpacity(0.02),
+                        ? Colors.orangeAccent.withValues(alpha: 0.1)
+                        : Colors.white.withValues(alpha: 0.02),
                     borderRadius: BorderRadius.circular(20),
                     border: Border.all(
                       color: clientGeneralFeedback.isNotEmpty 
-                          ? Colors.orangeAccent.withOpacity(0.3)
-                          : Colors.white.withOpacity(0.05)
+                          ? Colors.orangeAccent.withValues(alpha: 0.3)
+                          : Colors.white.withValues(alpha: 0.05)
                     ),
                   ),
                   child: Text(
@@ -177,19 +177,19 @@ class _ViewNotificationPageState extends State<ViewNotificationPage> {
                   style: const TextStyle(color: Colors.white),
                   decoration: InputDecoration(
                     hintText: "Escribe algo motivador o correcciones...",
-                    hintStyle: TextStyle(color: Colors.white.withOpacity(0.2)),
+                    hintStyle: TextStyle(color: Colors.white.withValues(alpha: 0.2)),
                     filled: true,
-                    fillColor: Colors.white.withOpacity(0.05),
+                    fillColor: Colors.white.withValues(alpha: 0.05),
                     contentPadding: const EdgeInsets.all(20),
                     border: OutlineInputBorder(
                         borderRadius: BorderRadius.circular(16),
                         borderSide: BorderSide.none),
                     enabledBorder: OutlineInputBorder(
                         borderRadius: BorderRadius.circular(16),
-                        borderSide: BorderSide(color: Colors.white.withOpacity(0.05))),
+                        borderSide: BorderSide(color: Colors.white.withValues(alpha: 0.05))),
                     focusedBorder: OutlineInputBorder(
                         borderRadius: BorderRadius.circular(16),
-                        borderSide: BorderSide(color: primaryColor.withOpacity(0.5))),
+                        borderSide: BorderSide(color: primaryColor.withValues(alpha: 0.5))),
                   ),
                 ),
                 const SizedBox(height: 24),
@@ -225,16 +225,16 @@ class _ViewNotificationPageState extends State<ViewNotificationPage> {
     return Container(
       padding: const EdgeInsets.all(24),
       decoration: BoxDecoration(
-        color: surfaceColor.withOpacity(0.1),
+        color: surfaceColor.withValues(alpha: 0.1),
         borderRadius: BorderRadius.circular(24),
-        border: Border.all(color: surfaceColor.withOpacity(0.2)),
+        border: Border.all(color: surfaceColor.withValues(alpha: 0.2)),
       ),
       child: Row(
         children: [
           Container(
             padding: const EdgeInsets.all(12),
             decoration: BoxDecoration(
-              color: primaryColor.withOpacity(0.1),
+              color: primaryColor.withValues(alpha: 0.1),
               shape: BoxShape.circle,
             ),
             child: Icon(Icons.person_rounded, color: primaryColor, size: 32),
@@ -256,7 +256,7 @@ class _ViewNotificationPageState extends State<ViewNotificationPage> {
                 const SizedBox(height: 4),
                 Text(DateFormat('dd MMM yyyy, HH:mm').format(date),
                     style: TextStyle(
-                        color: Colors.white.withOpacity(0.4), fontSize: 11)),
+                        color: Colors.white.withValues(alpha: 0.4), fontSize: 11)),
               ],
             ),
           ),
@@ -284,9 +284,9 @@ class _ViewNotificationPageState extends State<ViewNotificationPage> {
       margin: const EdgeInsets.only(bottom: 16),
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
-        color: Colors.white.withOpacity(0.02),
+        color: Colors.white.withValues(alpha: 0.02),
         borderRadius: BorderRadius.circular(24),
-        border: Border.all(color: Colors.white.withOpacity(0.05)),
+        border: Border.all(color: Colors.white.withValues(alpha: 0.05)),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -300,7 +300,7 @@ class _ViewNotificationPageState extends State<ViewNotificationPage> {
               Container(
                 padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
                 decoration: BoxDecoration(
-                  color: feedbackColor.withOpacity(0.1),
+                  color: feedbackColor.withValues(alpha: 0.1),
                   borderRadius: BorderRadius.circular(8),
                 ),
                 child: Row(
@@ -323,7 +323,7 @@ class _ViewNotificationPageState extends State<ViewNotificationPage> {
               child: Container(
                 padding: const EdgeInsets.all(12),
                 decoration: BoxDecoration(
-                  color: Colors.white.withOpacity(0.03),
+                  color: Colors.white.withValues(alpha: 0.03),
                   borderRadius: BorderRadius.circular(12),
                 ),
                 child: Row(
@@ -354,7 +354,7 @@ class _ViewNotificationPageState extends State<ViewNotificationPage> {
       children: [
         Text(label,
             style: TextStyle(
-                color: Colors.white.withOpacity(0.3),
+                color: Colors.white.withValues(alpha: 0.3),
                 fontSize: 9,
                 fontWeight: FontWeight.bold)),
         Text(value,
