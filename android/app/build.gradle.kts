@@ -7,7 +7,7 @@ plugins {
 
 android {
     namespace = "com.vyofitness.yamanis_fit"
-    compileSdk = flutter.compileSdkVersion
+    compileSdk = 36
     ndkVersion = flutter.ndkVersion
 
     compileOptions {
@@ -21,8 +21,8 @@ android {
 
     defaultConfig {
         applicationId = "com.vyofitness.yamanis_fit"
-        minSdk = flutter.minSdkVersion // Updated from 21 to meet Flutter's minimum requirement
-        targetSdk = flutter.targetSdkVersion
+        minSdk = flutter.minSdkVersion
+        targetSdk = 34
         versionCode = flutter.versionCode
         versionName = flutter.versionName
     }

@@ -65,6 +65,40 @@ class _LoginPageState extends State<LoginPage> {
     }
   }
 
+  void _forgotPassword() async {
+    final email = _emailController.text.trim();
+    if (email.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Introduce tu email para recuperar la contraseña'),
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
+      return;
+    }
+
+    try {
+      await _authService.sendPasswordResetEmail(email);
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Email de recuperación enviado. Revisa tu bandeja de entrada.'),
+          backgroundColor: Colors.green,
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Error al enviar el email: $e'),
+          backgroundColor: Colors.redAccent,
+          behavior: SnackBarBehavior.floating,
+        ),
+      );
+    }
+  }
+
   InputDecoration _buildInputDecoration(String label, IconData icon) {
     return InputDecoration(
       labelText: label,
@@ -171,35 +205,47 @@ class _LoginPageState extends State<LoginPage> {
                 
                 const SizedBox(height: 16),
 
-                // Stay logged in checkbox
+                // Forgot password and Stay logged in checkbox
                 SizedBox(
                   width: 350,
                   child: Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
-                      Theme(
-                        data: ThemeData(
-                          unselectedWidgetColor: primaryColor.withValues(alpha: 0.5),
-                        ),
-                        child: Checkbox(
-                          value: _stayLoggedIn,
-                          onChanged: (value) {
-                            setState(() {
-                              _stayLoggedIn = value ?? true;
-                            });
-                          },
-                          activeColor: primaryColor,
-                          checkColor: backgroundColor,
-                        ),
+                      Row(
+                        children: [
+                          Theme(
+                            data: ThemeData(
+                              unselectedWidgetColor: primaryColor.withValues(alpha: 0.5),
+                            ),
+                            child: Checkbox(
+                              value: _stayLoggedIn,
+                              onChanged: (value) {
+                                setState(() {
+                                  _stayLoggedIn = value ?? true;
+                                });
+                              },
+                              activeColor: primaryColor,
+                              checkColor: backgroundColor,
+                            ),
+                          ),
+                          const Text(
+                            "Mantener sesión",
+                            style: TextStyle(color: Colors.white, fontSize: 13),
+                          ),
+                        ],
                       ),
-                      const Text(
-                        "Mantener sesión iniciada",
-                        style: TextStyle(color: Colors.white, fontSize: 14),
+                      TextButton(
+                        onPressed: _forgotPassword,
+                        child: Text(
+                          "¿OLVIDASTE TU CONTRASEÑA?",
+                          style: TextStyle(color: primaryColor, fontSize: 11, fontWeight: FontWeight.bold),
+                        ),
                       ),
                     ],
                   ),
                 ),
 
-                const SizedBox(height: 24),
+                const SizedBox(height: 16),
                 
                 SizedBox(
                   width: 350, // Fixed width matching the input box
@@ -215,10 +261,10 @@ class _LoginPageState extends State<LoginPage> {
                       elevation: 0,
                     ),
                     child: isLoading
-                        ? const SizedBox(
+                        ? SizedBox(
                             width: 24,
                             height: 24,
-                            child: CircularProgressIndicator(strokeWidth: 3, color: Colors.black),
+                            child: CircularProgressIndicator(strokeWidth: 3, color: backgroundColor),
                           )
                         : const Text(
                             'INICIAR SESIÓN',

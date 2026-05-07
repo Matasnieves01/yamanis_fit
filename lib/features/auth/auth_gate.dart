@@ -1,5 +1,6 @@
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
+import '../../core/widgets/branded_loading_screen.dart';
 import '../home/presentation/Client/login_page.dart';
 import '../home/presentation/Client/main_navigation_bar.dart';
 import 'auth_service.dart';
@@ -15,48 +16,34 @@ class AuthGate extends StatelessWidget {
       stream: FirebaseAuth.instance.authStateChanges(),
       builder: (context, authSnapshot) {
         if (authSnapshot.connectionState == ConnectionState.waiting) {
-          return const Scaffold(
-            body: Center(child: CircularProgressIndicator()),
-          );
+          return const Scaffold(body: BrandedLoadingScreen());
         }
 
         final user = authSnapshot.data;
-        if (user == null) {
-          return const LoginPage();
-        }
+        if (user == null) return const LoginPage();
 
-        // If we have a user, check if they should stay logged in
-        return FutureBuilder<bool>(
-          future: authService.shouldStayLoggedIn(),
-          builder: (context, stayLoggedInSnapshot) {
-            if (stayLoggedInSnapshot.connectionState == ConnectionState.waiting) {
-              return const Scaffold(
-                body: Center(child: CircularProgressIndicator()),
-              );
+        return FutureBuilder<Map<String, dynamic>>(
+          future: Future.wait([
+            authService.shouldStayLoggedIn(),
+            authService.getUserRole(user.uid),
+          ]).then((results) => {
+            'stayLoggedIn': results[0],
+            'role': results[1],
+          }),
+          builder: (context, snapshot) {
+            if (snapshot.connectionState == ConnectionState.waiting) {
+              return const Scaffold(body: BrandedLoadingScreen());
             }
 
-            final stayLoggedIn = stayLoggedInSnapshot.data ?? true;
+            final stayLoggedIn = snapshot.data?['stayLoggedIn'] ?? true;
+            final role = snapshot.data?['role'] ?? UserRole.user;
 
             if (!stayLoggedIn) {
-              // If they shouldn't stay logged in, sign them out and show login page
               authService.signOut();
               return const LoginPage();
             }
 
-            // If they should stay logged in, proceed to check role and show home
-            return FutureBuilder<UserRole>(
-              future: authService.getUserRole(user.uid),
-              builder: (context, roleSnapshot) {
-                if (roleSnapshot.connectionState == ConnectionState.waiting) {
-                  return const Scaffold(
-                    body: Center(child: CircularProgressIndicator()),
-                  );
-                }
-
-                final role = roleSnapshot.data ?? UserRole.user;
-                return MainNavigationBar(role: role);
-              },
-            );
+            return MainNavigationBar(role: role);
           },
         );
       },

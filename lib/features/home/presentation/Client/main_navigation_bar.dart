@@ -6,6 +6,9 @@ import '../../../auth/auth_service.dart';
 import 'dashboard_page.dart';
 import '../Admin/clients_page.dart';
 import '../Admin/notifications_page.dart';
+import 'package:yamanis_fit/features/home/presentation/Admin/promotions_page.dart' as admin_promotions;
+import 'promotions_page.dart';
+import '../Shared/resources_page.dart';
 import 'profile_page.dart';
 import 'notifications_page.dart';
 
@@ -20,8 +23,30 @@ class MainNavigationBar extends StatefulWidget {
 
 class _MainNavigationBarState extends State<MainNavigationBar> {
   int _currentIndex = 0;
+  bool _isAccessExpired = false;
+  final AuthService _authService = AuthService();
 
   final Color primaryColor = const Color(0xFFAEE084);
+
+  @override
+  void initState() {
+    super.initState();
+    _checkAccessStatus();
+  }
+
+  Future<void> _checkAccessStatus() async {
+    if (widget.role == UserRole.user) {
+      final uid = FirebaseAuth.instance.currentUser?.uid;
+      if (uid != null) {
+        final isActive = await _authService.isUserAccessActive(uid);
+        if (mounted) {
+          setState(() {
+            _isAccessExpired = !isActive;
+          });
+        }
+      }
+    }
+  }
 
   List<Widget> get _pages {
     if (widget.role == UserRole.admin) {
@@ -29,12 +54,16 @@ class _MainNavigationBarState extends State<MainNavigationBar> {
         DashboardPage(),
         WorkoutsPage(),
         ClientsPage(),
+        admin_promotions.PromotionsPage(),
+        ResourcesPage(isAdmin: true),
         NotificationsPage(),
         ProfilePage(),
       ];
     }
     return const [
       DashboardPage(),
+      PromotionsPage(),
+      ResourcesPage(isAdmin: false),
       ClientNotificationsPage(),
       ProfilePage(),
     ];
@@ -58,6 +87,16 @@ class _MainNavigationBarState extends State<MainNavigationBar> {
           activeIcon: Icon(Icons.people),
           label: 'Clientes',
         ),
+        const BottomNavigationBarItem(
+          icon: Icon(Icons.local_offer_outlined),
+          activeIcon: Icon(Icons.local_offer),
+          label: 'Promos',
+        ),
+        const BottomNavigationBarItem(
+          icon: Icon(Icons.folder_outlined),
+          activeIcon: Icon(Icons.folder),
+          label: 'Recursos',
+        ),
         BottomNavigationBarItem(
           icon: _buildNotificationIcon(isAdmin: true),
           label: 'Alertas',
@@ -75,6 +114,16 @@ class _MainNavigationBarState extends State<MainNavigationBar> {
         icon: Icon(Icons.dashboard_outlined),
         activeIcon: Icon(Icons.dashboard),
         label: 'Inicio',
+      ),
+      const BottomNavigationBarItem(
+        icon: Icon(Icons.local_offer_outlined),
+        activeIcon: Icon(Icons.local_offer),
+        label: 'Promociones',
+      ),
+      const BottomNavigationBarItem(
+        icon: Icon(Icons.folder_outlined),
+        activeIcon: Icon(Icons.folder),
+        label: 'Recursos',
       ),
       BottomNavigationBarItem(
         icon: _buildNotificationIcon(isAdmin: false),
@@ -95,9 +144,6 @@ class _MainNavigationBarState extends State<MainNavigationBar> {
       return const Icon(Icons.notifications_outlined);
     }
 
-    // Update queries to match security rules:
-    // 1. Admins only see notifications where targetRole == 'admin'
-    // 2. Clients only see notifications where userId == currentUid
     final stream = isAdmin
         ? FirebaseFirestore.instance
             .collection('notifications')
@@ -114,7 +160,6 @@ class _MainNavigationBarState extends State<MainNavigationBar> {
       stream: stream,
       builder: (context, snapshot) {
         final docs = snapshot.data?.docs ?? [];
-        // The where clauses in the query already handle most filtering
         final hasUnread = docs.isNotEmpty;
 
         return Stack(
@@ -157,9 +202,79 @@ class _MainNavigationBarState extends State<MainNavigationBar> {
     }
 
     return Scaffold(
-      body: IndexedStack(
-        index: _currentIndex,
-        children: pages,
+      body: Stack(
+        fit: StackFit.expand,
+        children: [
+          IndexedStack(
+            index: _currentIndex,
+            children: pages,
+          ),
+          if (_isAccessExpired && widget.role == UserRole.user)
+            Positioned.fill(
+              child: Container(
+                color: Colors.black.withOpacity(0.85),
+                padding: const EdgeInsets.symmetric(horizontal: 32),
+                child: Center(
+                  child: Container(
+                    padding: const EdgeInsets.all(24),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFF1C222D),
+                      borderRadius: BorderRadius.circular(24),
+                      border: Border.all(color: Colors.orangeAccent.withOpacity(0.5)),
+                      boxShadow: [
+                        BoxShadow(
+                          color: Colors.black.withOpacity(0.5),
+                          blurRadius: 20,
+                          spreadRadius: 5,
+                        )
+                      ],
+                    ),
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        const Icon(Icons.warning_amber_rounded, color: Colors.orangeAccent, size: 48),
+                        const SizedBox(height: 16),
+                        const Text(
+                          'AVISO DE SUSCRIPCIÓN',
+                          textAlign: TextAlign.center,
+                          style: TextStyle(
+                            color: Colors.white,
+                            fontSize: 18,
+                            fontWeight: FontWeight.bold,
+                            letterSpacing: 1.1,
+                          ),
+                        ),
+                        const SizedBox(height: 12),
+                        const Text(
+                          'Tu suscripción ha expirado. Recuerda contactar con tu coach para renovarla y mantener tu perfil activo.',
+                          textAlign: TextAlign.center,
+                          style: TextStyle(color: Colors.white70, fontSize: 14, height: 1.5),
+                        ),
+                        const SizedBox(height: 24),
+                        SizedBox(
+                          width: double.infinity,
+                          height: 50,
+                          child: ElevatedButton(
+                            onPressed: () => setState(() => _isAccessExpired = false),
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: Colors.orangeAccent,
+                              foregroundColor: const Color(0xFF11151C),
+                              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                              elevation: 0,
+                            ),
+                            child: const Text(
+                              'ENTENDIDO',
+                              style: TextStyle(fontWeight: FontWeight.bold, letterSpacing: 1.0),
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ),
+            ),
+        ],
       ),
       bottomNavigationBar: Theme(
         data: ThemeData.dark().copyWith(

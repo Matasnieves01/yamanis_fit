@@ -8,13 +8,29 @@ class App extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    const brandBackground = Color(0xFF11151C);
+    const brandPrimary = Color(0xFFAEE084);
+
     return MaterialApp(
       title: 'VYO Fitness',
       debugShowCheckedModeBanner: false,
-      theme: ThemeData.dark(),
+      theme: ThemeData(
+        useMaterial3: true,
+        brightness: Brightness.dark,
+        scaffoldBackgroundColor: brandBackground,
+        colorScheme: ColorScheme.dark(
+          primary: brandPrimary,
+          onPrimary: brandBackground,
+          surface: brandBackground,
+        ),
+        progressIndicatorTheme: const ProgressIndicatorThemeData(
+          color: brandPrimary,
+        ),
+      ),
       initialRoute: '/',
       routes: {
-        '/': (context) => const LoginPage(),
+        '/': (context) => const AuthGate(),
+        '/login': (context) => const LoginPage(),
         '/register': (context) => const RegisterPage(),
         '/home': (context) => const AuthGate(),
       },

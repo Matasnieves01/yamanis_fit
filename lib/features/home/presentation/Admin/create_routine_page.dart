@@ -59,6 +59,22 @@ class RoutineWorkout {
   }
 }
 
+class RoutineDayPlan {
+  String name;
+  List<String> muscleFocus;
+  String intensity;
+  String level;
+  List<RoutineWorkout> workouts;
+
+  RoutineDayPlan({
+    required this.name,
+    required this.muscleFocus,
+    required this.intensity,
+    required this.level,
+    required this.workouts,
+  });
+}
+
 class CreateRoutinePage extends StatefulWidget {
   final String clientId;
   final String clientEmail;
@@ -99,7 +115,23 @@ class _CreateRoutinePageState extends State<CreateRoutinePage> {
 
   DateTime _focusedDay = DateTime.now();
   DateTime? _selectedDay;
+  DateTime _startDate = DateTime.now();
+  final Set<int> _selectedWeekdays = {};
+  final Map<int, RoutineDayPlan> _weekdayPlans = {};
+  int? _activeWeekday;
   bool isLoading = false;
+  bool _isLoadingWorkouts = false;
+
+  static const int _repeatWeeks = 4;
+  static const List<MapEntry<int, String>> _weekdays = [
+    MapEntry(DateTime.monday, 'Lunes'),
+    MapEntry(DateTime.tuesday, 'Martes'),
+    MapEntry(DateTime.wednesday, 'Miercoles'),
+    MapEntry(DateTime.thursday, 'Jueves'),
+    MapEntry(DateTime.friday, 'Viernes'),
+    MapEntry(DateTime.saturday, 'Sabado'),
+    MapEntry(DateTime.sunday, 'Domingo'),
+  ];
 
   final Color backgroundColor = const Color(0xFF11151C);
   final Color surfaceColor = const Color(0xFF55768C);
@@ -108,12 +140,298 @@ class _CreateRoutinePageState extends State<CreateRoutinePage> {
 
   DateTime _dateOnlyLocal(DateTime date) => DateTime(date.year, date.month, date.day);
   DateTime _dateForStorage(DateTime date) => DateTime(date.year, date.month, date.day, 12);
+  bool get _isCreateMode => widget.initialRoutineId == null;
+
+  RoutineExercise _cloneExercise(RoutineExercise ex) {
+    return RoutineExercise(
+      workoutId: ex.workoutId,
+      workoutName: ex.workoutName,
+      reps: ex.reps,
+      weight: ex.weight,
+    );
+  }
+
+  RoutineWorkout _cloneWorkout(RoutineWorkout workout) {
+    return RoutineWorkout(
+      sets: workout.sets,
+      exercises: workout.exercises.map(_cloneExercise).toList(),
+    );
+  }
+
+  List<RoutineWorkout> _cloneWorkouts(List<RoutineWorkout> workouts) {
+    return workouts.map(_cloneWorkout).toList();
+  }
+
+  String _weekdayLabel(int weekday) {
+    for (final entry in _weekdays) {
+      if (entry.key == weekday) return entry.value;
+    }
+    return 'Dia';
+  }
+
+  RoutineDayPlan _captureEditorPlan() {
+    return RoutineDayPlan(
+      name: _nameController.text.trim(),
+      muscleFocus: List<String>.from(_selectedMuscles),
+      intensity: _selectedIntensity,
+      level: _selectedLevel,
+      workouts: _cloneWorkouts(selectedWorkouts),
+    );
+  }
+
+  RoutineDayPlan _emptyPlan() {
+    return RoutineDayPlan(
+      name: '',
+      muscleFocus: [],
+      intensity: 'Alta',
+      level: 'Intermedio',
+      workouts: [],
+    );
+  }
+
+  RoutineDayPlan _ensureDayPlan(int weekday) {
+    return _weekdayPlans.putIfAbsent(weekday, _emptyPlan);
+  }
+
+  void _saveActiveDayDraft() {
+    if (!_isCreateMode || _activeWeekday == null) return;
+    _weekdayPlans[_activeWeekday!] = _captureEditorPlan();
+  }
+
+  void _loadPlanIntoEditor(RoutineDayPlan plan) {
+    _nameController.text = plan.name;
+    _selectedMuscles = List<String>.from(plan.muscleFocus);
+    _selectedIntensity = plan.intensity;
+    _selectedLevel = plan.level;
+    selectedWorkouts = _cloneWorkouts(plan.workouts);
+  }
+
+  void _clearEditorForCreateMode() {
+    _nameController.clear();
+    _selectedMuscles = [];
+    _selectedIntensity = 'Alta';
+    _selectedLevel = 'Intermedio';
+    selectedWorkouts = [];
+  }
+
+  void _setActiveWeekday(int weekday) {
+    if (!_isCreateMode) return;
+    _saveActiveDayDraft();
+    _activeWeekday = weekday;
+    _loadPlanIntoEditor(_ensureDayPlan(weekday));
+  }
+
+  String? _validatePlan(RoutineDayPlan plan, String dayLabel) {
+    if (plan.name.trim().isEmpty) return 'Ingresa un nombre para la rutina de $dayLabel';
+    if (plan.muscleFocus.isEmpty) return 'Selecciona enfoque muscular para $dayLabel';
+    if (plan.workouts.isEmpty) return 'Añade al menos un ejercicio para $dayLabel';
+
+    for (var workout in plan.workouts) {
+      if (workout.sets.trim().isEmpty) {
+        return 'Ingresa series para todos los ejercicios de $dayLabel';
+      }
+      for (var exercise in workout.exercises) {
+        if (exercise.reps.trim().isEmpty || exercise.weight.trim().isEmpty) {
+          return 'Completa reps y peso en $dayLabel (${exercise.workoutName})';
+        }
+      }
+    }
+
+    return null;
+  }
+
+  bool _hasPlanData(int weekday) {
+    final plan = _weekdayPlans[weekday];
+    if (plan == null) return false;
+    return plan.name.trim().isNotEmpty || plan.muscleFocus.isNotEmpty || plan.workouts.isNotEmpty;
+  }
+
+  String _friendlyErrorMessage(Object error) {
+    if (error is FirebaseException) {
+      switch (error.code) {
+        case 'permission-denied':
+          return 'No tienes permisos para esta accion.';
+        case 'unavailable':
+          return 'Servicio temporalmente no disponible. Intenta de nuevo.';
+        case 'deadline-exceeded':
+          return 'La operacion tardo demasiado. Revisa tu conexion.';
+        default:
+          return error.message ?? 'Error inesperado en la base de datos.';
+      }
+    }
+    return 'Ocurrio un error inesperado. Intenta nuevamente.';
+  }
+
+  Future<bool> _confirmRemoveWeekday(int weekday) async {
+    final result = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        backgroundColor: backgroundColor,
+        title: const Text('Quitar dia', style: TextStyle(color: Colors.white)),
+        content: Text(
+          'Si quitas ${_weekdayLabel(weekday)} se perdera su configuracion.',
+          style: const TextStyle(color: Colors.white70),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('CANCELAR'),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(context, true),
+            child: const Text('QUITAR', style: TextStyle(color: Colors.redAccent)),
+          ),
+        ],
+      ),
+    );
+    return result == true;
+  }
+
+  Future<void> _toggleWeekdaySelection(int weekday, bool selected) async {
+    if (selected) {
+      if (!mounted) return;
+      setState(() {
+        _selectedWeekdays.add(weekday);
+        _setActiveWeekday(weekday);
+      });
+      return;
+    }
+
+    final shouldConfirm = _hasPlanData(weekday);
+    if (shouldConfirm) {
+      final confirmed = await _confirmRemoveWeekday(weekday);
+      if (!confirmed || !mounted) return;
+    }
+
+    if (!mounted) return;
+    setState(() {
+      _selectedWeekdays.remove(weekday);
+      _weekdayPlans.remove(weekday);
+      if (_activeWeekday == weekday) {
+        if (_selectedWeekdays.isNotEmpty) {
+          _setActiveWeekday(_selectedWeekdays.first);
+        } else {
+          _activeWeekday = null;
+          _clearEditorForCreateMode();
+        }
+      }
+    });
+  }
+
+  Widget _buildSectionTitle(String title, {String? subtitle}) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(title, style: const TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold)),
+        if (subtitle != null) ...[
+          const SizedBox(height: 4),
+          Text(subtitle, style: TextStyle(color: Colors.white.withValues(alpha: 0.6), fontSize: 12)),
+        ],
+      ],
+    );
+  }
+
+  IconData _weekdayIcon(int weekday) {
+    switch (weekday) {
+      case DateTime.monday:
+        return Icons.bolt;
+      case DateTime.tuesday:
+        return Icons.fitness_center;
+      case DateTime.wednesday:
+        return Icons.local_fire_department;
+      case DateTime.thursday:
+        return Icons.sports_gymnastics;
+      case DateTime.friday:
+        return Icons.trending_up;
+      case DateTime.saturday:
+        return Icons.self_improvement;
+      case DateTime.sunday:
+        return Icons.favorite;
+      default:
+        return Icons.calendar_today;
+    }
+  }
+
+  Widget _buildWeekdayTile(MapEntry<int, String> entry) {
+    final isSelected = _selectedWeekdays.contains(entry.key);
+    final isActive = _activeWeekday == entry.key;
+    final isConfigured = _hasPlanData(entry.key);
+
+    final baseColor = isSelected ? primaryColor : Colors.white;
+
+    return GestureDetector(
+      onTap: () => _toggleWeekdaySelection(entry.key, !isSelected),
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 220),
+        curve: Curves.easeOut,
+        width: 102,
+        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 12),
+        decoration: BoxDecoration(
+          gradient: isSelected
+              ? LinearGradient(
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
+                  colors: [
+                    primaryColor.withValues(alpha: 0.28),
+                    secondaryColor.withValues(alpha: 0.2),
+                  ],
+                )
+              : null,
+          color: isSelected ? null : Colors.white.withValues(alpha: 0.04),
+          borderRadius: BorderRadius.circular(14),
+          border: Border.all(
+            color: isActive
+                ? primaryColor
+                : (isSelected ? primaryColor.withValues(alpha: 0.55) : Colors.white.withValues(alpha: 0.08)),
+            width: isActive ? 1.8 : 1,
+          ),
+          boxShadow: isActive
+              ? [
+                  BoxShadow(
+                    color: primaryColor.withValues(alpha: 0.2),
+                    blurRadius: 12,
+                    spreadRadius: 1,
+                  ),
+                ]
+              : null,
+        ),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Icon(_weekdayIcon(entry.key), size: 14, color: baseColor.withValues(alpha: isSelected ? 1 : 0.7)),
+                if (isConfigured)
+                  Icon(Icons.check_circle, size: 14, color: Colors.greenAccent.withValues(alpha: 0.95)),
+              ],
+            ),
+            const SizedBox(height: 8),
+            Text(
+              entry.value,
+              textAlign: TextAlign.center,
+              style: TextStyle(
+                color: isSelected ? primaryColor : Colors.white70,
+                fontWeight: FontWeight.w700,
+                fontSize: 12,
+              ),
+            ),
+            const SizedBox(height: 2),
+          ],
+        ),
+      ),
+    );
+  }
 
   @override
   void initState() {
     super.initState();
     final now = DateTime.now();
     _selectedDay = _dateOnlyLocal(now);
+    _startDate = _dateOnlyLocal(now);
+    _selectedWeekdays.add(_startDate.weekday);
+    _activeWeekday = _startDate.weekday;
+    _weekdayPlans[_activeWeekday!] = _emptyPlan();
     _prefillForEdit();
     loadWorkouts();
     _fetchClientRoutines();
@@ -135,6 +453,10 @@ class _CreateRoutinePageState extends State<CreateRoutinePage> {
       final normalized = _dateOnlyLocal(date);
       _selectedDay = normalized;
       _focusedDay = normalized;
+      _startDate = normalized;
+      _selectedWeekdays
+        ..clear()
+        ..add(normalized.weekday);
     }
 
     final workouts = initial['workouts'] as List<dynamic>? ?? [];
@@ -155,6 +477,10 @@ class _CreateRoutinePageState extends State<CreateRoutinePage> {
       }
       return RoutineWorkout(sets: (map['sets'] ?? '').toString(), exercises: exercises);
     }).toList();
+
+    if (_isCreateMode) {
+      _weekdayPlans[_activeWeekday ?? _startDate.weekday] = _captureEditorPlan();
+    }
   }
 
   @override
@@ -164,9 +490,17 @@ class _CreateRoutinePageState extends State<CreateRoutinePage> {
   }
 
   Future<void> loadWorkouts() async {
-    final snapshot = await FirebaseFirestore.instance.collection('workouts').get();
-    if (!mounted) return;
-    setState(() => availableWorkouts = snapshot.docs);
+    setState(() => _isLoadingWorkouts = true);
+    try {
+      final snapshot = await FirebaseFirestore.instance.collection('workouts').get();
+      if (!mounted) return;
+      setState(() => availableWorkouts = snapshot.docs);
+    } catch (e) {
+      if (!mounted) return;
+      _showErrorSnackBar(_friendlyErrorMessage(e));
+    } finally {
+      if (mounted) setState(() => _isLoadingWorkouts = false);
+    }
   }
 
   Future<void> _fetchClientRoutines() async {
@@ -195,6 +529,7 @@ class _CreateRoutinePageState extends State<CreateRoutinePage> {
       });
     } catch (e) {
       if (!mounted) return;
+      _showErrorSnackBar(_friendlyErrorMessage(e));
     }
   }
 
@@ -218,71 +553,163 @@ class _CreateRoutinePageState extends State<CreateRoutinePage> {
     final user = FirebaseAuth.instance.currentUser;
     if (user == null) return;
 
-    if (_selectedDay == null) { _showErrorSnackBar('Selecciona un día en el calendario'); return; }
-    if (_nameController.text.trim().isEmpty) { _showErrorSnackBar('Ingresa un nombre para la rutina'); return; }
-    if (_selectedMuscles.isEmpty) { _showErrorSnackBar('Selecciona al menos un enfoque muscular'); return; }
-    if (selectedWorkouts.isEmpty) { _showErrorSnackBar('Añade al menos un ejercicio'); return; }
+    if (_isCreateMode && _selectedWeekdays.isEmpty) {
+      _showErrorSnackBar('Selecciona al menos un dia de la semana');
+      return;
+    }
+    if (!_isCreateMode && _selectedDay == null) { _showErrorSnackBar('Selecciona un día en el calendario'); return; }
 
-    for (var workout in selectedWorkouts) {
-      if (workout.sets.trim().isEmpty) {
-        _showErrorSnackBar('Ingresa el número de series para todos los ejercicios');
-        return;
-      }
-      for (var exercise in workout.exercises) {
-        if (exercise.reps.trim().isEmpty || exercise.weight.trim().isEmpty) {
-          _showErrorSnackBar('Completa repeticiones y peso para ${exercise.workoutName}');
+    if (_isCreateMode) {
+      _saveActiveDayDraft();
+      for (final weekday in _selectedWeekdays) {
+        final plan = _weekdayPlans[weekday];
+        if (plan == null) {
+          _showErrorSnackBar('Configura una rutina para ${_weekdayLabel(weekday)}');
           return;
         }
+        final error = _validatePlan(plan, _weekdayLabel(weekday));
+        if (error != null) {
+          _showErrorSnackBar(error);
+          return;
+        }
+      }
+    } else {
+      final error = _validatePlan(_captureEditorPlan(), 'el dia seleccionado');
+      if (error != null) {
+        _showErrorSnackBar(error);
+        return;
       }
     }
 
     setState(() => isLoading = true);
     try {
-      final DateTime selectedDate = _dateOnlyLocal(_selectedDay!);
-      final DateTime storageDate = _dateForStorage(selectedDate);
-      final workoutData = selectedWorkouts.map((workout) => workout.toMap()).toList();
+      if (!_isCreateMode) {
+        final currentPlan = _captureEditorPlan();
+        final workoutData = currentPlan.workouts.map((workout) => workout.toMap()).toList();
+        final dataToSave = {
+          'name': currentPlan.name,
+          'workouts': workoutData,
+          'muscleFocus': currentPlan.muscleFocus,
+          'intensity': currentPlan.intensity,
+          'level': currentPlan.level,
+          'clientId': widget.clientId,
+          'updatedAt': FieldValue.serverTimestamp(),
+          'updatedBy': user.uid,
+        };
 
-      final dataToSave = {
-        'name': _nameController.text.trim(),
-        'workouts': workoutData,
-        'muscleFocus': _selectedMuscles,
-        'intensity': _selectedIntensity,
-        'level': _selectedLevel,
-        'clientId': widget.clientId,
-        'updatedAt': FieldValue.serverTimestamp(),
-        'updatedBy': user.uid,
-      };
-
-      if (widget.initialRoutineId != null) {
+        final DateTime selectedDate = _dateOnlyLocal(_selectedDay!);
+        final DateTime storageDate = _dateForStorage(selectedDate);
         await FirebaseFirestore.instance.collection('routines').doc(widget.initialRoutineId).update({...dataToSave, 'date': Timestamp.fromDate(storageDate)});
         if (!mounted) return;
         _showSuccessSnackBar('Rutina actualizada');
       } else {
-        final dayStart = selectedDate;
-        final dayEnd = selectedDate.add(const Duration(days: 1));
-        final existing = await FirebaseFirestore.instance.collection('routines').where('clientId', isEqualTo: widget.clientId).where('date', isGreaterThanOrEqualTo: Timestamp.fromDate(dayStart)).where('date', isLessThan: Timestamp.fromDate(dayEnd)).get();
-
-        if (existing.docs.isNotEmpty) {
-          await FirebaseFirestore.instance.collection('routines').doc(existing.docs.first.id).update(dataToSave);
-          if (!mounted) return;
-          _showSuccessSnackBar('Rutina existente actualizada para este día');
-        } else {
-          await FirebaseFirestore.instance.collection('routines').add({...dataToSave, 'createdBy': user.uid, 'date': Timestamp.fromDate(storageDate), 'createdAt': FieldValue.serverTimestamp()});
-          if (!mounted) return;
-          _showSuccessSnackBar('Rutina guardada');
+        final datesToCreate = _buildDatesForFourWeeks(_startDate, _selectedWeekdays);
+        if (datesToCreate.isEmpty) {
+          _showErrorSnackBar('No se generaron fechas. Revisa inicio y dias seleccionados.');
+          setState(() => isLoading = false);
+          return;
         }
+
+        final start = datesToCreate.first;
+        final endExclusive = datesToCreate.last.add(const Duration(days: 1));
+
+        final existingSnapshot = await FirebaseFirestore.instance
+            .collection('routines')
+            .where('clientId', isEqualTo: widget.clientId)
+            .where('date', isGreaterThanOrEqualTo: Timestamp.fromDate(start))
+            .where('date', isLessThan: Timestamp.fromDate(endExclusive))
+            .get();
+
+        final existingByDay = <String, String>{};
+        for (final doc in existingSnapshot.docs) {
+          final ts = doc.data()['date'] as Timestamp?;
+          if (ts == null) continue;
+          final key = _dateKey(_dateOnlyLocal(ts.toDate()));
+          existingByDay[key] = doc.id;
+        }
+
+        int created = 0;
+        int updated = 0;
+        final routines = FirebaseFirestore.instance.collection('routines');
+
+        for (final day in datesToCreate) {
+          final key = _dateKey(day);
+          final storageDate = _dateForStorage(day);
+          final existingId = existingByDay[key];
+          final plan = _weekdayPlans[day.weekday]!;
+          final dataToSave = {
+            'name': plan.name,
+            'workouts': plan.workouts.map((workout) => workout.toMap()).toList(),
+            'muscleFocus': plan.muscleFocus,
+            'intensity': plan.intensity,
+            'level': plan.level,
+            'clientId': widget.clientId,
+            'updatedAt': FieldValue.serverTimestamp(),
+            'updatedBy': user.uid,
+          };
+
+          if (existingId != null) {
+            await routines.doc(existingId).update({...dataToSave, 'date': Timestamp.fromDate(storageDate)});
+            updated++;
+          } else {
+            await routines.add({
+              ...dataToSave,
+              'createdBy': user.uid,
+              'date': Timestamp.fromDate(storageDate),
+              'createdAt': FieldValue.serverTimestamp(),
+            });
+            created++;
+          }
+        }
+
+        if (!mounted) return;
+        _showSuccessSnackBar('Rutinas generadas: $created nuevas, $updated actualizadas');
       }
       if (!mounted) return;
       Navigator.pop(context);
     } catch (e) {
       if (!mounted) return;
-      setState(() => isLoading = false);
-      _showErrorSnackBar('Error: $e');
+      _showErrorSnackBar(_friendlyErrorMessage(e));
+    } finally {
+      if (mounted) setState(() => isLoading = false);
     }
   }
 
   void _showErrorSnackBar(String message) => ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(message), backgroundColor: Colors.redAccent, behavior: SnackBarBehavior.floating));
   void _showSuccessSnackBar(String message) => ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(message), backgroundColor: Colors.green, behavior: SnackBarBehavior.floating));
+
+  String _dateKey(DateTime date) => '${date.year}-${date.month.toString().padLeft(2, '0')}-${date.day.toString().padLeft(2, '0')}';
+
+  List<DateTime> _buildDatesForFourWeeks(DateTime startDate, Set<int> weekdays) {
+    if (weekdays.isEmpty) return [];
+
+    final start = _dateOnlyLocal(startDate);
+    final endExclusive = start.add(const Duration(days: _repeatWeeks * 7));
+    final dates = <DateTime>[];
+
+    for (DateTime day = start; day.isBefore(endExclusive); day = day.add(const Duration(days: 1))) {
+      if (weekdays.contains(day.weekday)) {
+        dates.add(_dateOnlyLocal(day));
+      }
+    }
+
+    return dates;
+  }
+
+  Future<void> _pickStartDate() async {
+    final picked = await showDatePicker(
+      context: context,
+      initialDate: _startDate,
+      firstDate: DateTime(2020, 1, 1),
+      lastDate: DateTime(2030, 12, 31),
+    );
+
+    if (picked == null || !mounted) return;
+    setState(() {
+      _startDate = _dateOnlyLocal(picked);
+      _focusedDay = _startDate;
+    });
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -299,20 +726,109 @@ class _CreateRoutinePageState extends State<CreateRoutinePage> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text("Rutina para ${widget.clientEmail}", style: const TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold)),
+            _buildSectionTitle('Rutina para ${widget.clientEmail}'),
             const SizedBox(height: 32),
-            Container(
-              decoration: BoxDecoration(color: surfaceColor.withValues(alpha: 0.1), borderRadius: BorderRadius.circular(24), border: Border.all(color: surfaceColor.withValues(alpha: 0.2))),
-              child: TableCalendar(
-                firstDay: DateTime.utc(2020, 1, 1), lastDay: DateTime.utc(2030, 12, 31), focusedDay: _focusedDay,
-                selectedDayPredicate: (day) => isSameDay(_selectedDay, day),
-                eventLoader: (day) => _clientRoutines[_dateOnlyLocal(day)] ?? [],
-                onDaySelected: (selectedDay, focusedDay) => setState(() { _selectedDay = _dateOnlyLocal(selectedDay); _focusedDay = focusedDay; }),
-                calendarStyle: CalendarStyle(selectedDecoration: BoxDecoration(color: primaryColor, shape: BoxShape.circle), todayDecoration: BoxDecoration(color: secondaryColor.withValues(alpha: 0.3), shape: BoxShape.circle), defaultTextStyle: const TextStyle(color: Colors.white)),
-                headerStyle: HeaderStyle(formatButtonVisible: false, titleCentered: true, titleTextStyle: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold), leftChevronIcon: Icon(Icons.chevron_left, color: primaryColor), rightChevronIcon: Icon(Icons.chevron_right, color: primaryColor)),
+            if (widget.initialRoutineId != null)
+              Container(
+                decoration: BoxDecoration(color: surfaceColor.withValues(alpha: 0.1), borderRadius: BorderRadius.circular(24), border: Border.all(color: surfaceColor.withValues(alpha: 0.2))),
+                child: TableCalendar(
+                  firstDay: DateTime.utc(2020, 1, 1), lastDay: DateTime.utc(2030, 12, 31), focusedDay: _focusedDay,
+                  selectedDayPredicate: (day) => isSameDay(_selectedDay, day),
+                  eventLoader: (day) => _clientRoutines[_dateOnlyLocal(day)] ?? [],
+                  onDaySelected: (selectedDay, focusedDay) => setState(() { _selectedDay = _dateOnlyLocal(selectedDay); _focusedDay = focusedDay; }),
+                  calendarStyle: CalendarStyle(selectedDecoration: BoxDecoration(color: primaryColor, shape: BoxShape.circle), todayDecoration: BoxDecoration(color: secondaryColor.withValues(alpha: 0.3), shape: BoxShape.circle), defaultTextStyle: const TextStyle(color: Colors.white)),
+                  headerStyle: HeaderStyle(formatButtonVisible: false, titleCentered: true, titleTextStyle: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold), leftChevronIcon: Icon(Icons.chevron_left, color: primaryColor), rightChevronIcon: Icon(Icons.chevron_right, color: primaryColor)),
+                ),
+              )
+            else
+              Container(
+                width: double.infinity,
+                padding: const EdgeInsets.all(16),
+                decoration: BoxDecoration(
+                  color: surfaceColor.withValues(alpha: 0.1),
+                  borderRadius: BorderRadius.circular(20),
+                  border: Border.all(color: surfaceColor.withValues(alpha: 0.2)),
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    _buildSectionTitle('Dias de la semana'),
+                    const SizedBox(height: 10),
+                    Wrap(
+                      spacing: 8,
+                      runSpacing: 8,
+                      children: _weekdays.map(_buildWeekdayTile).toList(),
+                    ),
+                    if (_selectedWeekdays.isNotEmpty) ...[
+                      const SizedBox(height: 12),
+                      Wrap(
+                        spacing: 8,
+                        runSpacing: 8,
+                        children: _weekdays
+                            .where((entry) => _selectedWeekdays.contains(entry.key))
+                            .map((entry) {
+                          final isActive = _activeWeekday == entry.key;
+                          return ChoiceChip(
+                            label: Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                if (isActive) ...[
+                                  Icon(Icons.edit, size: 14, color: primaryColor),
+                                  const SizedBox(width: 6),
+                                ],
+                                Text(entry.value),
+                              ],
+                            ),
+                            selected: isActive,
+                            onSelected: (_) {
+                              setState(() {
+                                _setActiveWeekday(entry.key);
+                              });
+                            },
+                            selectedColor: primaryColor.withValues(alpha: 0.25),
+                            labelStyle: TextStyle(color: isActive ? primaryColor : Colors.white70),
+                            backgroundColor: Colors.white.withValues(alpha: 0.05),
+                            side: BorderSide(
+                              color: isActive ? primaryColor : Colors.white.withValues(alpha: 0.12),
+                            ),
+                          );
+                        }).toList(),
+                      ),
+                    ],
+                    const SizedBox(height: 14),
+                    InkWell(
+                      onTap: _pickStartDate,
+                      borderRadius: BorderRadius.circular(14),
+                      child: Container(
+                        width: double.infinity,
+                        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+                        decoration: BoxDecoration(
+                          color: Colors.white.withValues(alpha: 0.05),
+                          borderRadius: BorderRadius.circular(14),
+                          border: Border.all(color: Colors.white.withValues(alpha: 0.1)),
+                        ),
+                        child: Row(
+                          children: [
+                            Icon(Icons.event, color: primaryColor),
+                            const SizedBox(width: 10),
+                            Expanded(
+                              child: Text(
+                                'Fecha de inicio: ${_startDate.day.toString().padLeft(2, '0')}/${_startDate.month.toString().padLeft(2, '0')}/${_startDate.year}',
+                                style: const TextStyle(color: Colors.white),
+                              ),
+                            ),
+                            Icon(Icons.edit_calendar, color: secondaryColor),
+                          ],
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 4),
+                  ],
+                ),
               ),
-            ),
             const SizedBox(height: 32),
+            _buildSectionTitle('Datos de la rutina'),
+            const SizedBox(height: 8),
             TextField(controller: _nameController, style: const TextStyle(color: Colors.white), decoration: _buildInputDecoration(label: 'Nombre de la Rutina', hint: 'Ej: Empuje Potencia', icon: Icons.edit_rounded)),
             const SizedBox(height: 24),
             Row(
@@ -323,7 +839,7 @@ class _CreateRoutinePageState extends State<CreateRoutinePage> {
               ],
             ),
             const SizedBox(height: 32),
-            const Text("Enfoque Muscular", style: TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold)),
+            _buildSectionTitle('Enfoque Muscular'),
             const SizedBox(height: 12),
             Wrap(
               spacing: 8, runSpacing: 4,
@@ -337,40 +853,52 @@ class _CreateRoutinePageState extends State<CreateRoutinePage> {
               }).toList(),
             ),
             const SizedBox(height: 32),
-            const Text("Ejercicios Seleccionados", style: TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold)),
+            _buildSectionTitle('Ejercicios Seleccionados'),
             const SizedBox(height: 16),
-            ListView.builder(
-              shrinkWrap: true, physics: const NeverScrollableScrollPhysics(), itemCount: selectedWorkouts.length,
-              itemBuilder: (context, index) {
-                final item = selectedWorkouts[index];
-                return Container(
-                  margin: const EdgeInsets.only(bottom: 24), padding: const EdgeInsets.all(20),
-                  decoration: BoxDecoration(color: surfaceColor.withValues(alpha: 0.1), borderRadius: BorderRadius.circular(24), border: Border.all(color: surfaceColor.withValues(alpha: 0.2))),
-                  child: Column(
-                    children: [
-                      Row(children: [ _buildSmallField(label: 'Series', initialValue: item.sets, onChanged: (v) => item.sets = v), const SizedBox(width: 20), IconButton(icon: const Icon(Icons.delete_outline, color: Colors.redAccent), onPressed: () => setState(() => selectedWorkouts.removeAt(index)))]),
-                      const Divider(height: 32, color: Colors.white10),
-                      ...item.exercises.asMap().entries.map((entry) {
-                        final exIdx = entry.key; final ex = entry.value;
-                        return Column(children: [
-                          if (exIdx > 0) const Padding(padding: EdgeInsets.symmetric(vertical: 8), child: Text("SUPERSET", style: TextStyle(color: Colors.orangeAccent, fontSize: 10, fontWeight: FontWeight.bold))),
-                          Row(children: [Expanded(child: Text(ex.workoutName.toUpperCase(), style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w900, fontSize: 13))), if (item.exercises.length > 1) IconButton(icon: const Icon(Icons.remove_circle_outline, color: Colors.redAccent, size: 18), onPressed: () => setState(() => item.exercises.removeAt(exIdx)))]),
-                          const SizedBox(height: 12),
-                          Row(children: [_buildSmallField(label: 'Reps', initialValue: ex.reps, onChanged: (v) => ex.reps = v), const SizedBox(width: 12), _buildSmallField(label: 'Peso', initialValue: ex.weight, onChanged: (v) => ex.weight = v)]),
-                          const SizedBox(height: 16),
-                        ]);
-                      }),
-                      if (item.exercises.length < 2) TextButton.icon(onPressed: () => _showAddExerciseToSupersetDialog(index), icon: Icon(Icons.add, color: secondaryColor, size: 16), label: Text("AÑADIR SUPERSET", style: TextStyle(color: secondaryColor, fontSize: 11, fontWeight: FontWeight.bold))),
-                    ],
-                  ),
-                );
-              },
-            ),
+            if (selectedWorkouts.isEmpty)
+              Container(
+                width: double.infinity,
+                padding: const EdgeInsets.all(16),
+                decoration: BoxDecoration(
+                  color: surfaceColor.withValues(alpha: 0.08),
+                  borderRadius: BorderRadius.circular(16),
+                  border: Border.all(color: surfaceColor.withValues(alpha: 0.2)),
+                ),
+                child: const Text('Sin ejercicios seleccionados.', style: TextStyle(color: Colors.white70)),
+              )
+            else
+              ListView.builder(
+                shrinkWrap: true, physics: const NeverScrollableScrollPhysics(), itemCount: selectedWorkouts.length,
+                itemBuilder: (context, index) {
+                  final item = selectedWorkouts[index];
+                  return Container(
+                    margin: const EdgeInsets.only(bottom: 24), padding: const EdgeInsets.all(20),
+                    decoration: BoxDecoration(color: surfaceColor.withValues(alpha: 0.1), borderRadius: BorderRadius.circular(24), border: Border.all(color: surfaceColor.withValues(alpha: 0.2))),
+                    child: Column(
+                      children: [
+                        Row(children: [ _buildSmallField(label: 'Series', initialValue: item.sets, onChanged: (v) => item.sets = v), const SizedBox(width: 20), IconButton(icon: const Icon(Icons.delete_outline, color: Colors.redAccent), onPressed: () => setState(() => selectedWorkouts.removeAt(index)))]),
+                        const Divider(height: 32, color: Colors.white10),
+                        ...item.exercises.asMap().entries.map((entry) {
+                          final exIdx = entry.key; final ex = entry.value;
+                          return Column(children: [
+                            if (exIdx > 0) const Padding(padding: EdgeInsets.symmetric(vertical: 8), child: Text("SUPERSET", style: TextStyle(color: Colors.orangeAccent, fontSize: 10, fontWeight: FontWeight.bold))),
+                            Row(children: [Expanded(child: Text(ex.workoutName.toUpperCase(), style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w900, fontSize: 13))), if (item.exercises.length > 1) IconButton(icon: const Icon(Icons.remove_circle_outline, color: Colors.redAccent, size: 18), onPressed: () => setState(() => item.exercises.removeAt(exIdx)))]),
+                            const SizedBox(height: 12),
+                            Row(children: [_buildSmallField(label: 'Reps', initialValue: ex.reps, onChanged: (v) => ex.reps = v), const SizedBox(width: 12), _buildSmallField(label: 'Peso', initialValue: ex.weight, onChanged: (v) => ex.weight = v)]),
+                            const SizedBox(height: 16),
+                          ]);
+                        }),
+                        if (item.exercises.length < 2) TextButton.icon(onPressed: () => _showAddExerciseToSupersetDialog(index), icon: Icon(Icons.add, color: secondaryColor, size: 16), label: Text("AÑADIR SUPERSET", style: TextStyle(color: secondaryColor, fontSize: 11, fontWeight: FontWeight.bold))),
+                      ],
+                    ),
+                  );
+                },
+              ),
             const SizedBox(height: 32),
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                const Text("Ejercicios Disponibles", style: TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold)),
+                _buildSectionTitle('Ejercicios Disponibles'),
                 TextButton.icon(
                   onPressed: () async {
                     await Navigator.push(context, MaterialPageRoute(builder: (context) => const CreateWorkoutPage()));
@@ -382,18 +910,32 @@ class _CreateRoutinePageState extends State<CreateRoutinePage> {
               ],
             ),
             const SizedBox(height: 12),
-            SizedBox(
-              height: 44,
-              child: ListView.builder(
-                scrollDirection: Axis.horizontal, itemCount: availableWorkouts.length,
-                itemBuilder: (context, index) {
-                  final workout = availableWorkouts[index];
-                  return Padding(padding: const EdgeInsets.only(right: 8), child: ActionChip(backgroundColor: surfaceColor.withValues(alpha: 0.1), label: Text(workout['name'], style: const TextStyle(color: Colors.white)), onPressed: () => _addWorkoutToRoutine(workout.id, workout['name'])));
-                },
+            if (_isLoadingWorkouts)
+              Center(child: CircularProgressIndicator(color: primaryColor))
+            else if (availableWorkouts.isEmpty)
+              Container(
+                width: double.infinity,
+                padding: const EdgeInsets.all(16),
+                decoration: BoxDecoration(
+                  color: surfaceColor.withValues(alpha: 0.08),
+                  borderRadius: BorderRadius.circular(16),
+                  border: Border.all(color: surfaceColor.withValues(alpha: 0.2)),
+                ),
+                child: const Text('No hay ejercicios creados todavia. Usa "CREAR NUEVO".', style: TextStyle(color: Colors.white70)),
+              )
+            else
+              SizedBox(
+                height: 44,
+                child: ListView.builder(
+                  scrollDirection: Axis.horizontal, itemCount: availableWorkouts.length,
+                  itemBuilder: (context, index) {
+                    final workout = availableWorkouts[index];
+                    return Padding(padding: const EdgeInsets.only(right: 8), child: ActionChip(backgroundColor: surfaceColor.withValues(alpha: 0.1), label: Text(workout['name'], style: const TextStyle(color: Colors.white)), onPressed: () => _addWorkoutToRoutine(workout.id, workout['name'])));
+                  },
+                ),
               ),
-            ),
             const SizedBox(height: 40),
-            SizedBox(width: double.infinity, height: 60, child: ElevatedButton(onPressed: isLoading ? null : _saveRoutine, style: ElevatedButton.styleFrom(backgroundColor: primaryColor, foregroundColor: backgroundColor, shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16))), child: isLoading ? const SizedBox(width: 24, height: 24, child: CircularProgressIndicator(strokeWidth: 3, color: Colors.black)) : const Text('GUARDAR RUTINA', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, letterSpacing: 1.2)))),
+            SizedBox(width: double.infinity, height: 60, child: ElevatedButton(onPressed: isLoading ? null : _saveRoutine, style: ElevatedButton.styleFrom(backgroundColor: primaryColor, foregroundColor: backgroundColor, shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16))), child: isLoading ? const SizedBox(width: 24, height: 24, child: CircularProgressIndicator(strokeWidth: 3, color: Colors.black)) : Text(_isCreateMode ? 'GUARDAR RUTINAS' : 'GUARDAR RUTINA', style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold, letterSpacing: 1.2)))),
             const SizedBox(height: 40),
           ],
         ),
@@ -440,9 +982,7 @@ class _CreateRoutinePageState extends State<CreateRoutinePage> {
               Container(width: 40, height: 4, decoration: BoxDecoration(color: Colors.white24, borderRadius: BorderRadius.circular(2))),
               const SizedBox(height: 24),
               const Text("AÑADIR AL SUPERSET", style: TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.w900, letterSpacing: 1.2)),
-              const SizedBox(height: 12),
-              Text("Selecciona un segundo ejercicio para esta serie", style: TextStyle(color: Colors.white.withValues(alpha: 0.5), fontSize: 14)),
-              const SizedBox(height: 24),
+              const SizedBox(height: 18),
               ConstrainedBox(
                 constraints: BoxConstraints(maxHeight: MediaQuery.of(context).size.height * 0.4),
                 child: ListView.builder(

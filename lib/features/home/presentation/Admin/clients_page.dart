@@ -31,6 +31,48 @@ class _ClientsPageState extends State<ClientsPage> {
     super.dispose();
   }
 
+  Future<void> _cancelSubscription(String userId, String userName) async {
+    final bool? confirm = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        backgroundColor: backgroundColor,
+        title: const Text("CANCELAR SUSCRIPCIÓN", style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+        content: Text("¿Estás seguro de que deseas cancelar la suscripción de $userName? El usuario perderá el acceso premium de inmediato."),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text("VOLVER", style: TextStyle(color: Colors.white54)),
+          ),
+          ElevatedButton(
+            onPressed: () => Navigator.pop(context, true),
+            style: ElevatedButton.styleFrom(backgroundColor: Colors.redAccent),
+            child: const Text("CANCELAR AHORA", style: TextStyle(color: Colors.white)),
+          ),
+        ],
+      ),
+    );
+
+    if (confirm == true) {
+      try {
+        await FirebaseFirestore.instance.collection('users').doc(userId).update({
+          'isActive': false,
+          'activeUntil': null,
+        });
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('Suscripción cancelada correctamente'), behavior: SnackBarBehavior.floating),
+          );
+        }
+      } catch (e) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text('Error al cancelar: $e'), backgroundColor: Colors.redAccent),
+          );
+        }
+      }
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -159,26 +201,39 @@ class _ClientsPageState extends State<ClientsPage> {
                             ),
                           ],
                         ),
-                        trailing: ElevatedButton(
-                          onPressed: () {
-                            Navigator.push(
-                              context,
-                              MaterialPageRoute(
-                                builder: (_) => ClientRoutinesPage(
-                                  clientId: client.id,
-                                  clientName: fullName.isNotEmpty ? fullName : email,
-                                  clientEmail: email,
-                                ),
+                        trailing: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            if (isActiveNow)
+                              IconButton(
+                                icon: const Icon(Icons.cancel_outlined, color: Colors.redAccent, size: 22),
+                                tooltip: "Cancelar Suscripción",
+                                onPressed: () => _cancelSubscription(client.id, fullName.isNotEmpty ? fullName : email),
                               ),
-                            );
-                          },
-                          style: ElevatedButton.styleFrom(
-                            backgroundColor: primaryColor,
-                            foregroundColor: backgroundColor,
-                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                            elevation: 0,
-                          ),
-                          child: const Text("VER", style: TextStyle(fontWeight: FontWeight.bold)),
+                            const SizedBox(width: 4),
+                            ElevatedButton(
+                              onPressed: () {
+                                Navigator.push(
+                                  context,
+                                  MaterialPageRoute(
+                                    builder: (_) => ClientRoutinesPage(
+                                      clientId: client.id,
+                                      clientName: fullName.isNotEmpty ? fullName : email,
+                                      clientEmail: email,
+                                    ),
+                                  ),
+                                );
+                              },
+                              style: ElevatedButton.styleFrom(
+                                backgroundColor: primaryColor,
+                                foregroundColor: backgroundColor,
+                                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                                elevation: 0,
+                                padding: const EdgeInsets.symmetric(horizontal: 16),
+                              ),
+                              child: const Text("VER", style: TextStyle(fontWeight: FontWeight.bold)),
+                            ),
+                          ],
                         ),
                       ),
                     );

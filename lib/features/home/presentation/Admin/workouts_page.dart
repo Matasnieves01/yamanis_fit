@@ -246,6 +246,7 @@ class _WorkoutsPageState extends State<WorkoutsPage> {
         ],
       ),
       floatingActionButton: FloatingActionButton(
+        heroTag: 'workouts_fab',
         backgroundColor: primaryColor,
         foregroundColor: backgroundColor,
         onPressed: () {

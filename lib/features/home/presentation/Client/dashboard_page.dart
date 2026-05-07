@@ -3,8 +3,9 @@ import 'package:table_calendar/table_calendar.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'view_workout_page.dart';
-import 'start_routine_page.dart';
+import 'package:yamanis_fit/features/home/presentation/Client/start_routine_page.dart';
 import 'package:intl/intl.dart';
+import 'package:yamanis_fit/core/widgets/branded_loading_screen.dart';
 
 class DashboardPage extends StatefulWidget {
   const DashboardPage({super.key});
@@ -136,6 +137,7 @@ class _DashboardPageState extends State<DashboardPage> {
     }
   }
 
+
   List<Map<String, dynamic>> _getRoutinesForDay(DateTime day) {
     return _routines[DateTime.utc(day.year, day.month, day.day)] ?? [];
   }
@@ -144,11 +146,13 @@ class _DashboardPageState extends State<DashboardPage> {
   Widget build(BuildContext context) {
     final routinesForSelectedDay = _getRoutinesForDay(_selectedDay ?? _focusedDay);
 
+    if (_isLoading) {
+      return const BrandedLoadingScreen();
+    }
+
     return Scaffold(
       backgroundColor: backgroundColor,
-      body: _isLoading
-          ? Center(child: CircularProgressIndicator(color: primaryColor))
-          : SafeArea(
+      body: SafeArea(
               child: SingleChildScrollView(
                 child: Padding(
                   padding: const EdgeInsets.symmetric(horizontal: 24.0),
@@ -175,7 +179,9 @@ class _DashboardPageState extends State<DashboardPage> {
                           ),
                           IconButton(
                             icon: Icon(Icons.refresh, color: primaryColor),
-                            onPressed: _fetchRoutines,
+                            onPressed: () {
+                              _fetchRoutines();
+                            },
                           ),
                         ],
                       ),
@@ -725,4 +731,6 @@ class _DashboardPageState extends State<DashboardPage> {
       ),
     );
   }
+
+
 }
