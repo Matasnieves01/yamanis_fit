@@ -1,8 +1,5 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:firebase_storage/firebase_storage.dart';
 import 'package:flutter/material.dart';
-import 'package:file_picker/file_picker.dart';
-import 'dart:io';
 
 class UploadPdfPage extends StatefulWidget {
   const UploadPdfPage({super.key});
@@ -13,9 +10,10 @@ class UploadPdfPage extends StatefulWidget {
 
 class _UploadPdfPageState extends State<UploadPdfPage> {
   final TextEditingController _nameController = TextEditingController();
-  File? _selectedFile;
-  String? _fileName;
+  final TextEditingController _urlController = TextEditingController();
+  final TextEditingController _priceController = TextEditingController(text: '0.0');
   bool _isUploading = false;
+  bool _isFree = true;
 
   final Color backgroundColor = const Color(0xFF11151C);
   final Color surfaceColor = const Color(0xFF55768C);
@@ -25,32 +23,25 @@ class _UploadPdfPageState extends State<UploadPdfPage> {
   @override
   void dispose() {
     _nameController.dispose();
+    _urlController.dispose();
+    _priceController.dispose();
     super.dispose();
   }
 
-  Future<void> _pickFile() async {
-    final result = await FilePicker.platform.pickFiles(
-      type: FileType.custom,
-      allowedExtensions: ['pdf'],
-    );
-
-    if (result != null && result.files.single.path != null) {
-      setState(() {
-        _selectedFile = File(result.files.single.path!);
-        _fileName = result.files.single.name;
-        // Pre-fill name if empty
-        if (_nameController.text.isEmpty) {
-          _nameController.text = _fileName!.replaceAll('.pdf', '');
-        }
-      });
-    }
-  }
-
-  Future<void> _uploadPdf() async {
+  Future<void> _saveResource() async {
     final name = _nameController.text.trim();
-    if (name.isEmpty || _selectedFile == null) {
+    final link = _urlController.text.trim();
+    
+    if (name.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Por favor, ingresa un nombre y selecciona un archivo')),
+        const SnackBar(content: Text('Por favor, ingresa un nombre para el recurso')),
+      );
+      return;
+    }
+
+    if (link.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Por favor, pega un enlace de Google Drive o similar')),
       );
       return;
     }
@@ -58,27 +49,43 @@ class _UploadPdfPageState extends State<UploadPdfPage> {
     setState(() => _isUploading = true);
 
     try {
-      final storageFileName = '${DateTime.now().millisecondsSinceEpoch}.pdf';
-      final storageRef = FirebaseStorage.instance.ref().child('resources').child(storageFileName);
-      
-      await storageRef.putFile(_selectedFile!);
-      final url = await storageRef.getDownloadURL();
+      String finalUrl = link;
+
+      // Conversión automática de Google Drive a enlace directo
+      if (finalUrl.contains('drive.google.com')) {
+        final uri = Uri.parse(finalUrl);
+        String? fileId;
+        if (uri.path.contains('/file/d/')) {
+          fileId = uri.pathSegments[uri.pathSegments.indexOf('d') + 1];
+        } else {
+          fileId = uri.queryParameters['id'];
+        }
+
+        if (fileId != null) {
+          finalUrl = 'https://drive.google.com/uc?export=download&id=$fileId';
+          print('Enlace convertido a descarga directa: $finalUrl');
+        }
+      }
+
+      final price = double.tryParse(_priceController.text) ?? 0.0;
 
       await FirebaseFirestore.instance.collection('resources').add({
         'name': name,
-        'url': url,
+        'url': finalUrl,
         'createdAt': FieldValue.serverTimestamp(),
+        'price': _isFree ? 0.0 : price,
+        'isFree': _isFree,
       });
 
       if (!mounted) return;
       Navigator.pop(context, true);
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('PDF subido correctamente')),
+        const SnackBar(content: Text('Recurso guardado con éxito')),
       );
     } catch (e) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Error al subir PDF: $e')),
+        SnackBar(content: Text('Error al guardar: $e')),
       );
     } finally {
       if (mounted) setState(() => _isUploading = false);
@@ -113,7 +120,7 @@ class _UploadPdfPageState extends State<UploadPdfPage> {
     return Scaffold(
       backgroundColor: backgroundColor,
       appBar: AppBar(
-        title: const Text('SUBIR RECURSO', style: TextStyle(fontWeight: FontWeight.w900)),
+        title: const Text('AÑADIR RECURSO', style: TextStyle(fontWeight: FontWeight.w900)),
         centerTitle: true,
         backgroundColor: Colors.transparent,
         elevation: 0,
@@ -123,48 +130,55 @@ class _UploadPdfPageState extends State<UploadPdfPage> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
+            const Text(
+              'Detalles del Recurso',
+              style: TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold),
+            ),
+            const SizedBox(height: 24),
             TextField(
               controller: _nameController,
               style: const TextStyle(color: Colors.white),
-              decoration: _inputDecoration('Nombre del Recurso', Icons.title_rounded),
+              decoration: _inputDecoration('Nombre (Ej: Guía de Nutrición)', Icons.title_rounded),
+            ),
+            const SizedBox(height: 16),
+            TextField(
+              controller: _urlController,
+              style: const TextStyle(color: Colors.white),
+              decoration: _inputDecoration('Enlace de Google Drive', Icons.link_rounded).copyWith(
+                helperText: 'Pega el enlace de "Compartir" de Google Drive',
+                helperStyle: const TextStyle(color: Colors.white38),
+              ),
             ),
             const SizedBox(height: 24),
-            const Text(
-              'ARCHIVO PDF',
-              style: TextStyle(color: Colors.white, fontSize: 14, fontWeight: FontWeight.bold, letterSpacing: 1.0),
-            ),
-            const SizedBox(height: 12),
-            GestureDetector(
-              onTap: _isUploading ? null : _pickFile,
-              child: Container(
-                width: double.infinity,
-                padding: const EdgeInsets.all(32),
-                decoration: BoxDecoration(
-                  color: surfaceColor.withOpacity(0.05),
-                  borderRadius: BorderRadius.circular(20),
-                  border: Border.all(
-                    color: _selectedFile != null ? primaryColor.withOpacity(0.5) : surfaceColor.withOpacity(0.2),
-                    style: BorderStyle.solid,
-                  ),
-                ),
-                child: Column(
-                  children: [
-                    Icon(
-                      _selectedFile != null ? Icons.check_circle_rounded : Icons.picture_as_pdf_rounded,
-                      size: 48,
-                      color: _selectedFile != null ? primaryColor : Colors.white24,
-                    ),
-                    const SizedBox(height: 16),
-                    Text(
-                      _fileName ?? 'Toca para seleccionar PDF',
-                      style: TextStyle(
-                        color: _selectedFile != null ? Colors.white : Colors.white38,
-                        fontWeight: _selectedFile != null ? FontWeight.bold : FontWeight.normal,
+            Container(
+              padding: const EdgeInsets.all(16),
+              decoration: BoxDecoration(
+                color: surfaceColor.withOpacity(0.1),
+                borderRadius: BorderRadius.circular(16),
+              ),
+              child: Column(
+                children: [
+                  Row(
+                    children: [
+                      const Text('Acceso Gratuito', style: TextStyle(color: Colors.white70, fontSize: 16)),
+                      const Spacer(),
+                      Switch(
+                        value: _isFree,
+                        onChanged: (val) => setState(() => _isFree = val),
+                        activeColor: primaryColor,
                       ),
-                      textAlign: TextAlign.center,
+                    ],
+                  ),
+                  if (!_isFree) ...[
+                    const Divider(color: Colors.white10, height: 24),
+                    TextField(
+                      controller: _priceController,
+                      keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                      style: const TextStyle(color: Colors.white),
+                      decoration: _inputDecoration('Precio (\$)', Icons.attach_money_rounded),
                     ),
                   ],
-                ),
+                ],
               ),
             ),
             const SizedBox(height: 40),
@@ -172,7 +186,7 @@ class _UploadPdfPageState extends State<UploadPdfPage> {
               width: double.infinity,
               height: 56,
               child: ElevatedButton(
-                onPressed: _isUploading ? null : _uploadPdf,
+                onPressed: _isUploading ? null : _saveResource,
                 style: ElevatedButton.styleFrom(
                   backgroundColor: primaryColor,
                   foregroundColor: backgroundColor,

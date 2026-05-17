@@ -2,6 +2,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import 'package:yamanis_fit/models/promotion.dart';
 import 'promotion_detail_page.dart';
+import '../../../../core/widgets/branded_loading_screen.dart';
 
 class PromotionsPage extends StatefulWidget {
   const PromotionsPage({super.key});
@@ -151,7 +152,7 @@ class _PromotionsPageState extends State<PromotionsPage> {
         stream: _promotionsStream(),
         builder: (context, snapshot) {
           if (snapshot.connectionState == ConnectionState.waiting) {
-            return Center(child: CircularProgressIndicator(color: primaryColor));
+            return const BrandedLoadingScreen();
           }
 
           if (snapshot.hasError) {

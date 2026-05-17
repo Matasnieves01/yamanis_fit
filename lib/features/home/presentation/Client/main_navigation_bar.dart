@@ -154,12 +154,23 @@ class _MainNavigationBarState extends State<MainNavigationBar> {
             .collection('notifications')
             .where('userId', isEqualTo: uid)
             .where('read', isEqualTo: false)
-            .snapshots();
+            .snapshots()
+            .map((snapshot) {
+              // Filtrar localmente porque no podemos hacer query de campo inexistente vs valor específico
+              // de forma simple sin índices compuestos si hay otros filtros.
+              // En este caso, queremos evitar las que tienen targetRole == 'admin'
+              return snapshot.docs.where((doc) {
+                final data = doc.data();
+                return data['targetRole'] != 'admin';
+              }).toList();
+            });
 
-    return StreamBuilder<QuerySnapshot>(
+    return StreamBuilder(
       stream: stream,
       builder: (context, snapshot) {
-        final docs = snapshot.data?.docs ?? [];
+        final docs = (snapshot.data is List) 
+            ? (snapshot.data as List) 
+            : (snapshot.data as QuerySnapshot?)?.docs ?? [];
         final hasUnread = docs.isNotEmpty;
 
         return Stack(

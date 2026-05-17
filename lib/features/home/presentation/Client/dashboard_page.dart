@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:table_calendar/table_calendar.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:url_launcher/url_launcher.dart';
 import 'view_workout_page.dart';
 import 'package:yamanis_fit/features/home/presentation/Client/start_routine_page.dart';
 import 'package:intl/intl.dart';
@@ -513,65 +514,134 @@ class _DashboardPageState extends State<DashboardPage> {
                   ),
                 ),
               ),
-              children: [
-                ...workouts.map((workout) {
-                  final exercises = (workout['exercises'] as List?) ?? [];
-                  final isSuperset = exercises.length > 1;
+               children: [
+                 // Mostrar PDF de plan de alimentación si existe
+                 if ((routine['nutritionPlanUrl'] as String?)?.isNotEmpty ?? false)
+                   Padding(
+                     padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+                     child: GestureDetector(
+                       onTap: () async {
+                         final url = routine['nutritionPlanUrl'] as String;
+                         if (await canLaunchUrl(Uri.parse(url))) {
+                           await launchUrl(Uri.parse(url), mode: LaunchMode.externalApplication);
+                         } else {
+                           if (mounted) {
+                             ScaffoldMessenger.of(context).showSnackBar(
+                               const SnackBar(
+                                 content: Text('No se pudo abrir el enlace'),
+                                 backgroundColor: Colors.redAccent,
+                               ),
+                             );
+                           }
+                         }
+                       },
+                       child: Container(
+                         width: double.infinity,
+                         padding: const EdgeInsets.all(16),
+                         decoration: BoxDecoration(
+                           color: secondaryColor.withOpacity(0.1),
+                           borderRadius: BorderRadius.circular(16),
+                           border: Border.all(color: secondaryColor.withOpacity(0.3)),
+                         ),
+                         child: Row(
+                           children: [
+                             Container(
+                               padding: const EdgeInsets.all(10),
+                               decoration: BoxDecoration(
+                                 color: secondaryColor.withOpacity(0.2),
+                                 borderRadius: BorderRadius.circular(10),
+                               ),
+                               child: Icon(Icons.file_download_rounded, color: secondaryColor, size: 24),
+                             ),
+                             const SizedBox(width: 16),
+                             Expanded(
+                               child: Column(
+                                 crossAxisAlignment: CrossAxisAlignment.start,
+                                 children: [
+                                   Text(
+                                     'PLAN DE ALIMENTACIÓN',
+                                     style: TextStyle(
+                                       color: secondaryColor,
+                                       fontWeight: FontWeight.bold,
+                                       fontSize: 12,
+                                       letterSpacing: 0.5,
+                                     ),
+                                   ),
+                                   const SizedBox(height: 4),
+                                   Text(
+                                     'Descarga tu plan personalizado',
+                                     style: TextStyle(
+                                       color: Colors.white.withOpacity(0.7),
+                                       fontSize: 12,
+                                     ),
+                                   ),
+                                 ],
+                               ),
+                             ),
+                             Icon(Icons.open_in_new, color: secondaryColor, size: 20),
+                           ],
+                         ),
+                       ),
+                     ),
+                   ),
+                 ...workouts.map((workout) {
+                   final exercises = (workout['exercises'] as List?) ?? [];
+                   final isSuperset = exercises.length > 1;
 
-                  return Container(
-                    margin: const EdgeInsets.symmetric(horizontal: 24, vertical: 8),
-                    padding: const EdgeInsets.all(16),
-                    decoration: BoxDecoration(
-                      color: Colors.white.withOpacity(0.05),
-                      borderRadius: BorderRadius.circular(16),
-                      border: isSuperset ? Border.all(color: secondaryColor.withOpacity(0.3)) : null,
-                    ),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        if (isSuperset)
-                          Padding(
-                            padding: const EdgeInsets.only(bottom: 8.0),
-                            child: _buildTag("SUPERSET", secondaryColor),
-                          ),
-                        Text(
-                          'Sets: ${workout['sets'] ?? '0'}',
-                          style: TextStyle(color: primaryColor, fontWeight: FontWeight.bold, fontSize: 14),
-                        ),
-                        const SizedBox(height: 8),
-                        ...exercises.map((ex) {
-                          return ListTile(
-                            contentPadding: EdgeInsets.zero,
-                            title: Text(
-                              ex['workoutName'] ?? 'Unknown Workout',
-                              style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 15),
-                            ),
-                            subtitle: Text(
-                              'Reps: ${ex['reps'] ?? '0'} | ${ex['weight'] ?? '0'}kg',
-                              style: TextStyle(color: Colors.white.withOpacity(0.6), fontSize: 13),
-                            ),
-                            trailing: Icon(Icons.play_circle_fill, color: primaryColor),
-                            onTap: (isCompleted || !canStart)
-                                ? null
-                                : () {
-                                    if (ex['workoutId'] != null) {
-                                      Navigator.push(
-                                        context,
-                                        MaterialPageRoute(
-                                          builder: (context) => ViewWorkoutPage(
-                                            workoutId: ex['workoutId'],
-                                          ),
-                                        ),
-                                      );
-                                    }
-                                  },
-                          );
-                        }),
-                      ],
-                    ),
-                  );
-                }),
-                Padding(
+                   return Container(
+                     margin: const EdgeInsets.symmetric(horizontal: 24, vertical: 8),
+                     padding: const EdgeInsets.all(16),
+                     decoration: BoxDecoration(
+                       color: Colors.white.withOpacity(0.05),
+                       borderRadius: BorderRadius.circular(16),
+                       border: isSuperset ? Border.all(color: secondaryColor.withOpacity(0.3)) : null,
+                     ),
+                     child: Column(
+                       crossAxisAlignment: CrossAxisAlignment.start,
+                       children: [
+                         if (isSuperset)
+                           Padding(
+                             padding: const EdgeInsets.only(bottom: 8.0),
+                             child: _buildTag("SUPERSET", secondaryColor),
+                           ),
+                         Text(
+                           'Sets: ${workout['sets'] ?? '0'}',
+                           style: TextStyle(color: primaryColor, fontWeight: FontWeight.bold, fontSize: 14),
+                         ),
+                         const SizedBox(height: 8),
+                         ...exercises.map((ex) {
+                           return ListTile(
+                             contentPadding: EdgeInsets.zero,
+                             title: Text(
+                               ex['workoutName'] ?? 'Unknown Workout',
+                               style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 15),
+                             ),
+                             subtitle: Text(
+                               'Reps: ${ex['reps'] ?? '0'} | ${ex['weight'] ?? '0'}kg',
+                               style: TextStyle(color: Colors.white.withOpacity(0.6), fontSize: 13),
+                             ),
+                             trailing: Icon(Icons.play_circle_fill, color: primaryColor),
+                             onTap: (isCompleted || !canStart)
+                                 ? null
+                                 : () {
+                                     if (ex['workoutId'] != null) {
+                                       Navigator.push(
+                                         context,
+                                         MaterialPageRoute(
+                                           builder: (context) => ViewWorkoutPage(
+                                             workoutId: ex['workoutId'],
+                                           ),
+                                         ),
+                                       );
+                                     }
+                                   },
+                           );
+                         }),
+                       ],
+                     ),
+                   );
+                 }),
+                 Padding(
                   padding: const EdgeInsets.all(24.0),
                   child: Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,

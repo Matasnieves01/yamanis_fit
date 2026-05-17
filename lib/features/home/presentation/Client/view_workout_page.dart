@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:youtube_player_flutter/youtube_player_flutter.dart';
 import 'package:url_launcher/url_launcher.dart';
+import '../../../../core/widgets/branded_loading_screen.dart';
 
 class ViewWorkoutPage extends StatefulWidget {
   final String workoutId;
@@ -33,6 +34,9 @@ class _ViewWorkoutPageState extends State<ViewWorkoutPage> {
   }
 
   Future<void> loadWorkout() async {
+    if (!isLoading) {
+      setState(() => isLoading = true);
+    }
     try {
       final doc = await FirebaseFirestore.instance
           .collection('workouts')
@@ -43,6 +47,11 @@ class _ViewWorkoutPageState extends State<ViewWorkoutPage> {
         workoutData = doc.data();
         final String videoUrl = workoutData?['videoUrl'] ?? "";
         final videoId = YoutubePlayer.convertUrlToId(videoUrl);
+
+        if (_controller != null) {
+          _controller!.dispose();
+          _controller = null;
+        }
 
         if (videoId != null) {
           _controller = YoutubePlayerController(
@@ -77,6 +86,91 @@ class _ViewWorkoutPageState extends State<ViewWorkoutPage> {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(content: Text('No se pudo abrir YouTube')),
         );
+      }
+    }
+  }
+
+  Future<void> _editWorkout() async {
+    final nameController = TextEditingController(text: workoutData?['name'] ?? "");
+    final descController = TextEditingController(text: workoutData?['description'] ?? "");
+    final videoController = TextEditingController(text: workoutData?['videoUrl'] ?? "");
+
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        backgroundColor: backgroundColor,
+        title: const Text('Editar Ejercicio', style: TextStyle(color: Colors.white)),
+        content: SingleChildScrollView(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              TextField(
+                controller: nameController,
+                style: const TextStyle(color: Colors.white),
+                decoration: const InputDecoration(
+                  labelText: 'Nombre',
+                  labelStyle: TextStyle(color: Colors.white70),
+                  enabledBorder: UnderlineInputBorder(borderSide: BorderSide(color: Colors.white24)),
+                ),
+              ),
+              const SizedBox(height: 16),
+              TextField(
+                controller: descController,
+                maxLines: 4,
+                style: const TextStyle(color: Colors.white),
+                decoration: const InputDecoration(
+                  labelText: 'Descripción',
+                  labelStyle: TextStyle(color: Colors.white70),
+                  enabledBorder: UnderlineInputBorder(borderSide: BorderSide(color: Colors.white24)),
+                ),
+              ),
+              const SizedBox(height: 16),
+              TextField(
+                controller: videoController,
+                style: const TextStyle(color: Colors.white),
+                decoration: const InputDecoration(
+                  labelText: 'URL de Video (YouTube)',
+                  labelStyle: TextStyle(color: Colors.white70),
+                  enabledBorder: UnderlineInputBorder(borderSide: BorderSide(color: Colors.white24)),
+                ),
+              ),
+            ],
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('CANCELAR', style: TextStyle(color: Colors.white60)),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(context, true),
+            child: Text('GUARDAR', style: TextStyle(color: primaryColor)),
+          ),
+        ],
+      ),
+    );
+
+    if (confirmed == true) {
+      try {
+        await FirebaseFirestore.instance.collection('workouts').doc(widget.workoutId).update({
+          'name': nameController.text.trim(),
+          'description': descController.text.trim(),
+          'videoUrl': videoController.text.trim(),
+        });
+
+        await loadWorkout();
+
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('Ejercicio actualizado')),
+          );
+        }
+      } catch (e) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text('Error al actualizar: $e')),
+          );
+        }
       }
     }
   }
@@ -130,10 +224,7 @@ class _ViewWorkoutPageState extends State<ViewWorkoutPage> {
   @override
   Widget build(BuildContext context) {
     if (isLoading) {
-      return Scaffold(
-        backgroundColor: backgroundColor,
-        body: Center(child: CircularProgressIndicator(color: primaryColor)),
-      );
+      return const BrandedLoadingScreen();
     }
 
     if (workoutData == null) {
@@ -146,7 +237,6 @@ class _ViewWorkoutPageState extends State<ViewWorkoutPage> {
 
     return Scaffold(
       backgroundColor: backgroundColor,
-      extendBodyBehindAppBar: true,
       appBar: AppBar(
         title: Text(
           (workoutData?['name'] ?? "EJERCICIO").toString().toUpperCase(),
@@ -161,11 +251,16 @@ class _ViewWorkoutPageState extends State<ViewWorkoutPage> {
             tooltip: 'Transmitir a TV (Abre YouTube)',
             onPressed: _openInYoutube,
           ),
-          if (widget.isAdmin)
+          if (widget.isAdmin) ...[
+            IconButton(
+              icon: const Icon(Icons.edit_outlined, color: Colors.white70),
+              onPressed: _editWorkout,
+            ),
             IconButton(
               icon: const Icon(Icons.delete_outline, color: Colors.redAccent),
               onPressed: _deleteWorkout,
             ),
+          ],
         ],
       ),
       body: SingleChildScrollView(

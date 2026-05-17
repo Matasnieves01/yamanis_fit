@@ -6,20 +6,17 @@ service cloud.firestore {
       return request.auth != null;
     }
 
+    // Verifica si es admin de forma segura
     function isAdmin() {
       return isSignedIn() &&
-          (get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin' ||
-           get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'Admin');
-    }
-
-    function isOwner(userId) {
-      return isSignedIn() && request.auth.uid == userId;
+             exists(/databases/$(database)/documents/users/$(request.auth.uid)) &&
+             get(/databases/$(database)/documents/users/$(request.auth.uid)).data.get('role', 'user').lower() == 'admin';
     }
 
     match /users/{userId} {
       allow read: if isSignedIn();
       allow create: if isSignedIn();
-      allow update: if isAdmin() || isOwner(userId);
+      allow update: if isAdmin() || (isSignedIn() && request.auth.uid == userId);
       allow delete: if isAdmin();
     }
 
@@ -57,5 +54,27 @@ service cloud.firestore {
       allow read: if isSignedIn();
       allow create, update, delete: if isAdmin();
     }
+
+    match /pdf_access/{accessId} {
+       // Permitir lectura si el usuario es admin o si el documento pertenece al usuario actual
+       // Si el documento no existe, permitimos si el accessId pertenece al usuario
+       allow read: if isSignedIn() && (
+         isAdmin() ||
+         (exists(/databases/$(database)/documents/pdf_access/$(accessId)) &&
+          get(/databases/$(database)/documents/pdf_access/$(accessId)).data.userId == request.auth.uid) ||
+         accessId.startsWith(request.auth.uid + '_')
+       );
+
+       // Solo el usuario puede crear su solicitud, o el admin para gestionar
+       allow create: if isSignedIn() && (
+         request.resource.data.userId == request.auth.uid ||
+         isAdmin()
+       );
+
+       // Solo el admin puede aprobar/rechazar
+       allow update: if isAdmin();
+
+       allow delete: if isAdmin();
+     }
   }
 }

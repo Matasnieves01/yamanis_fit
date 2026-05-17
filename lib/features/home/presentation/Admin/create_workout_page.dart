@@ -3,7 +3,10 @@ import 'package:flutter/material.dart';
 import 'package:youtube_player_flutter/youtube_player_flutter.dart';
 
 class CreateWorkoutPage extends StatefulWidget {
-  const CreateWorkoutPage({super.key});
+  final String? workoutId;
+  final Map<String, dynamic>? initialData;
+
+  const CreateWorkoutPage({super.key, this.workoutId, this.initialData});
 
   @override
   State<CreateWorkoutPage> createState() => _CreateWorkoutPageState();
@@ -16,8 +19,8 @@ class _CreateWorkoutPageState extends State<CreateWorkoutPage> {
   YoutubePlayerController? _youtubeController;
 
   bool isLoading = false;
+  bool isEditing = false;
 
-  // Kinetic Theme Colors
   final Color backgroundColor = const Color(0xFF11151C);
   final Color surfaceColor = const Color(0xFF55768C);
   final Color secondaryColor = const Color(0xFF89AC76);
@@ -26,6 +29,13 @@ class _CreateWorkoutPageState extends State<CreateWorkoutPage> {
   @override
   void initState() {
     super.initState();
+    isEditing = widget.workoutId != null;
+    if (isEditing && widget.initialData != null) {
+      _nameController.text = widget.initialData!['name'] ?? '';
+      _descController.text = widget.initialData!['description'] ?? '';
+      _videoUrlController.text = widget.initialData!['videoUrl'] ?? '';
+      _onUrlChanged();
+    }
     _videoUrlController.addListener(_onUrlChanged);
   }
 
@@ -77,7 +87,7 @@ class _CreateWorkoutPageState extends State<CreateWorkoutPage> {
         _descController.text.trim().isEmpty ||
         _videoUrlController.text.trim().isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Please fill all fields')),
+        const SnackBar(content: Text('Por favor, completa todos los campos')),
       );
       return;
     }
@@ -85,18 +95,23 @@ class _CreateWorkoutPageState extends State<CreateWorkoutPage> {
     setState(() => isLoading = true);
 
     try {
-      await FirebaseFirestore.instance.collection('workouts').add({
+      final data = {
         'name': _nameController.text.trim(),
         'description': _descController.text.trim(),
         'videoUrl': _videoUrlController.text.trim(),
-        'createdAt': FieldValue.serverTimestamp(),
-      });
+        'updatedAt': FieldValue.serverTimestamp(),
+      };
+
+      if (isEditing) {
+        await FirebaseFirestore.instance.collection('workouts').doc(widget.workoutId).update(data);
+      } else {
+        data['createdAt'] = FieldValue.serverTimestamp();
+        await FirebaseFirestore.instance.collection('workouts').add(data);
+      }
 
       if (!mounted) return;
-      setState(() => isLoading = false);
-
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Workout saved successfully!')),
+        SnackBar(content: Text(isEditing ? 'Ejercicio actualizado!' : 'Ejercicio guardado!')),
       );
 
       Navigator.pop(context);
@@ -143,7 +158,8 @@ class _CreateWorkoutPageState extends State<CreateWorkoutPage> {
     return Scaffold(
       backgroundColor: backgroundColor,
       appBar: AppBar(
-        title: const Text('CREATE WORKOUT', style: TextStyle(fontWeight: FontWeight.w900, letterSpacing: 1.5)),
+        title: Text(isEditing ? 'EDITAR EJERCICIO' : 'CREAR EJERCICIO', 
+          style: const TextStyle(fontWeight: FontWeight.w900, letterSpacing: 1.5)),
         centerTitle: true,
         backgroundColor: Colors.transparent,
         elevation: 0,
@@ -153,27 +169,17 @@ class _CreateWorkoutPageState extends State<CreateWorkoutPage> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            const Text(
-              "Workout Details",
-              style: TextStyle(
-                color: Colors.white,
-                fontSize: 22,
-                fontWeight: FontWeight.bold,
-                letterSpacing: 0.5,
-              ),
-            ),
-            const SizedBox(height: 10),
             Text(
-              "Add a new exercise to the library for future routines.",
-              style: TextStyle(color: Colors.white.withValues(alpha: 0.6), fontSize: 14),
+              isEditing ? "Editar Detalles" : "Detalles del Ejercicio",
+              style: const TextStyle(color: Colors.white, fontSize: 22, fontWeight: FontWeight.bold),
             ),
             const SizedBox(height: 32),
             TextField(
               controller: _nameController,
               style: const TextStyle(color: Colors.white),
               decoration: _buildInputDecoration(
-                label: 'Workout Name',
-                hint: 'e.g., Barbell Squat',
+                label: 'Nombre del Ejercicio',
+                hint: 'ej., Sentadilla con Barra',
                 icon: Icons.fitness_center_rounded,
               ),
             ),
@@ -183,8 +189,8 @@ class _CreateWorkoutPageState extends State<CreateWorkoutPage> {
               maxLines: 4,
               style: const TextStyle(color: Colors.white),
               decoration: _buildInputDecoration(
-                label: 'Description',
-                hint: 'Explain the form and technique...',
+                label: 'Descripción',
+                hint: 'Explica la técnica...',
                 icon: Icons.description_rounded,
               ),
             ),
@@ -193,56 +199,19 @@ class _CreateWorkoutPageState extends State<CreateWorkoutPage> {
               controller: _videoUrlController,
               style: const TextStyle(color: Colors.white),
               decoration: _buildInputDecoration(
-                label: 'YouTube Video URL',
-                hint: 'Paste video link here',
+                label: 'URL de Video YouTube',
+                hint: 'Pega el enlace aquí',
                 icon: Icons.play_circle_fill_rounded,
               ),
             ),
             const SizedBox(height: 32),
-            const Text(
-              "Video Preview",
-              style: TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.bold),
-            ),
-            const SizedBox(height: 12),
             if (_youtubeController != null)
-              Container(
-                decoration: BoxDecoration(
-                  borderRadius: BorderRadius.circular(24),
-                  boxShadow: [
-                    BoxShadow(
-                      color: primaryColor.withValues(alpha: 0.1),
-                      blurRadius: 20,
-                      spreadRadius: 2,
-                    )
-                  ],
-                ),
-                child: ClipRRect(
-                  borderRadius: BorderRadius.circular(24),
-                  child: YoutubePlayer(
-                    controller: _youtubeController!,
-                    showVideoProgressIndicator: true,
-                    progressIndicatorColor: primaryColor,
-                  ),
-                ),
-              )
-            else
-              Container(
-                height: 180,
-                width: double.infinity,
-                decoration: BoxDecoration(
-                  color: surfaceColor.withValues(alpha: 0.1),
-                  borderRadius: BorderRadius.circular(24),
-                  border: Border.all(color: surfaceColor.withValues(alpha: 0.2)),
-                ),
-                child: Column(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    Icon(Icons.video_library_rounded, 
-                      color: Colors.white.withValues(alpha: 0.2), size: 48),
-                    const SizedBox(height: 12),
-                    Text("Enter a URL to see the preview",
-                      style: TextStyle(color: Colors.white.withValues(alpha: 0.3))),
-                  ],
+              ClipRRect(
+                borderRadius: BorderRadius.circular(24),
+                child: YoutubePlayer(
+                  controller: _youtubeController!,
+                  showVideoProgressIndicator: true,
+                  progressIndicatorColor: primaryColor,
                 ),
               ),
             const SizedBox(height: 40),
@@ -254,31 +223,16 @@ class _CreateWorkoutPageState extends State<CreateWorkoutPage> {
                 style: ElevatedButton.styleFrom(
                   backgroundColor: primaryColor,
                   foregroundColor: backgroundColor,
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(16),
-                  ),
-                  elevation: 0,
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
                 ),
                 child: isLoading
-                    ? SizedBox(
-                        width: 24,
-                        height: 24,
-                        child: CircularProgressIndicator(
-                          strokeWidth: 3,
-                          color: backgroundColor,
-                        ),
-                      )
-                    : const Text(
-                        'SAVE WORKOUT',
-                        style: TextStyle(
-                          fontSize: 16,
-                          fontWeight: FontWeight.bold,
-                          letterSpacing: 1.2,
-                        ),
+                    ? CircularProgressIndicator(color: backgroundColor)
+                    : Text(
+                        isEditing ? 'ACTUALIZAR' : 'GUARDAR',
+                        style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
                       ),
               ),
             ),
-            const SizedBox(height: 40),
           ],
         ),
       ),

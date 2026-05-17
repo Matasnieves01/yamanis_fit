@@ -326,19 +326,25 @@ class _ViewNotificationPageState extends State<ViewNotificationPage> {
                   color: Colors.white.withValues(alpha: 0.03),
                   borderRadius: BorderRadius.circular(12),
                 ),
-                child: Row(
-                  children: [
-                    Expanded(
-                      child: Text(
-                        ex['name'] ?? 'Unknown',
-                        style: const TextStyle(color: Colors.white, fontSize: 13),
-                      ),
-                    ),
-                    _buildSmallStat("PLAN", "${ex['plannedWeight'] ?? 0}kg"),
-                    const SizedBox(width: 16),
-                    _buildSmallStat("REAL", "${ex['actualWeight'] ?? 0}kg", highlight: true),
-                  ],
-                ),
+                child: Column(
+                   crossAxisAlignment: CrossAxisAlignment.start,
+                   children: [
+                     Text(
+                       ex['name'] ?? 'Unknown',
+                       style: const TextStyle(color: Colors.white, fontSize: 13),
+                       maxLines: 2,
+                       overflow: TextOverflow.ellipsis,
+                     ),
+                     const SizedBox(height: 8),
+                     Row(
+                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                       children: [
+                         _buildSmallStat("PLAN", "${ex['plannedWeight'] ?? 0}kg"),
+                         _buildSmallStat("REAL", "${ex['actualWeight'] ?? 0}kg", highlight: true),
+                       ],
+                     ),
+                   ],
+                 ),
               ),
             );
           }).toList()),

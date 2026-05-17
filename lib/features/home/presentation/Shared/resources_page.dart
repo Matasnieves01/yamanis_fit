@@ -2,6 +2,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_storage/firebase_storage.dart';
 import 'package:flutter/material.dart';
 import 'package:yamanis_fit/models/pdf_resource.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'pdf_viewer_page.dart';
 import '../Admin/upload_pdf_page.dart';
 
@@ -43,19 +44,78 @@ class _ResourcesPageState extends State<ResourcesPage> {
     if (confirm != true) return;
 
     try {
-      // Delete from storage
-      await FirebaseStorage.instance.refFromURL(resource.url).delete();
-      // Delete from firestore
+      // Eliminar solo de Firestore
       await FirebaseFirestore.instance.collection('resources').doc(resource.id).delete();
 
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('PDF eliminado correctamente')),
+        const SnackBar(content: Text('Recurso eliminado correctamente')),
       );
     } catch (e) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text('Error al eliminar PDF: $e')),
+      );
+    }
+  }
+
+  Future<void> _requestAccess(PdfResource resource) async {
+    final user = FirebaseAuth.instance.currentUser;
+    if (user == null) return;
+
+    try {
+      // 1. Create access request
+      await FirebaseFirestore.instance
+          .collection('pdf_access')
+          .doc('${user.uid}_${resource.id}')
+          .set({
+        'userId': user.uid,
+        'userEmail': user.email,
+        'resourceId': resource.id,
+        'resourceName': resource.name,
+        'status': 'pending',
+        'requestedAt': FieldValue.serverTimestamp(),
+      });
+
+      // 2. Send notification to admin
+      await FirebaseFirestore.instance.collection('notifications').add({
+        'title': 'Nueva solicitud de PDF',
+        'message': '${user.email} solicita acceso a: ${resource.name}',
+        'type': 'pdf_request',
+        'targetRole': 'admin',
+        'userId': user.uid,
+        'resourceId': resource.id,
+        'resourceName': resource.name, // Añadido para facilitar la respuesta
+        'createdAt': FieldValue.serverTimestamp(),
+        'read': false,
+      });
+
+      if (!mounted) return;
+      showDialog(
+        context: context,
+        builder: (context) => AlertDialog(
+          backgroundColor: backgroundColor,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(16),
+            side: BorderSide(color: primaryColor.withOpacity(0.2)),
+          ),
+          title: Text('SOLICITUD ENVIADA', style: TextStyle(color: primaryColor, fontWeight: FontWeight.bold)),
+          content: const Text(
+            'Para completar el acceso, por favor envía el comprobante de pago por WhatsApp a la entrenadora.\n\nUna vez verificado, se te habilitará el acceso automáticamente.',
+            style: TextStyle(color: Colors.white70),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context),
+              child: Text('ENTENDIDO', style: TextStyle(color: primaryColor)),
+            ),
+          ],
+        ),
+      );
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Error al solicitar acceso: $e')),
       );
     }
   }
@@ -115,51 +175,153 @@ class _ResourcesPageState extends State<ResourcesPage> {
             itemCount: docs.length,
             itemBuilder: (context, index) {
               final resource = PdfResource.fromFirestore(docs[index]);
-              return Container(
-                margin: const EdgeInsets.only(bottom: 16),
-                decoration: BoxDecoration(
-                  color: surfaceColor.withOpacity(0.1),
-                  borderRadius: BorderRadius.circular(16),
-                  border: Border.all(color: surfaceColor.withOpacity(0.2)),
-                ),
-                child: ListTile(
-                  contentPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
-                  leading: Container(
-                    padding: const EdgeInsets.all(10),
-                    decoration: BoxDecoration(
-                      color: Colors.redAccent.withOpacity(0.1),
-                      shape: BoxShape.circle,
-                    ),
-                    child: const Icon(Icons.picture_as_pdf, color: Colors.redAccent),
-                  ),
-                  title: Text(
-                    resource.name,
-                    style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
-                  ),
-                  subtitle: Text(
-                    'PDF Documento',
-                    style: TextStyle(color: Colors.white.withOpacity(0.5), fontSize: 12),
-                  ),
-                  trailing: widget.isAdmin 
-                    ? IconButton(
-                        icon: const Icon(Icons.delete_outline, color: Colors.redAccent),
-                        onPressed: () => _deletePdf(resource),
-                      )
-                    : Icon(Icons.arrow_forward_ios, color: primaryColor, size: 16),
-                  onTap: () {
-                    Navigator.push(
-                      context,
-                      MaterialPageRoute(
-                        builder: (context) => PdfViewerPage(resource: resource),
-                      ),
-                    );
+              final user = FirebaseAuth.instance.currentUser;
+              final userId = user?.uid;
+
+              if (userId == null) {
+                return const SizedBox.shrink();
+              }
+
+               // For admins, skip the PDF access check - they always have access
+               if (widget.isAdmin) {
+                 return _buildResourceCard(resource, userId, 'approved', true);
+               }
+
+                return StreamBuilder<DocumentSnapshot>(
+                  stream: FirebaseFirestore.instance
+                      .collection('pdf_access')
+                      .doc('${userId}_${resource.id}')
+                      .snapshots(),
+                  builder: (context, accessSnapshot) {
+                    // Ignorar errores de permiso si el documento no existe
+                    if (accessSnapshot.hasError) {
+                      // Si hay error pero es por permiso al no existir el documento,
+                      // asumimos que el usuario no tiene acceso
+                      print('PDF Access error for ${userId}_${resource.id}: ${accessSnapshot.error}');
+                      return _buildResourceCard(resource, userId, 'none', false);
+                    }
+
+                    if (accessSnapshot.connectionState == ConnectionState.waiting && !accessSnapshot.hasData) {
+                      return Container(
+                        margin: const EdgeInsets.only(bottom: 16),
+                        height: 80,
+                        decoration: BoxDecoration(
+                          color: surfaceColor.withOpacity(0.05),
+                          borderRadius: BorderRadius.circular(16),
+                        ),
+                        child: const Center(child: SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2, color: Color(0xFFAEE084)))),
+                      );
+                    }
+
+                    final accessData = accessSnapshot.data?.data() as Map<String, dynamic>?;
+                    final String rawStatus = accessData?['status']?.toString() ?? 'none';
+                    final String status = rawStatus.toLowerCase().trim();
+                    final bool hasAccess = resource.isFree || status == 'approved';
+
+                    return _buildResourceCard(resource, userId, status, hasAccess);
                   },
-                ),
-              );
-            },
-          );
-        },
-      ),
-    );
-  }
-}
+                );
+             },
+           );
+         },
+       ),
+     );
+   }
+
+    Widget _buildResourceCard(PdfResource resource, String userId, String status, bool hasAccess) {
+      return Container(
+        margin: const EdgeInsets.only(bottom: 16),
+        decoration: BoxDecoration(
+          color: surfaceColor.withOpacity(0.1),
+         borderRadius: BorderRadius.circular(16),
+         border: Border.all(
+           color: hasAccess ? primaryColor.withOpacity(0.2) : surfaceColor.withOpacity(0.2),
+         ),
+       ),
+       child: ListTile(
+         contentPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
+         leading: Container(
+           padding: const EdgeInsets.all(10),
+           decoration: BoxDecoration(
+             color: (resource.isFree ? Colors.greenAccent : Colors.orangeAccent).withOpacity(0.1),
+             shape: BoxShape.circle,
+           ),
+           child: Icon(
+             resource.isFree ? Icons.picture_as_pdf : Icons.lock_outline,
+             color: resource.isFree ? Colors.greenAccent : Colors.orangeAccent,
+           ),
+         ),
+         title: Text(
+           resource.name,
+           style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
+         ),
+         subtitle: Row(
+           children: [
+             Text(
+               resource.isFree ? 'GRATIS' : '\$${resource.price.toStringAsFixed(2)}',
+               style: TextStyle(
+                 color: resource.isFree ? Colors.greenAccent : primaryColor,
+                 fontSize: 12,
+                 fontWeight: FontWeight.bold,
+               ),
+             ),
+             if (!resource.isFree && status == 'pending') ...[
+               const SizedBox(width: 8),
+               const Text(
+                 '• Pendiente',
+                 style: TextStyle(color: Colors.orangeAccent, fontSize: 11),
+               ),
+             ],
+           ],
+         ),
+         trailing: widget.isAdmin
+             ? IconButton(
+                 icon: const Icon(Icons.delete_outline, color: Colors.redAccent),
+                 onPressed: () => _deletePdf(resource),
+               )
+             : (hasAccess || status == 'approved')
+                 ? TextButton(
+                     onPressed: () {
+                       Navigator.push(
+                         context,
+                         MaterialPageRoute(
+                           builder: (context) => PdfViewerPage(resource: resource),
+                         ),
+                       );
+                     },
+                     child: Text('VER', style: TextStyle(color: primaryColor, fontWeight: FontWeight.bold)),
+                   )
+                 : status == 'pending'
+                     ? Container(
+                         padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                         decoration: BoxDecoration(
+                           color: Colors.orangeAccent.withOpacity(0.1),
+                           borderRadius: BorderRadius.circular(8),
+                         ),
+                         child: const Row(
+                           mainAxisSize: MainAxisSize.min,
+                           children: [
+                             Icon(Icons.hourglass_empty, color: Colors.orangeAccent, size: 14),
+                             SizedBox(width: 4),
+                             Text('PENDIENTE', style: TextStyle(color: Colors.orangeAccent, fontSize: 10, fontWeight: FontWeight.bold)),
+                           ],
+                         ),
+                       )
+                     : TextButton(
+                         onPressed: () => _requestAccess(resource),
+                         child: Text('COMPRAR', style: TextStyle(color: primaryColor, fontWeight: FontWeight.bold)),
+                       ),
+         onTap: hasAccess || widget.isAdmin
+             ? () {
+                 Navigator.push(
+                   context,
+                   MaterialPageRoute(
+                     builder: (context) => PdfViewerPage(resource: resource),
+                   ),
+                 );
+               }
+             : null,
+       ),
+     );
+   }
+ }

@@ -202,11 +202,32 @@ class _WorkoutsPageState extends State<WorkoutsPage> {
                                         style: TextStyle(color: primaryColor, fontSize: 9, fontWeight: FontWeight.bold),
                                       ),
                                     ),
-                                    IconButton(
-                                      onPressed: () => _deleteWorkout(workoutDoc.id, name),
-                                      icon: const Icon(Icons.delete_outline, color: Colors.redAccent),
-                                      padding: EdgeInsets.zero,
-                                      constraints: const BoxConstraints(),
+                                    Row(
+                                      children: [
+                                        IconButton(
+                                          onPressed: () {
+                                            Navigator.push(
+                                              context,
+                                              MaterialPageRoute(
+                                                builder: (_) => CreateWorkoutPage(
+                                                  workoutId: workoutDoc.id,
+                                                  initialData: workout,
+                                                ),
+                                              ),
+                                            );
+                                          },
+                                          icon: Icon(Icons.edit_outlined, color: primaryColor),
+                                          padding: EdgeInsets.zero,
+                                          constraints: const BoxConstraints(),
+                                        ),
+                                        const SizedBox(width: 8),
+                                        IconButton(
+                                          onPressed: () => _deleteWorkout(workoutDoc.id, name),
+                                          icon: const Icon(Icons.delete_outline, color: Colors.redAccent),
+                                          padding: EdgeInsets.zero,
+                                          constraints: const BoxConstraints(),
+                                        ),
+                                      ],
                                     ),
                                   ],
                                 ),

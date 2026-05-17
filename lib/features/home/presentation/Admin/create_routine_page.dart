@@ -9,12 +9,14 @@ class RoutineExercise {
   String workoutName;
   String reps;
   String weight;
+  String description;
 
   RoutineExercise({
     required this.workoutId,
     required this.workoutName,
     this.reps = '',
     this.weight = '',
+    this.description = '',
   });
 
   Map<String, dynamic> toMap() {
@@ -23,6 +25,7 @@ class RoutineExercise {
       'workoutName': workoutName,
       'reps': reps,
       'weight': weight,
+      if (description.isNotEmpty) 'description': description,
     };
   }
 
@@ -32,6 +35,7 @@ class RoutineExercise {
       workoutName: (map['workoutName'] ?? '').toString(),
       reps: (map['reps'] ?? '').toString(),
       weight: (map['weight'] ?? '').toString(),
+      description: (map['description'] ?? '').toString(),
     );
   }
 }
@@ -65,6 +69,7 @@ class RoutineDayPlan {
   String intensity;
   String level;
   List<RoutineWorkout> workouts;
+  String nutritionPlanUrl;
 
   RoutineDayPlan({
     required this.name,
@@ -72,6 +77,7 @@ class RoutineDayPlan {
     required this.intensity,
     required this.level,
     required this.workouts,
+    this.nutritionPlanUrl = '',
   });
 }
 
@@ -97,8 +103,11 @@ class _CreateRoutinePageState extends State<CreateRoutinePage> {
   final TextEditingController _nameController = TextEditingController();
 
   List<DocumentSnapshot> availableWorkouts = [];
+  List<DocumentSnapshot> filteredWorkouts = [];
   List<RoutineWorkout> selectedWorkouts = [];
   List<String> _selectedMuscles = [];
+  String _workoutSearchQuery = '';
+  TextEditingController _nutritionPlanUrlController = TextEditingController();
 
   String _selectedIntensity = 'Alta';
   String _selectedLevel = 'Intermedio';
@@ -148,6 +157,7 @@ class _CreateRoutinePageState extends State<CreateRoutinePage> {
       workoutName: ex.workoutName,
       reps: ex.reps,
       weight: ex.weight,
+      description: ex.description,
     );
   }
 
@@ -176,6 +186,7 @@ class _CreateRoutinePageState extends State<CreateRoutinePage> {
       intensity: _selectedIntensity,
       level: _selectedLevel,
       workouts: _cloneWorkouts(selectedWorkouts),
+      nutritionPlanUrl: _nutritionPlanUrlController.text.trim(),
     );
   }
 
@@ -186,6 +197,7 @@ class _CreateRoutinePageState extends State<CreateRoutinePage> {
       intensity: 'Alta',
       level: 'Intermedio',
       workouts: [],
+      nutritionPlanUrl: '',
     );
   }
 
@@ -437,15 +449,16 @@ class _CreateRoutinePageState extends State<CreateRoutinePage> {
     _fetchClientRoutines();
   }
 
-  void _prefillForEdit() {
-    final initial = widget.initialRoutineData;
-    if (initial == null) return;
+   void _prefillForEdit() {
+     final initial = widget.initialRoutineData;
+     if (initial == null) return;
 
-    _nameController.text = (initial['name'] ?? '').toString();
-    _selectedMuscles = List<String>.from((initial['muscleFocus'] as List<dynamic>? ?? []).map((e) => e.toString()));
-    
-    if (initial['intensity'] != null) _selectedIntensity = initial['intensity'];
-    if (initial['level'] != null) _selectedLevel = initial['level'];
+     _nameController.text = (initial['name'] ?? '').toString();
+     _nutritionPlanUrlController.text = (initial['nutritionPlanUrl'] ?? '').toString();
+     _selectedMuscles = List<String>.from((initial['muscleFocus'] as List<dynamic>? ?? []).map((e) => e.toString()));
+     
+     if (initial['intensity'] != null) _selectedIntensity = initial['intensity'];
+     if (initial['level'] != null) _selectedLevel = initial['level'];
 
     final dateTs = initial['date'] as Timestamp?;
     if (dateTs != null) {
@@ -494,12 +507,27 @@ class _CreateRoutinePageState extends State<CreateRoutinePage> {
     try {
       final snapshot = await FirebaseFirestore.instance.collection('workouts').get();
       if (!mounted) return;
-      setState(() => availableWorkouts = snapshot.docs);
+      setState(() {
+        availableWorkouts = snapshot.docs;
+        _filterWorkouts();
+      });
     } catch (e) {
       if (!mounted) return;
       _showErrorSnackBar(_friendlyErrorMessage(e));
     } finally {
       if (mounted) setState(() => _isLoadingWorkouts = false);
+    }
+  }
+
+  void _filterWorkouts() {
+    if (_workoutSearchQuery.isEmpty) {
+      filteredWorkouts = availableWorkouts;
+    } else {
+      final query = _workoutSearchQuery.toLowerCase();
+      filteredWorkouts = availableWorkouts
+          .where((workout) =>
+              (workout['name'] as String).toLowerCase().contains(query))
+          .toList();
     }
   }
 
@@ -637,16 +665,17 @@ class _CreateRoutinePageState extends State<CreateRoutinePage> {
           final storageDate = _dateForStorage(day);
           final existingId = existingByDay[key];
           final plan = _weekdayPlans[day.weekday]!;
-          final dataToSave = {
-            'name': plan.name,
-            'workouts': plan.workouts.map((workout) => workout.toMap()).toList(),
-            'muscleFocus': plan.muscleFocus,
-            'intensity': plan.intensity,
-            'level': plan.level,
-            'clientId': widget.clientId,
-            'updatedAt': FieldValue.serverTimestamp(),
-            'updatedBy': user.uid,
-          };
+           final dataToSave = {
+             'name': plan.name,
+             'workouts': plan.workouts.map((workout) => workout.toMap()).toList(),
+             'muscleFocus': plan.muscleFocus,
+             'intensity': plan.intensity,
+             'level': plan.level,
+             'clientId': widget.clientId,
+             'updatedAt': FieldValue.serverTimestamp(),
+             'updatedBy': user.uid,
+             if (plan.nutritionPlanUrl.isNotEmpty) 'nutritionPlanUrl': plan.nutritionPlanUrl,
+           };
 
           if (existingId != null) {
             await routines.doc(existingId).update({...dataToSave, 'date': Timestamp.fromDate(storageDate)});
@@ -826,11 +855,21 @@ class _CreateRoutinePageState extends State<CreateRoutinePage> {
                   ],
                 ),
               ),
-            const SizedBox(height: 32),
-            _buildSectionTitle('Datos de la rutina'),
-            const SizedBox(height: 8),
-            TextField(controller: _nameController, style: const TextStyle(color: Colors.white), decoration: _buildInputDecoration(label: 'Nombre de la Rutina', hint: 'Ej: Empuje Potencia', icon: Icons.edit_rounded)),
-            const SizedBox(height: 24),
+             const SizedBox(height: 32),
+             _buildSectionTitle('Datos de la rutina'),
+             const SizedBox(height: 8),
+             TextField(controller: _nameController, style: const TextStyle(color: Colors.white), decoration: _buildInputDecoration(label: 'Nombre de la Rutina', hint: 'Ej: Empuje Potencia', icon: Icons.edit_rounded)),
+             const SizedBox(height: 16),
+             TextField(
+               controller: _nutritionPlanUrlController,
+               style: const TextStyle(color: Colors.white),
+               decoration: _buildInputDecoration(
+                 label: 'PDF Plan de Alimentación (Opcional)',
+                 hint: 'Ej: https://ejemplo.com/plan.pdf',
+                 icon: Icons.file_download_rounded,
+               ),
+             ),
+             const SizedBox(height: 24),
             Row(
               children: [
                 Expanded(child: _buildDropdownField(label: 'Intensidad', value: _selectedIntensity, items: _intensities, onChanged: (v) => setState(() => _selectedIntensity = v!))),
@@ -866,74 +905,427 @@ class _CreateRoutinePageState extends State<CreateRoutinePage> {
                 ),
                 child: const Text('Sin ejercicios seleccionados.', style: TextStyle(color: Colors.white70)),
               )
-            else
-              ListView.builder(
-                shrinkWrap: true, physics: const NeverScrollableScrollPhysics(), itemCount: selectedWorkouts.length,
-                itemBuilder: (context, index) {
-                  final item = selectedWorkouts[index];
-                  return Container(
-                    margin: const EdgeInsets.only(bottom: 24), padding: const EdgeInsets.all(20),
-                    decoration: BoxDecoration(color: surfaceColor.withValues(alpha: 0.1), borderRadius: BorderRadius.circular(24), border: Border.all(color: surfaceColor.withValues(alpha: 0.2))),
-                    child: Column(
-                      children: [
-                        Row(children: [ _buildSmallField(label: 'Series', initialValue: item.sets, onChanged: (v) => item.sets = v), const SizedBox(width: 20), IconButton(icon: const Icon(Icons.delete_outline, color: Colors.redAccent), onPressed: () => setState(() => selectedWorkouts.removeAt(index)))]),
-                        const Divider(height: 32, color: Colors.white10),
-                        ...item.exercises.asMap().entries.map((entry) {
-                          final exIdx = entry.key; final ex = entry.value;
-                          return Column(children: [
-                            if (exIdx > 0) const Padding(padding: EdgeInsets.symmetric(vertical: 8), child: Text("SUPERSET", style: TextStyle(color: Colors.orangeAccent, fontSize: 10, fontWeight: FontWeight.bold))),
-                            Row(children: [Expanded(child: Text(ex.workoutName.toUpperCase(), style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w900, fontSize: 13))), if (item.exercises.length > 1) IconButton(icon: const Icon(Icons.remove_circle_outline, color: Colors.redAccent, size: 18), onPressed: () => setState(() => item.exercises.removeAt(exIdx)))]),
-                            const SizedBox(height: 12),
-                            Row(children: [_buildSmallField(label: 'Reps', initialValue: ex.reps, onChanged: (v) => ex.reps = v), const SizedBox(width: 12), _buildSmallField(label: 'Peso', initialValue: ex.weight, onChanged: (v) => ex.weight = v)]),
-                            const SizedBox(height: 16),
-                          ]);
-                        }),
-                        if (item.exercises.length < 2) TextButton.icon(onPressed: () => _showAddExerciseToSupersetDialog(index), icon: Icon(Icons.add, color: secondaryColor, size: 16), label: Text("AÑADIR SUPERSET", style: TextStyle(color: secondaryColor, fontSize: 11, fontWeight: FontWeight.bold))),
-                      ],
-                    ),
-                  );
-                },
-              ),
-            const SizedBox(height: 32),
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                _buildSectionTitle('Ejercicios Disponibles'),
-                TextButton.icon(
-                  onPressed: () async {
-                    await Navigator.push(context, MaterialPageRoute(builder: (context) => const CreateWorkoutPage()));
-                    loadWorkouts();
-                  },
-                  icon: Icon(Icons.add_circle_outline, color: primaryColor, size: 20),
-                  label: Text("CREAR NUEVO", style: TextStyle(color: primaryColor, fontWeight: FontWeight.bold, fontSize: 12)),
-                ),
-              ],
-            ),
-            const SizedBox(height: 12),
-            if (_isLoadingWorkouts)
-              Center(child: CircularProgressIndicator(color: primaryColor))
-            else if (availableWorkouts.isEmpty)
-              Container(
-                width: double.infinity,
-                padding: const EdgeInsets.all(16),
-                decoration: BoxDecoration(
-                  color: surfaceColor.withValues(alpha: 0.08),
-                  borderRadius: BorderRadius.circular(16),
-                  border: Border.all(color: surfaceColor.withValues(alpha: 0.2)),
-                ),
-                child: const Text('No hay ejercicios creados todavia. Usa "CREAR NUEVO".', style: TextStyle(color: Colors.white70)),
-              )
-            else
-              SizedBox(
-                height: 44,
-                child: ListView.builder(
-                  scrollDirection: Axis.horizontal, itemCount: availableWorkouts.length,
+             else
+               ListView.builder(
+                 shrinkWrap: true, physics: const NeverScrollableScrollPhysics(), itemCount: selectedWorkouts.length,
                   itemBuilder: (context, index) {
-                    final workout = availableWorkouts[index];
-                    return Padding(padding: const EdgeInsets.only(right: 8), child: ActionChip(backgroundColor: surfaceColor.withValues(alpha: 0.1), label: Text(workout['name'], style: const TextStyle(color: Colors.white)), onPressed: () => _addWorkoutToRoutine(workout.id, workout['name'])));
+                    final item = selectedWorkouts[index];
+                    return Container(
+                      margin: const EdgeInsets.only(bottom: 24),
+                      padding: const EdgeInsets.all(20),
+                      decoration: BoxDecoration(
+                        color: surfaceColor.withValues(alpha: 0.12),
+                        borderRadius: BorderRadius.circular(24),
+                        border: Border.all(
+                          color: primaryColor.withValues(alpha: 0.2),
+                          width: 1.5,
+                        ),
+                        boxShadow: [
+                          BoxShadow(
+                            color: primaryColor.withValues(alpha: 0.05),
+                            blurRadius: 8,
+                            spreadRadius: 1,
+                          ),
+                        ],
+                      ),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          // Header con series y botón eliminar
+                          Row(
+                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                            children: [
+                              Expanded(
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Text(
+                                      'Ejercicio ${index + 1}',
+                                      style: TextStyle(
+                                        color: Colors.white.withValues(alpha: 0.6),
+                                        fontSize: 11,
+                                        fontWeight: FontWeight.w600,
+                                      ),
+                                    ),
+                                    const SizedBox(height: 6),
+                                    _buildSmallField(
+                                      label: 'Series',
+                                      initialValue: item.sets,
+                                      onChanged: (v) => item.sets = v,
+                                    ),
+                                  ],
+                                ),
+                              ),
+                              const SizedBox(width: 20),
+                              IconButton(
+                                icon: const Icon(Icons.delete_outline, color: Colors.redAccent),
+                                onPressed: () => setState(() => selectedWorkouts.removeAt(index)),
+                                tooltip: 'Eliminar ejercicio',
+                              ),
+                            ],
+                          ),
+                          const Divider(height: 32, color: Colors.white10),
+                          // Ejercicios (incluyendo supersets)
+                          ...item.exercises.asMap().entries.map((entry) {
+                            final exIdx = entry.key;
+                            final ex = entry.value;
+                            return Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                if (exIdx > 0) ...[
+                                  Container(
+                                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                                    margin: const EdgeInsets.only(bottom: 12),
+                                    decoration: BoxDecoration(
+                                      color: Colors.orangeAccent.withValues(alpha: 0.15),
+                                      borderRadius: BorderRadius.circular(8),
+                                      border: Border.all(
+                                        color: Colors.orangeAccent.withValues(alpha: 0.3),
+                                      ),
+                                    ),
+                                    child: const Row(
+                                      mainAxisSize: MainAxisSize.min,
+                                      children: [
+                                        Icon(Icons.link, color: Colors.orangeAccent, size: 14),
+                                        SizedBox(width: 6),
+                                        Text(
+                                          "SUPERSET",
+                                          style: TextStyle(
+                                            color: Colors.orangeAccent,
+                                            fontSize: 10,
+                                            fontWeight: FontWeight.bold,
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                ],
+                                Row(
+                                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                  children: [
+                                    Expanded(
+                                      child: Text(
+                                        ex.workoutName.toUpperCase(),
+                                        style: const TextStyle(
+                                          color: Colors.white,
+                                          fontWeight: FontWeight.w900,
+                                          fontSize: 13,
+                                        ),
+                                      ),
+                                    ),
+                                    if (item.exercises.length > 1)
+                                      IconButton(
+                                        icon: const Icon(
+                                          Icons.remove_circle_outline,
+                                          color: Colors.redAccent,
+                                          size: 18,
+                                        ),
+                                        onPressed: () => setState(() => item.exercises.removeAt(exIdx)),
+                                        padding: EdgeInsets.zero,
+                                        constraints: const BoxConstraints(),
+                                        tooltip: 'Eliminar del superset',
+                                      ),
+                                  ],
+                                ),
+                                const SizedBox(height: 12),
+                                Row(
+                                  children: [
+                                    _buildSmallField(
+                                      label: 'Reps',
+                                      initialValue: ex.reps,
+                                      onChanged: (v) => ex.reps = v,
+                                    ),
+                                    const SizedBox(width: 12),
+                                    _buildSmallField(
+                                      label: 'Peso',
+                                      initialValue: ex.weight,
+                                      onChanged: (v) => ex.weight = v,
+                                    ),
+                                  ],
+                                ),
+                                const SizedBox(height: 14),
+                                // Campo de descripción
+                                  Container(
+                                    decoration: BoxDecoration(
+                                      color: Colors.white.withValues(alpha: 0.02),
+                                      borderRadius: BorderRadius.circular(12),
+                                      border: Border.all(
+                                        color: Colors.white.withValues(alpha: 0.08),
+                                      ),
+                                    ),
+                                    child: TextFormField(
+                                      initialValue: ex.description,
+                                      maxLines: 2,
+                                      minLines: 1,
+                                      style: const TextStyle(
+                                        color: Colors.white,
+                                        fontSize: 12,
+                                      ),
+                                      onChanged: (v) => ex.description = v,
+                                      decoration: InputDecoration(
+                                        labelText: 'Descripción opcional',
+                                        labelStyle: TextStyle(
+                                          color: Colors.white.withValues(alpha: 0.5),
+                                          fontSize: 11,
+                                        ),
+                                        hintText: 'Ej: En el último set con reducción...',
+                                        hintStyle: TextStyle(
+                                          color: Colors.white.withValues(alpha: 0.3),
+                                          fontSize: 11,
+                                        ),
+                                        isDense: true,
+                                        contentPadding: const EdgeInsets.symmetric(
+                                          horizontal: 12,
+                                          vertical: 10,
+                                        ),
+                                        filled: true,
+                                        fillColor: Colors.transparent,
+                                        border: InputBorder.none,
+                                        enabledBorder: InputBorder.none,
+                                        focusedBorder: OutlineInputBorder(
+                                          borderRadius: BorderRadius.circular(12),
+                                          borderSide: BorderSide(
+                                            color: primaryColor.withValues(alpha: 0.4),
+                                            width: 1.5,
+                                          ),
+                                        ),
+                                        suffixIcon: ex.description.isNotEmpty
+                                            ? Padding(
+                                                padding: const EdgeInsets.all(8.0),
+                                                child: Icon(
+                                                  Icons.note_rounded,
+                                                  color: primaryColor.withValues(alpha: 0.6),
+                                                  size: 18,
+                                                ),
+                                              )
+                                            : null,
+                                      ),
+                                    ),
+                                  ),
+                                const SizedBox(height: 16),
+                              ],
+                            );
+                          }),
+                          if (item.exercises.length < 2)
+                            Container(
+                              width: double.infinity,
+                              decoration: BoxDecoration(
+                                color: secondaryColor.withValues(alpha: 0.08),
+                                borderRadius: BorderRadius.circular(12),
+                                border: Border.all(
+                                  color: secondaryColor.withValues(alpha: 0.2),
+                                ),
+                              ),
+                              child: TextButton.icon(
+                                onPressed: () => _showAddExerciseToSupersetDialog(index),
+                                icon: Icon(
+                                  Icons.add,
+                                  color: secondaryColor,
+                                  size: 18,
+                                ),
+                                label: Text(
+                                  "AÑADIR SUPERSET",
+                                  style: TextStyle(
+                                    color: secondaryColor,
+                                    fontSize: 12,
+                                    fontWeight: FontWeight.bold,
+                                  ),
+                                ),
+                              ),
+                            ),
+                        ],
+                      ),
+                    );
                   },
                 ),
-              ),
+             const SizedBox(height: 32),
+             Row(
+               mainAxisAlignment: MainAxisAlignment.spaceBetween,
+               children: [
+                 _buildSectionTitle('Ejercicios Disponibles'),
+                 TextButton.icon(
+                   onPressed: () async {
+                     await Navigator.push(context, MaterialPageRoute(builder: (context) => const CreateWorkoutPage()));
+                     loadWorkouts();
+                   },
+                   icon: Icon(Icons.add_circle_outline, color: primaryColor, size: 20),
+                   label: Text("CREAR NUEVO", style: TextStyle(color: primaryColor, fontWeight: FontWeight.bold, fontSize: 12)),
+                 ),
+               ],
+             ),
+             const SizedBox(height: 12),
+             if (_isLoadingWorkouts)
+               Center(child: CircularProgressIndicator(color: primaryColor))
+             else if (availableWorkouts.isEmpty)
+               Container(
+                 width: double.infinity,
+                 padding: const EdgeInsets.all(16),
+                 decoration: BoxDecoration(
+                   color: surfaceColor.withValues(alpha: 0.08),
+                   borderRadius: BorderRadius.circular(16),
+                   border: Border.all(color: surfaceColor.withValues(alpha: 0.2)),
+                 ),
+                 child: const Text('No hay ejercicios creados todavia. Usa "CREAR NUEVO".', style: TextStyle(color: Colors.white70)),
+               )
+             else
+               Column(
+                 children: [
+                   // Barra de búsqueda
+                   TextField(
+                     onChanged: (value) {
+                       setState(() {
+                         _workoutSearchQuery = value;
+                         _filterWorkouts();
+                       });
+                     },
+                     style: const TextStyle(color: Colors.white),
+                     decoration: InputDecoration(
+                       hintText: 'Buscar ejercicios...',
+                       hintStyle: TextStyle(color: Colors.white.withValues(alpha: 0.5)),
+                       prefixIcon: Icon(Icons.search, color: primaryColor),
+                       suffixIcon: _workoutSearchQuery.isNotEmpty
+                           ? IconButton(
+                               icon: const Icon(Icons.clear, color: Colors.white),
+                               onPressed: () {
+                                 setState(() {
+                                   _workoutSearchQuery = '';
+                                   _filterWorkouts();
+                                 });
+                               },
+                             )
+                           : null,
+                       filled: true,
+                       fillColor: Colors.white.withValues(alpha: 0.05),
+                       border: OutlineInputBorder(
+                         borderRadius: BorderRadius.circular(14),
+                         borderSide: BorderSide(color: Colors.white.withValues(alpha: 0.1)),
+                       ),
+                       enabledBorder: OutlineInputBorder(
+                         borderRadius: BorderRadius.circular(14),
+                         borderSide: BorderSide(color: Colors.white.withValues(alpha: 0.1)),
+                       ),
+                       focusedBorder: OutlineInputBorder(
+                         borderRadius: BorderRadius.circular(14),
+                         borderSide: BorderSide(color: primaryColor, width: 1.5),
+                       ),
+                     ),
+                   ),
+                   const SizedBox(height: 16),
+                   // Lista de ejercicios mejorada
+                   if (filteredWorkouts.isEmpty)
+                     Container(
+                       width: double.infinity,
+                       padding: const EdgeInsets.all(16),
+                       decoration: BoxDecoration(
+                         color: surfaceColor.withValues(alpha: 0.08),
+                         borderRadius: BorderRadius.circular(16),
+                         border: Border.all(color: surfaceColor.withValues(alpha: 0.2)),
+                       ),
+                        child: Text(
+                          'No se encontraron ejercicios con "$_workoutSearchQuery"',
+                          style: const TextStyle(color: Colors.white70),
+                          textAlign: TextAlign.center,
+                        ),
+                     )
+                   else
+                     SizedBox(
+                       height: 400,
+                       child: GridView.builder(
+                         gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+                           crossAxisCount: 2,
+                           childAspectRatio: 1.3,
+                           crossAxisSpacing: 12,
+                           mainAxisSpacing: 12,
+                         ),
+                         itemCount: filteredWorkouts.length,
+                         itemBuilder: (context, index) {
+                           final workout = filteredWorkouts[index];
+                           return GestureDetector(
+                             onTap: () => _addWorkoutToRoutine(workout.id, workout['name']),
+                             child: Container(
+                               decoration: BoxDecoration(
+                                 color: surfaceColor.withValues(alpha: 0.15),
+                                 borderRadius: BorderRadius.circular(16),
+                                 border: Border.all(
+                                   color: primaryColor.withValues(alpha: 0.3),
+                                   width: 1.5,
+                                 ),
+                               ),
+                               child: Stack(
+                                 children: [
+                                   // Fondo decorativo
+                                   Positioned(
+                                     right: -20,
+                                     top: -20,
+                                     child: Container(
+                                       width: 80,
+                                       height: 80,
+                                       decoration: BoxDecoration(
+                                         color: primaryColor.withValues(alpha: 0.08),
+                                         shape: BoxShape.circle,
+                                       ),
+                                     ),
+                                   ),
+                                   // Contenido
+                                   Padding(
+                                     padding: const EdgeInsets.all(12),
+                                     child: Column(
+                                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                       children: [
+                                         Row(
+                                           mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                           children: [
+                                             Expanded(
+                                               child: Text(
+                                                 workout['name'],
+                                                 style: const TextStyle(
+                                                   color: Colors.white,
+                                                   fontWeight: FontWeight.bold,
+                                                   fontSize: 13,
+                                                 ),
+                                                 maxLines: 2,
+                                                 overflow: TextOverflow.ellipsis,
+                                               ),
+                                             ),
+                                           ],
+                                         ),
+                                         Row(
+                                           mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                           children: [
+                                             Container(
+                                               padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                                               decoration: BoxDecoration(
+                                                 color: primaryColor.withValues(alpha: 0.2),
+                                                 borderRadius: BorderRadius.circular(8),
+                                               ),
+                                               child: Text(
+                                                 'Añadir',
+                                                 style: TextStyle(
+                                                   color: primaryColor,
+                                                   fontSize: 11,
+                                                   fontWeight: FontWeight.bold,
+                                                 ),
+                                               ),
+                                             ),
+                                             Icon(
+                                               Icons.fitness_center_rounded,
+                                               color: primaryColor.withValues(alpha: 0.6),
+                                               size: 18,
+                                             ),
+                                           ],
+                                         ),
+                                       ],
+                                     ),
+                                   ),
+                                 ],
+                               ),
+                             ),
+                           );
+                         },
+                       ),
+                     ),
+                 ],
+               ),
             const SizedBox(height: 40),
             SizedBox(width: double.infinity, height: 60, child: ElevatedButton(onPressed: isLoading ? null : _saveRoutine, style: ElevatedButton.styleFrom(backgroundColor: primaryColor, foregroundColor: backgroundColor, shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16))), child: isLoading ? const SizedBox(width: 24, height: 24, child: CircularProgressIndicator(strokeWidth: 3, color: Colors.black)) : Text(_isCreateMode ? 'GUARDAR RUTINAS' : 'GUARDAR RUTINA', style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold, letterSpacing: 1.2)))),
             const SizedBox(height: 40),
@@ -965,58 +1357,144 @@ class _CreateRoutinePageState extends State<CreateRoutinePage> {
   }
 
   void _showAddExerciseToSupersetDialog(int routineIndex) {
+    String searchQuery = '';
+    
     showModalBottomSheet(
       context: context, 
       backgroundColor: Colors.transparent, 
       isScrollControlled: true,
       builder: (context) {
-        return Container(
-          decoration: BoxDecoration(
-            color: backgroundColor,
-            borderRadius: const BorderRadius.vertical(top: Radius.circular(32)),
-          ),
-          padding: const EdgeInsets.fromLTRB(24, 12, 24, 24),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Container(width: 40, height: 4, decoration: BoxDecoration(color: Colors.white24, borderRadius: BorderRadius.circular(2))),
-              const SizedBox(height: 24),
-              const Text("AÑADIR AL SUPERSET", style: TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.w900, letterSpacing: 1.2)),
-              const SizedBox(height: 18),
-              ConstrainedBox(
-                constraints: BoxConstraints(maxHeight: MediaQuery.of(context).size.height * 0.4),
-                child: ListView.builder(
-                  shrinkWrap: true,
-                  itemCount: availableWorkouts.length,
-                  itemBuilder: (context, index) {
-                    final workout = availableWorkouts[index];
-                    return Container(
-                      margin: const EdgeInsets.only(bottom: 12),
-                      decoration: BoxDecoration(
-                        color: surfaceColor.withValues(alpha: 0.05),
-                        borderRadius: BorderRadius.circular(16),
-                        border: Border.all(color: surfaceColor.withValues(alpha: 0.1)),
-                      ),
-                      child: ListTile(
-                        leading: Container(
-                          padding: const EdgeInsets.all(8),
-                          decoration: BoxDecoration(color: primaryColor.withValues(alpha: 0.1), borderRadius: BorderRadius.circular(10)),
-                          child: Icon(Icons.fitness_center_rounded, color: primaryColor, size: 20),
-                        ),
-                        title: Text(workout['name'], style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
-                        onTap: () {
-                          _addExerciseToSuperset(routineIndex, workout.id, workout['name']);
-                          Navigator.pop(context);
-                        },
-                      ),
-                    );
-                  },
-                ),
+        return StatefulBuilder(
+          builder: (context, setModalState) {
+            final filteredList = searchQuery.isEmpty
+                ? availableWorkouts
+                : availableWorkouts
+                    .where((w) =>
+                        (w['name'] as String).toLowerCase().contains(searchQuery.toLowerCase()))
+                    .toList();
+
+            return Container(
+              decoration: BoxDecoration(
+                color: backgroundColor,
+                borderRadius: const BorderRadius.vertical(top: Radius.circular(32)),
               ),
-              const SizedBox(height: 16),
-              TextButton(onPressed: () => Navigator.pop(context), child: Text("CANCELAR", style: TextStyle(color: Colors.white.withValues(alpha: 0.3), fontWeight: FontWeight.bold))),
-            ],
-          ),
+              padding: const EdgeInsets.fromLTRB(24, 12, 24, 24),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Container(width: 40, height: 4, decoration: BoxDecoration(color: Colors.white24, borderRadius: BorderRadius.circular(2))),
+                  const SizedBox(height: 24),
+                  const Text("AÑADIR AL SUPERSET", style: TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.w900, letterSpacing: 1.2)),
+                  const SizedBox(height: 18),
+                  // Campo de búsqueda
+                  TextField(
+                    onChanged: (value) {
+                      setModalState(() {
+                        searchQuery = value;
+                      });
+                    },
+                    style: const TextStyle(color: Colors.white),
+                    decoration: InputDecoration(
+                      hintText: 'Buscar ejercicios...',
+                      hintStyle: TextStyle(color: Colors.white.withValues(alpha: 0.5)),
+                      prefixIcon: Icon(Icons.search, color: primaryColor),
+                      suffixIcon: searchQuery.isNotEmpty
+                          ? IconButton(
+                              icon: const Icon(Icons.clear, color: Colors.white),
+                              onPressed: () {
+                                setModalState(() {
+                                  searchQuery = '';
+                                });
+                              },
+                            )
+                          : null,
+                      filled: true,
+                      fillColor: Colors.white.withValues(alpha: 0.05),
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(14),
+                        borderSide: BorderSide(color: Colors.white.withValues(alpha: 0.1)),
+                      ),
+                      enabledBorder: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(14),
+                        borderSide: BorderSide(color: Colors.white.withValues(alpha: 0.1)),
+                      ),
+                      focusedBorder: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(14),
+                        borderSide: BorderSide(color: primaryColor, width: 1.5),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 18),
+                  ConstrainedBox(
+                    constraints: BoxConstraints(maxHeight: MediaQuery.of(context).size.height * 0.4),
+                    child: filteredList.isEmpty
+                        ? Center(
+                            child: Text(
+                              searchQuery.isEmpty
+                                  ? 'No hay ejercicios disponibles'
+                                  : 'No se encontraron ejercicios',
+                              style: TextStyle(color: Colors.white.withValues(alpha: 0.5)),
+                            ),
+                          )
+                        : ListView.builder(
+                            shrinkWrap: true,
+                            itemCount: filteredList.length,
+                            itemBuilder: (context, index) {
+                              final workout = filteredList[index];
+                              return Container(
+                                margin: const EdgeInsets.only(bottom: 12),
+                                decoration: BoxDecoration(
+                                  color: surfaceColor.withValues(alpha: 0.1),
+                                  borderRadius: BorderRadius.circular(16),
+                                  border: Border.all(color: surfaceColor.withValues(alpha: 0.2)),
+                                ),
+                                child: ListTile(
+                                  contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                                  leading: Container(
+                                    padding: const EdgeInsets.all(10),
+                                    decoration: BoxDecoration(
+                                      color: primaryColor.withValues(alpha: 0.15),
+                                      borderRadius: BorderRadius.circular(12),
+                                    ),
+                                    child: Icon(Icons.fitness_center_rounded, color: primaryColor, size: 20),
+                                  ),
+                                  title: Text(
+                                    workout['name'],
+                                    style: const TextStyle(
+                                      color: Colors.white,
+                                      fontWeight: FontWeight.w600,
+                                      fontSize: 14,
+                                    ),
+                                  ),
+                                  trailing: Container(
+                                    decoration: BoxDecoration(
+                                      color: primaryColor.withValues(alpha: 0.2),
+                                      borderRadius: BorderRadius.circular(10),
+                                    ),
+                                    child: IconButton(
+                                      icon: Icon(Icons.add, color: primaryColor, size: 20),
+                                      onPressed: () {
+                                        _addExerciseToSuperset(routineIndex, workout.id, workout['name']);
+                                        Navigator.pop(context);
+                                      },
+                                      iconSize: 20,
+                                    ),
+                                  ),
+                                  onTap: () {
+                                    _addExerciseToSuperset(routineIndex, workout.id, workout['name']);
+                                    Navigator.pop(context);
+                                  },
+                                ),
+                              );
+                            },
+                          ),
+                  ),
+                  const SizedBox(height: 16),
+                  TextButton(onPressed: () => Navigator.pop(context), child: Text("CANCELAR", style: TextStyle(color: Colors.white.withValues(alpha: 0.3), fontWeight: FontWeight.bold))),
+                ],
+              ),
+            );
+          },
         );
       }
     );

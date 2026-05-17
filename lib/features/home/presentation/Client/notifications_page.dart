@@ -74,7 +74,10 @@ class ClientNotificationsPage extends StatelessWidget {
           }
 
           final docs = snapshot.data!.docs
-              .where((doc) => doc.data()['type'] == 'trainer_feedback')
+              .where((doc) {
+                final type = doc.data()['type'];
+                return type == 'trainer_feedback' || type == 'pdf_approved' || type == 'pdf_rejected';
+              })
               .toList()
             ..sort((a, b) {
               final aDate = (a.data()['createdAt'] as Timestamp?)?.toDate() ?? DateTime(2000);
@@ -102,9 +105,27 @@ class ClientNotificationsPage extends StatelessWidget {
               final doc = docs[index];
               final data = doc.data();
               final isRead = data['read'] == true;
-              final feedback = (data['trainerFeedback'] ?? '').toString().trim();
+              final type = data['type'] ?? 'trainer_feedback';
+              
+              String feedback = '';
+              if (type == 'trainer_feedback') {
+                feedback = (data['trainerFeedback'] ?? '').toString().trim();
+                if (feedback.isEmpty) feedback = (data['message'] ?? '');
+              } else {
+                feedback = (data['message'] ?? '');
+              }
+              
               final date = (data['createdAt'] as Timestamp?)?.toDate() ?? DateTime.now();
-              final title = data['title'] ?? 'Feedback de tu rutina';
+              final title = data['title'] ?? (type == 'pdf_approved' ? 'Acceso concedido' : 'Feedback de tu rutina');
+
+              IconData icon = Icons.mark_email_unread_rounded;
+              if (isRead) {
+                icon = Icons.mark_email_read_outlined;
+              } else if (type == 'pdf_approved') {
+                icon = Icons.picture_as_pdf_rounded;
+              } else if (type == 'pdf_rejected') {
+                icon = Icons.error_outline_rounded;
+              }
 
               return Padding(
                 padding: const EdgeInsets.only(bottom: 16),
@@ -113,7 +134,7 @@ class ClientNotificationsPage extends StatelessWidget {
                     if (!isRead) await _markAsRead(doc.id);
                     if (!context.mounted) return;
 
-                    _showFeedbackDetail(context, title, feedback.isEmpty ? (data['message'] ?? '') : feedback, date);
+                    _showFeedbackDetail(context, title, feedback, date, type);
                   },
                   borderRadius: BorderRadius.circular(20),
                   child: Container(
@@ -143,8 +164,8 @@ class ClientNotificationsPage extends StatelessWidget {
                             shape: BoxShape.circle,
                           ),
                           child: Icon(
-                            isRead ? Icons.mark_email_read_outlined : Icons.mark_email_unread_rounded,
-                            color: isRead ? Colors.white38 : _primaryColor,
+                            icon,
+                            color: isRead ? Colors.white38 : (type == 'pdf_approved' ? _primaryColor : (type == 'pdf_rejected' ? Colors.redAccent : _primaryColor)),
                             size: 22,
                           ),
                         ),
@@ -180,7 +201,7 @@ class ClientNotificationsPage extends StatelessWidget {
                               ),
                               const SizedBox(height: 6),
                               Text(
-                                feedback.isEmpty ? (data['message'] ?? '') : feedback,
+                                feedback,
                                 maxLines: 2,
                                 overflow: TextOverflow.ellipsis,
                                 style: TextStyle(
@@ -213,7 +234,7 @@ class ClientNotificationsPage extends StatelessWidget {
     );
   }
 
-  void _showFeedbackDetail(BuildContext context, String title, String message, DateTime date) {
+  void _showFeedbackDetail(BuildContext context, String title, String message, DateTime date, String type) {
     showModalBottomSheet(
       context: context,
       backgroundColor: Colors.transparent,
@@ -244,10 +265,15 @@ class ClientNotificationsPage extends StatelessWidget {
                 Container(
                   padding: const EdgeInsets.all(12),
                   decoration: BoxDecoration(
-                    color: _primaryColor.withValues(alpha: 0.1),
+                    color: (type == 'pdf_rejected' ? Colors.redAccent : _primaryColor).withValues(alpha: 0.1),
                     borderRadius: BorderRadius.circular(16),
                   ),
-                  child: const Icon(Icons.forum_rounded, color: _primaryColor),
+                  child: Icon(
+                    type == 'pdf_approved' 
+                      ? Icons.picture_as_pdf_rounded 
+                      : (type == 'pdf_rejected' ? Icons.error_outline_rounded : Icons.forum_rounded), 
+                    color: type == 'pdf_rejected' ? Colors.redAccent : _primaryColor
+                  ),
                 ),
                 const SizedBox(width: 16),
                 Expanded(
@@ -272,10 +298,10 @@ class ClientNotificationsPage extends StatelessWidget {
               ],
             ),
             const SizedBox(height: 24),
-            const Text(
-              'MENSAJE DEL TRAINER:',
+            Text(
+              type == 'trainer_feedback' ? 'MENSAJE DEL TRAINER:' : 'DETALLES:',
               style: TextStyle(
-                color: _primaryColor,
+                color: type == 'pdf_rejected' ? Colors.redAccent : _primaryColor,
                 fontSize: 11,
                 fontWeight: FontWeight.bold,
                 letterSpacing: 1,
@@ -306,7 +332,7 @@ class ClientNotificationsPage extends StatelessWidget {
               child: ElevatedButton(
                 onPressed: () => Navigator.pop(context),
                 style: ElevatedButton.styleFrom(
-                  backgroundColor: _primaryColor,
+                  backgroundColor: type == 'pdf_rejected' ? Colors.redAccent : _primaryColor,
                   foregroundColor: _backgroundColor,
                   shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
                   elevation: 0,
