@@ -37,6 +37,15 @@ subprojects {
 }
 
 subprojects {
+    // Set Java compatibility for all tasks
+    tasks.withType<JavaCompile> {
+        sourceCompatibility = JavaVersion.VERSION_17.toString()
+        targetCompatibility = JavaVersion.VERSION_17.toString()
+        options.encoding = "UTF-8"
+    }
+}
+
+subprojects {
     project.evaluationDependsOn(":app")
 }
 
