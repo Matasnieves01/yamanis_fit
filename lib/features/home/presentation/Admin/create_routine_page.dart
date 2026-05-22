@@ -107,7 +107,7 @@ class _CreateRoutinePageState extends State<CreateRoutinePage> {
   List<RoutineWorkout> selectedWorkouts = [];
   List<String> _selectedMuscles = [];
   String _workoutSearchQuery = '';
-  TextEditingController _nutritionPlanUrlController = TextEditingController();
+  final TextEditingController _nutritionPlanUrlController = TextEditingController();
 
   String _selectedIntensity = 'Alta';
   String _selectedLevel = 'Intermedio';
@@ -1030,16 +1030,17 @@ class _CreateRoutinePageState extends State<CreateRoutinePage> {
                                 const SizedBox(height: 12),
                                 Row(
                                   children: [
-                                    _buildSmallField(
+                                    _buildNumericStepper(
                                       label: 'Reps',
-                                      initialValue: ex.reps,
-                                      onChanged: (v) => ex.reps = v,
+                                      value: ex.reps,
+                                      onChanged: (v) => setState(() => ex.reps = v),
                                     ),
                                     const SizedBox(width: 12),
-                                    _buildSmallField(
+                                    _buildNumericStepper(
                                       label: 'Peso',
-                                      initialValue: ex.weight,
-                                      onChanged: (v) => ex.weight = v,
+                                      value: ex.weight,
+                                      suffix: 'kg',
+                                      onChanged: (v) => setState(() => ex.weight = v),
                                     ),
                                   ],
                                 ),
@@ -1354,6 +1355,71 @@ class _CreateRoutinePageState extends State<CreateRoutinePage> {
 
   Widget _buildSmallField({required String label, required String initialValue, required Function(String) onChanged}) {
     return Expanded(child: TextFormField(initialValue: initialValue, keyboardType: TextInputType.text, style: const TextStyle(color: Colors.white, fontSize: 14), onChanged: onChanged, decoration: InputDecoration(labelText: label, isDense: true, contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12), filled: true, fillColor: Colors.white.withValues(alpha: 0.05), border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none), enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide(color: Colors.white.withValues(alpha: 0.1))), labelStyle: TextStyle(color: primaryColor, fontSize: 12))));
+  }
+
+  Widget _buildNumericStepper({required String label, required String value, String? suffix, required Function(String) onChanged}) {
+    // Use a TextEditingController created on the fly to keep the UI simple; rebuilds will reset cursor but keep data consistent.
+    final controller = TextEditingController(text: value);
+    int current = int.tryParse(value) ?? 0;
+    return Expanded(
+      child: Row(
+        children: [
+          Container(
+            decoration: BoxDecoration(color: Colors.white.withValues(alpha: 0.03), borderRadius: BorderRadius.circular(8)),
+            child: IconButton(
+              icon: const Icon(Icons.remove, color: Colors.white70, size: 18),
+              onPressed: () {
+                current = (int.tryParse(controller.text) ?? current) - 1;
+                if (current < 0) current = 0;
+                controller.text = current.toString();
+                onChanged(controller.text);
+                if (mounted) setState(() {});
+              },
+            ),
+          ),
+          const SizedBox(width: 6),
+          Expanded(
+            child: TextFormField(
+              controller: controller,
+              keyboardType: TextInputType.number,
+              textAlign: TextAlign.center,
+              style: const TextStyle(color: Colors.white, fontSize: 14),
+              onChanged: (v) {
+                onChanged(v);
+                // update local current
+                current = int.tryParse(v) ?? current;
+                if (mounted) setState(() {});
+              },
+              decoration: InputDecoration(
+                labelText: label,
+                isDense: true,
+                contentPadding: const EdgeInsets.symmetric(horizontal: 8, vertical: 12),
+                filled: true,
+                fillColor: Colors.white.withValues(alpha: 0.03),
+                border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none),
+                enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide(color: Colors.white.withValues(alpha: 0.06))),
+                suffixText: suffix,
+                suffixStyle: const TextStyle(color: Colors.white38, fontSize: 12),
+                labelStyle: TextStyle(color: primaryColor, fontSize: 12),
+              ),
+            ),
+          ),
+          const SizedBox(width: 6),
+          Container(
+            decoration: BoxDecoration(color: Colors.white.withValues(alpha: 0.03), borderRadius: BorderRadius.circular(8)),
+            child: IconButton(
+              icon: const Icon(Icons.add, color: Colors.white70, size: 18),
+              onPressed: () {
+                current = (int.tryParse(controller.text) ?? current) + 1;
+                controller.text = current.toString();
+                onChanged(controller.text);
+                if (mounted) setState(() {});
+              },
+            ),
+          ),
+        ],
+      ),
+    );
   }
 
   void _showAddExerciseToSupersetDialog(int routineIndex) {

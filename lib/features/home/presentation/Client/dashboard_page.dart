@@ -103,21 +103,48 @@ class _DashboardPageState extends State<DashboardPage> {
       final isAccountActive = _userRole == 'admin' || (isEnabled && (activeUntil == null || activeUntil.isAfter(DateTime.now())));
 
       // Calculate streak
+      // New logic:
+      // - A streak only ends if the user misses a day where they had a scheduled routine.
+      // - Days without any routine do NOT break the streak (they are ignored).
+      // - The user has a number of "forgiveness" opportunities (allowedMisses) to skip scheduled
+      //   routine days without the streak breaking. Those skipped scheduled days do not
+      //   increment the streak, but also do not immediately break it until the allowance is used up.
       int streak = 0;
+      const int allowedMisses = 5;
+      int missesUsed = 0;
+
       DateTime today = DateTime.now();
       DateTime checkDate = DateTime.utc(today.year, today.month, today.day);
-      
-      if (completedDates.contains(checkDate)) {
-        while (completedDates.contains(checkDate)) {
-          streak++;
-          checkDate = checkDate.subtract(const Duration(days: 1));
+
+      // We'll scan backwards day-by-day. For each day that has at least one scheduled routine
+      // we consider it a "required" day. If the user completed that day we increment the streak.
+      // If they didn't complete it we consume one miss allowance. If misses exceed allowedMisses
+      // the streak ends at that point.
+      // Days with no scheduled routine are ignored and do not affect the streak.
+      // To avoid infinite loops, stop if we go back more than 2 years.
+      final earliestStop = checkDate.subtract(const Duration(days: 365 * 2));
+      while (!checkDate.isBefore(earliestStop)) {
+        final normalized = DateTime.utc(checkDate.year, checkDate.month, checkDate.day);
+
+        final hasRoutineScheduled = newRoutines.containsKey(normalized);
+
+        if (hasRoutineScheduled) {
+          if (completedDates.contains(normalized)) {
+            // Completed required day -> counts towards streak
+            streak++;
+          } else {
+            // Missed a required day
+            if (missesUsed < allowedMisses) {
+              // Use one forgiveness opportunity and continue scanning further back
+              missesUsed++;
+            } else {
+              // No more forgiveness left: streak ends here
+              break;
+            }
+          }
         }
-      } else {
+
         checkDate = checkDate.subtract(const Duration(days: 1));
-        while (completedDates.contains(checkDate)) {
-          streak++;
-          checkDate = checkDate.subtract(const Duration(days: 1));
-        }
       }
 
       setState(() {

@@ -286,6 +286,246 @@ class _ClientRoutinesPageState extends State<ClientRoutinesPage> {
     }
   }
 
+  Future<void> _duplicateRoutine(Map<String, dynamic> routine) async {
+    final choice = await showDialog<String>(
+      context: context,
+      builder: (context) => AlertDialog(
+        backgroundColor: backgroundColor,
+        title: const Text('Duplicar Rutina', style: TextStyle(color: Colors.white)),
+        content: const Text('¿Para quién quieres duplicar esta rutina?', style: TextStyle(color: Colors.white70)),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, 'same'),
+            child: Text('PARA ${widget.clientName.toUpperCase()}', style: TextStyle(color: primaryColor)),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(context, 'other'),
+            child: const Text('OTRO CLIENTE...', style: TextStyle(color: Colors.white60)),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('CANCELAR', style: TextStyle(color: Colors.redAccent)),
+          ),
+        ],
+      ),
+    );
+
+    if (choice == 'same') {
+      if (!mounted) return;
+      Navigator.push(
+        context,
+        MaterialPageRoute(
+          builder: (_) => CreateRoutinePage(
+            clientId: widget.clientId,
+            clientEmail: widget.clientEmail,
+            initialRoutineData: routine,
+          ),
+        ),
+      ).then((_) => _loadClientData());
+    } else if (choice == 'other') {
+      if (!mounted) return;
+      final selectedClient = await showModalBottomSheet<Map<String, dynamic>>(
+        context: context,
+        backgroundColor: Colors.transparent,
+        isScrollControlled: true,
+        builder: (context) => _ClientPicker(
+          backgroundColor: backgroundColor,
+          surfaceColor: surfaceColor,
+          primaryColor: primaryColor,
+        ),
+      );
+
+      if (selectedClient != null && mounted) {
+        Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (_) => CreateRoutinePage(
+              clientId: selectedClient['id'],
+              clientEmail: selectedClient['email'],
+              initialRoutineData: routine,
+            ),
+          ),
+        ).then((_) => _loadClientData());
+      }
+    }
+  }
+
+  void _showAdjustProgressDialog(Map<String, dynamic> routine, String routineId) {
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: backgroundColor,
+      shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(24))),
+      builder: (context) {
+        final List<Map<String, dynamic>> workouts = (routine['workouts'] as List<dynamic>? ?? []).map((w) => Map<String, dynamic>.from(w as Map)).toList();
+
+        // Controllers: for each workout -> for each exercise keep controllers for reps and weight
+        final List<List<TextEditingController>> repsControllers = [];
+        final List<List<TextEditingController>> weightControllers = [];
+
+        for (var w in workouts) {
+          final List exercises = (w['exercises'] as List?) ?? [w];
+          final List<TextEditingController> repsRow = [];
+          final List<TextEditingController> weightRow = [];
+          for (var ex in exercises) {
+            repsRow.add(TextEditingController(text: (ex['reps'] ?? '').toString()));
+            weightRow.add(TextEditingController(text: (ex['weight'] ?? '').toString()));
+          }
+          repsControllers.add(repsRow);
+          weightControllers.add(weightRow);
+        }
+
+        return StatefulBuilder(builder: (context, setModalState) {
+          return Padding(
+            padding: EdgeInsets.only(bottom: MediaQuery.of(context).viewInsets.bottom),
+            child: Container(
+              height: MediaQuery.of(context).size.height * 0.8,
+              padding: const EdgeInsets.all(16),
+              child: Column(
+                children: [
+                  Container(width: 40, height: 4, decoration: BoxDecoration(color: Colors.white24, borderRadius: BorderRadius.circular(2))),
+                  const SizedBox(height: 12),
+                  Text('Ajustar Progreso - ${routine['name'] ?? ''}', style: const TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.bold)),
+                  const SizedBox(height: 12),
+                  Expanded(
+                    child: ListView.builder(
+                      itemCount: workouts.length,
+                      itemBuilder: (context, wi) {
+                        final w = workouts[wi];
+                        final exercises = (w['exercises'] as List?) ?? [w];
+                        return Container(
+                          margin: const EdgeInsets.only(bottom: 12),
+                          padding: const EdgeInsets.all(12),
+                          decoration: BoxDecoration(color: surfaceColor.withValues(alpha: 0.06), borderRadius: BorderRadius.circular(12), border: Border.all(color: surfaceColor.withValues(alpha: 0.12))),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text('Series: ${w['sets'] ?? '-'}', style: const TextStyle(color: Colors.white70, fontSize: 12)),
+                              const SizedBox(height: 8),
+                              ...exercises.asMap().entries.map((entry) {
+                                final exIdx = entry.key;
+                                final ex = Map<String, dynamic>.from(entry.value as Map);
+                                final repsCtrl = repsControllers[wi][exIdx];
+                                final weightCtrl = weightControllers[wi][exIdx];
+
+                                return Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Row(
+                                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                      children: [
+                                        Expanded(child: Text((ex['workoutName'] ?? 'Ejercicio').toString(), style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold))),
+                                        IconButton(
+                                          icon: const Icon(Icons.refresh, color: Colors.white38, size: 18),
+                                          onPressed: () {
+                                            repsCtrl.text = (ex['reps'] ?? '').toString();
+                                            weightCtrl.text = (ex['weight'] ?? '').toString();
+                                            setModalState(() {});
+                                          },
+                                          tooltip: 'Restablecer a planeado',
+                                        )
+                                      ],
+                                    ),
+                                    const SizedBox(height: 8),
+                                    Row(
+                                      children: [
+                                        Expanded(
+                                          child: TextFormField(
+                                            controller: repsCtrl,
+                                            keyboardType: TextInputType.number,
+                                            decoration: InputDecoration(labelText: 'Reps', filled: true, fillColor: Colors.white.withValues(alpha: 0.03)),
+                                            style: const TextStyle(color: Colors.white),
+                                          ),
+                                        ),
+                                        const SizedBox(width: 8),
+                                        SizedBox(
+                                          width: 110,
+                                          child: TextFormField(
+                                            controller: weightCtrl,
+                                            keyboardType: TextInputType.number,
+                                            decoration: InputDecoration(labelText: 'Peso (kg)', filled: true, fillColor: Colors.white.withValues(alpha: 0.03)),
+                                            style: const TextStyle(color: Colors.white),
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                    const SizedBox(height: 12),
+                                  ],
+                                );
+                              }),
+                            ],
+                          ),
+                        );
+                      },
+                    ),
+                  ),
+                  Row(
+                    children: [
+                      Expanded(
+                        child: OutlinedButton(
+                          onPressed: () => Navigator.pop(context),
+                          child: const Text('CANCELAR', style: TextStyle(color: Colors.white70)),
+                        ),
+                      ),
+                      const SizedBox(width: 12),
+                      SizedBox(
+                        width: 160,
+                        child: ElevatedButton(
+                          onPressed: () async {
+                            // Build updated workouts structure
+                            try {
+                              final messenger = ScaffoldMessenger.of(this.context);
+                              final admin = FirebaseAuth.instance.currentUser;
+                              if (admin == null) return;
+
+                              final List<Map<String, dynamic>> updatedWorkouts = [];
+                              for (var wi = 0; wi < workouts.length; wi++) {
+                                final w = Map<String, dynamic>.from(workouts[wi]);
+                                final List originalExercises = (w['exercises'] as List?) ?? [w];
+                                final List<Map<String, dynamic>> newExercises = [];
+                                for (var ei = 0; ei < originalExercises.length; ei++) {
+                                  final ex = Map<String, dynamic>.from(originalExercises[ei] as Map);
+                                  final String newReps = repsControllers[wi][ei].text.trim();
+                                  final String newWeight = weightControllers[wi][ei].text.trim();
+                                  if (newReps.isNotEmpty) ex['reps'] = newReps;
+                                  if (newWeight.isNotEmpty) ex['weight'] = newWeight;
+                                  newExercises.add(ex);
+                                }
+                                w['exercises'] = newExercises;
+                                updatedWorkouts.add(w);
+                              }
+
+                              await FirebaseFirestore.instance.collection('routines').doc(routineId).update({
+                                'workouts': updatedWorkouts,
+                                'updatedAt': FieldValue.serverTimestamp(),
+                                'updatedBy': admin.uid,
+                              });
+
+                              if (!mounted) return;
+                              if (!context.mounted) return;
+                              Navigator.pop(context);
+                              messenger.showSnackBar(const SnackBar(content: Text('Progreso ajustado correctamente'), backgroundColor: Colors.green));
+                              await _loadClientData();
+                            } catch (e) {
+                              if (!mounted || !context.mounted) return;
+                              ScaffoldMessenger.of(this.context).showSnackBar(SnackBar(content: Text('Error ajustando progreso: $e'), backgroundColor: Colors.redAccent));
+                            }
+                          },
+                          style: ElevatedButton.styleFrom(backgroundColor: primaryColor),
+                          child: const Text('GUARDAR CAMBIOS'),
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+            ),
+          );
+        });
+      },
+    );
+  }
+
   Widget _buildAccountCard() {
     final now = DateTime.now();
     final isActive = _isAccountActiveNow;
@@ -432,46 +672,64 @@ class _ClientRoutinesPageState extends State<ClientRoutinesPage> {
               ),
             ),
             children: [
-              Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 16),
-                child: Row(
-                  mainAxisAlignment: MainAxisAlignment.end,
-                  children: [
-                    TextButton.icon(
-                      onPressed: () {
-                        Navigator.push(
-                          context,
-                          MaterialPageRoute(
-                            builder: (_) => CreateRoutinePage(
-                              clientId: widget.clientId,
-                              clientEmail: widget.clientEmail,
-                              initialRoutineId: routineId,
-                              initialRoutineData: routine,
-                            ),
-                          ),
-                        ).then((_) => _loadClientData());
-                      },
-                      icon: const Icon(Icons.edit_outlined, size: 18),
-                      label: const Text('Editar'),
-                    ),
-                    TextButton.icon(
-                      onPressed: () => _deleteRoutine(routineId),
-                      icon: const Icon(Icons.delete_outline, size: 18, color: Colors.redAccent),
-                      label: const Text('Eliminar', style: TextStyle(color: Colors.redAccent)),
-                    ),
-                  ],
-                ),
-              ),
+                Padding(
+                 padding: const EdgeInsets.symmetric(horizontal: 16),
+                 child: Align(
+                   alignment: Alignment.centerRight,
+                   child: Wrap(
+                     spacing: 8,
+                     runSpacing: 8,
+                     alignment: WrapAlignment.end,
+                     children: [
+                       TextButton.icon(
+                         onPressed: () {
+                           Navigator.push(
+                             context,
+                             MaterialPageRoute(
+                               builder: (_) => CreateRoutinePage(
+                                 clientId: widget.clientId,
+                                 clientEmail: widget.clientEmail,
+                                 initialRoutineId: routineId,
+                                 initialRoutineData: routine,
+                               ),
+                             ),
+                           ).then((_) => _loadClientData());
+                         },
+                         icon: const Icon(Icons.edit_outlined, size: 18),
+                         label: const Text('Editar'),
+                       ),
+                       TextButton.icon(
+                         onPressed: () => _duplicateRoutine(routine),
+                         icon: const Icon(Icons.copy_outlined, size: 18, color: Colors.cyanAccent),
+                         label: const Text('Duplicar', style: TextStyle(color: Colors.cyanAccent)),
+                       ),
+                       TextButton.icon(
+                         onPressed: () => _showAdjustProgressDialog(routine, routineId),
+                         icon: const Icon(Icons.trending_up, size: 18, color: Colors.orangeAccent),
+                         label: const Text('Ajustar Progreso', style: TextStyle(color: Colors.orangeAccent)),
+                       ),
+                       TextButton.icon(
+                         onPressed: () => _deleteRoutine(routineId),
+                         icon: const Icon(Icons.delete_outline, size: 18, color: Colors.redAccent),
+                         label: const Text('Eliminar', style: TextStyle(color: Colors.redAccent)),
+                       ),
+                     ],
+                   ),
+                 ),
+               ),
               ...workouts.map((workout) {
-                return ListTile(
-                  dense: true,
-                  title: Text(
-                    (workout['workoutName'] ?? 'Desconocido').toString(),
-                    style: const TextStyle(color: Colors.white),
-                  ),
-                  subtitle: Text(
-                    '${workout['sets'] ?? '-'} x ${workout['reps'] ?? '-'} @ ${workout['weight'] ?? '-'}kg',
-                    style: TextStyle(color: primaryColor, fontSize: 12),
+                return Material(
+                  color: Colors.transparent,
+                  child: ListTile(
+                    dense: true,
+                    title: Text(
+                      (workout['workoutName'] ?? 'Desconocido').toString(),
+                      style: const TextStyle(color: Colors.white),
+                    ),
+                    subtitle: Text(
+                      '${workout['sets'] ?? '-'} x ${workout['reps'] ?? '-'} @ ${workout['weight'] ?? '-'}kg',
+                      style: TextStyle(color: primaryColor, fontSize: 12),
+                    ),
                   ),
                 );
               }),
@@ -565,18 +823,21 @@ class _ClientRoutinesPageState extends State<ClientRoutinesPage> {
                           final anyMissed = routines.any((routine) => _isRoutineMissed(routine));
                           final allCompleted = routines.every((routine) => _isRoutineCompleted(routine));
 
-                          return Positioned(
-                            bottom: 1,
-                            child: Container(
-                              width: 7,
-                              height: 7,
-                              decoration: BoxDecoration(
-                                color: anyMissed
-                                    ? Colors.redAccent
-                                    : allCompleted
-                                        ? Colors.greenAccent
-                                        : Colors.orangeAccent,
-                                shape: BoxShape.circle,
+                          return Align(
+                            alignment: Alignment.bottomCenter,
+                            child: Padding(
+                              padding: const EdgeInsets.only(bottom: 2),
+                              child: Container(
+                                width: 7,
+                                height: 7,
+                                decoration: BoxDecoration(
+                                  color: anyMissed
+                                      ? Colors.redAccent
+                                      : allCompleted
+                                          ? Colors.greenAccent
+                                          : Colors.orangeAccent,
+                                  shape: BoxShape.circle,
+                                ),
                               ),
                             ),
                           );
@@ -644,6 +905,101 @@ class _ClientRoutinesPageState extends State<ClientRoutinesPage> {
                 ],
               ),
             ),
+    );
+  }
+}
+
+class _ClientPicker extends StatefulWidget {
+  final Color backgroundColor;
+  final Color surfaceColor;
+  final Color primaryColor;
+
+  const _ClientPicker({
+    required this.backgroundColor,
+    required this.surfaceColor,
+    required this.primaryColor,
+  });
+
+  @override
+  State<_ClientPicker> createState() => _ClientPickerState();
+}
+
+class _ClientPickerState extends State<_ClientPicker> {
+  String _searchQuery = "";
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      height: MediaQuery.of(context).size.height * 0.7,
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        color: widget.backgroundColor,
+        borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
+      ),
+      child: Column(
+        children: [
+          Container(
+            width: 40,
+            height: 4,
+            margin: const EdgeInsets.only(bottom: 20),
+            decoration: BoxDecoration(
+              color: Colors.white24,
+              borderRadius: BorderRadius.circular(2),
+            ),
+          ),
+          const Text(
+            'Seleccionar Cliente',
+            style: TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold),
+          ),
+          const SizedBox(height: 16),
+          TextField(
+            onChanged: (val) => setState(() => _searchQuery = val.toLowerCase()),
+            style: const TextStyle(color: Colors.white),
+            decoration: InputDecoration(
+              hintText: 'Buscar cliente...',
+              hintStyle: const TextStyle(color: Colors.white38),
+              prefixIcon: const Icon(Icons.search, color: Colors.white38),
+              filled: true,
+              fillColor: Colors.white.withValues(alpha: 0.05),
+              border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none),
+            ),
+          ),
+          const SizedBox(height: 16),
+          Expanded(
+            child: StreamBuilder<QuerySnapshot>(
+              stream: FirebaseFirestore.instance.collection('users').where('role', isEqualTo: 'user').snapshots(),
+              builder: (context, snapshot) {
+                if (snapshot.hasError) return const Center(child: Text('Error', style: TextStyle(color: Colors.white)));
+                if (!snapshot.hasData) return const Center(child: CircularProgressIndicator());
+
+                final clients = snapshot.data!.docs.where((doc) {
+                  final data = doc.data() as Map<String, dynamic>;
+                  final name = (data['name'] ?? '').toString().toLowerCase();
+                  final email = (data['email'] ?? '').toString().toLowerCase();
+                  return name.contains(_searchQuery) || email.contains(_searchQuery);
+                }).toList();
+
+                return ListView.builder(
+                  itemCount: clients.length,
+                  itemBuilder: (context, index) {
+                    final client = clients[index].data() as Map<String, dynamic>;
+                    final clientId = clients[index].id;
+                    final name = client['name'] ?? 'Sin nombre';
+                    final email = client['email'] ?? '';
+
+                    return ListTile(
+                      title: Text(name, style: const TextStyle(color: Colors.white)),
+                      subtitle: Text(email, style: const TextStyle(color: Colors.white60, fontSize: 12)),
+                      trailing: const Icon(Icons.chevron_right, color: Colors.white24),
+                      onTap: () => Navigator.pop(context, {'id': clientId, 'email': email, 'name': name}),
+                    );
+                  },
+                );
+              },
+            ),
+          ),
+        ],
+      ),
     );
   }
 }
