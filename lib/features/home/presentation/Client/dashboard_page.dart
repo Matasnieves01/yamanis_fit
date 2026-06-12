@@ -800,6 +800,22 @@ class _DashboardPageState extends State<DashboardPage> {
     return !routineDay.isAfter(today);
   }
 
+  Future<void> _openWhatsApp() async {
+    const phone = '50769184836';
+    final message = Uri.encodeComponent(
+      'Hola! Mi membresía expiró y quiero renovarla. ¿Me puedes ayudar?',
+    );
+    final uri = Uri.parse('https://wa.me/$phone?text=$message');
+
+    if (await canLaunchUrl(uri)) {
+      await launchUrl(uri, mode: LaunchMode.externalApplication);
+    } else if (mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('No se pudo abrir WhatsApp')),
+      );
+    }
+  }
+
   Widget _buildAccessBadge() {
     if (_isAccountActive) return const SizedBox.shrink();
 
@@ -807,26 +823,30 @@ class _DashboardPageState extends State<DashboardPage> {
         ? 'No active plan'
         : "Expired on ${DateFormat('dd MMM yyyy').format(_activeUntil!)}";
 
-    return Container(
-      width: double.infinity,
-      margin: const EdgeInsets.only(bottom: 14),
-      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
-      decoration: BoxDecoration(
-        color: Colors.redAccent.withOpacity(0.12),
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: Colors.redAccent.withOpacity(0.45)),
-      ),
-      child: Row(
-        children: [
-          const Icon(Icons.warning_amber_rounded, color: Colors.redAccent, size: 18),
-          const SizedBox(width: 8),
-          Expanded(
-            child: Text(
-              'Account expired - $dateText',
-              style: const TextStyle(color: Colors.redAccent, fontWeight: FontWeight.bold, fontSize: 12),
+    return GestureDetector(
+      onTap: _openWhatsApp,
+      child: Container(
+        width: double.infinity,
+        margin: const EdgeInsets.only(bottom: 14),
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+        decoration: BoxDecoration(
+          color: Colors.redAccent.withOpacity(0.12),
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(color: Colors.redAccent.withOpacity(0.45)),
+        ),
+        child: Row(
+          children: [
+            const Icon(Icons.warning_amber_rounded, color: Colors.redAccent, size: 18),
+            const SizedBox(width: 8),
+            Expanded(
+              child: Text(
+                'Account expired - $dateText. Toca para renovar por WhatsApp',
+                style: const TextStyle(color: Colors.redAccent, fontWeight: FontWeight.bold, fontSize: 12),
+              ),
             ),
-          ),
-        ],
+            const Icon(Icons.chat_bubble_rounded, color: Colors.redAccent, size: 16),
+          ],
+        ),
       ),
     );
   }

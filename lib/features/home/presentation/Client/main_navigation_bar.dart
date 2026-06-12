@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:url_launcher/url_launcher.dart';
 import 'package:yamanis_fit/features/home/presentation/Admin/workouts_page.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
@@ -198,6 +199,22 @@ class _MainNavigationBarState extends State<MainNavigationBar> {
     );
   }
 
+  Future<void> _openWhatsApp() async {
+    const phone = '50769184836';
+    final message = Uri.encodeComponent(
+      'Hola! Mi membresía expiró y quiero renovarla. ¿Me puedes ayudar?',
+    );
+    final uri = Uri.parse('https://wa.me/$phone?text=$message');
+
+    if (await canLaunchUrl(uri)) {
+      await launchUrl(uri, mode: LaunchMode.externalApplication);
+    } else if (mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('No se pudo abrir WhatsApp')),
+      );
+    }
+  }
+
   void _onTabSelected(int index) {
     setState(() {
       _currentIndex = index;
@@ -265,17 +282,30 @@ class _MainNavigationBarState extends State<MainNavigationBar> {
                         SizedBox(
                           width: double.infinity,
                           height: 50,
-                          child: ElevatedButton(
-                            onPressed: () => setState(() => _isAccessExpired = false),
+                          child: ElevatedButton.icon(
+                            onPressed: _openWhatsApp,
+                            icon: const Icon(Icons.chat_bubble_rounded),
+                            label: const Text(
+                              'RENOVAR POR WHATSAPP',
+                              style: TextStyle(fontWeight: FontWeight.bold, letterSpacing: 1.0),
+                            ),
                             style: ElevatedButton.styleFrom(
-                              backgroundColor: Colors.orangeAccent,
-                              foregroundColor: const Color(0xFF11151C),
+                              backgroundColor: const Color(0xFF25D366),
+                              foregroundColor: Colors.white,
                               shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
                               elevation: 0,
                             ),
+                          ),
+                        ),
+                        const SizedBox(height: 10),
+                        SizedBox(
+                          width: double.infinity,
+                          height: 44,
+                          child: TextButton(
+                            onPressed: () => setState(() => _isAccessExpired = false),
                             child: const Text(
                               'ENTENDIDO',
-                              style: TextStyle(fontWeight: FontWeight.bold, letterSpacing: 1.0),
+                              style: TextStyle(color: Colors.white60, fontWeight: FontWeight.bold, letterSpacing: 1.0),
                             ),
                           ),
                         ),
