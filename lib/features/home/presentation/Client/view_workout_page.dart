@@ -297,9 +297,9 @@ class _ViewWorkoutPageState extends State<ViewWorkoutPage> {
                   child: Icon(Icons.videocam_off, color: Colors.white24, size: 50),
                 ),
               ),
-            const SizedBox(height: 32),
+            const SizedBox(height: 20),
             Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 24),
+              padding: const EdgeInsets.symmetric(horizontal: 18),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
@@ -331,26 +331,26 @@ class _ViewWorkoutPageState extends State<ViewWorkoutPage> {
                       ),
                     ],
                   ),
-                  const SizedBox(height: 16),
+                  const SizedBox(height: 12),
                   Container(
                     width: double.infinity,
-                    padding: const EdgeInsets.all(20),
+                    padding: const EdgeInsets.all(16),
                     decoration: BoxDecoration(
                       color: surfaceColor.withValues(alpha: 0.1),
-                      borderRadius: BorderRadius.circular(24),
+                      borderRadius: BorderRadius.circular(20),
                       border: Border.all(color: surfaceColor.withValues(alpha: 0.1)),
                     ),
                     child: Text(
                       workoutData?['description'] ?? "No hay descripción disponible para este ejercicio.",
                       style: TextStyle(
                         color: Colors.white.withValues(alpha: 0.9),
-                        fontSize: 16,
-                        height: 1.6,
+                        fontSize: 14,
+                        height: 1.5,
                         letterSpacing: 0.2,
                       ),
                     ),
                   ),
-                  const SizedBox(height: 40),
+                  const SizedBox(height: 24),
                 ],
               ),
             ),

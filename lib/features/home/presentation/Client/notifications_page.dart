@@ -2,12 +2,19 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 
-class ClientNotificationsPage extends StatelessWidget {
+class ClientNotificationsPage extends StatefulWidget {
   const ClientNotificationsPage({super.key});
 
+  @override
+  State<ClientNotificationsPage> createState() => _ClientNotificationsPageState();
+}
+
+class _ClientNotificationsPageState extends State<ClientNotificationsPage> {
   static const Color _backgroundColor = Color(0xFF11151C);
   static const Color _surfaceColor = Color(0xFF1B222C);
   static const Color _primaryColor = Color(0xFFAEE084);
+
+  bool _showAll = false;
 
   Stream<QuerySnapshot<Map<String, dynamic>>> _getNotifications(String userId) {
     return FirebaseFirestore.instance
@@ -73,7 +80,7 @@ class ClientNotificationsPage extends StatelessWidget {
             return const Center(child: Text('Error al cargar notificaciones', style: TextStyle(color: Colors.white54)));
           }
 
-          final docs = snapshot.data!.docs
+          final allDocs = snapshot.data!.docs
               .where((doc) {
                 final type = doc.data()['type'];
                 return type == 'trainer_feedback' || type == 'pdf_approved' || type == 'pdf_rejected';
@@ -85,6 +92,9 @@ class ClientNotificationsPage extends StatelessWidget {
               return bDate.compareTo(aDate);
             });
 
+          final unreadDocs = allDocs.where((doc) => doc.data()['read'] != true).toList();
+          final docs = _showAll ? allDocs : unreadDocs;
+
           if (docs.isEmpty) {
             return Center(
               child: Column(
@@ -92,17 +102,43 @@ class ClientNotificationsPage extends StatelessWidget {
                 children: [
                   Icon(Icons.notifications_off_outlined, size: 64, color: Colors.white.withValues(alpha: 0.1)),
                   const SizedBox(height: 16),
-                  const Text('Aún no tienes feedback del trainer', style: TextStyle(color: Colors.white54, fontSize: 16)),
+                  Text(
+                    _showAll ? 'Aún no tienes feedback del trainer' : 'No tienes notificaciones nuevas',
+                    style: const TextStyle(color: Colors.white54, fontSize: 16),
+                  ),
+                  if (!_showAll && allDocs.isNotEmpty) ...[
+                    const SizedBox(height: 16),
+                    TextButton(
+                      onPressed: () => setState(() => _showAll = true),
+                      child: const Text('VER NOTIFICACIONES PASADAS', style: TextStyle(color: _primaryColor, fontWeight: FontWeight.bold)),
+                    ),
+                  ],
                 ],
               ),
             );
           }
 
           return ListView.builder(
-            padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
-            itemCount: docs.length,
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+            itemCount: docs.length + 1,
             itemBuilder: (context, index) {
-              final doc = docs[index];
+              if (index == 0) {
+                return Padding(
+                  padding: const EdgeInsets.only(bottom: 8),
+                  child: Align(
+                    alignment: Alignment.centerRight,
+                    child: TextButton.icon(
+                      onPressed: () => setState(() => _showAll = !_showAll),
+                      icon: Icon(_showAll ? Icons.visibility_off_outlined : Icons.history, size: 16, color: _primaryColor),
+                      label: Text(
+                        _showAll ? 'VER SOLO NO LEÍDAS' : 'VER NOTIFICACIONES PASADAS',
+                        style: const TextStyle(color: _primaryColor, fontWeight: FontWeight.bold, fontSize: 12),
+                      ),
+                    ),
+                  ),
+                );
+              }
+              final doc = docs[index - 1];
               final data = doc.data();
               final isRead = data['read'] == true;
               final type = data['type'] ?? 'trainer_feedback';
@@ -128,7 +164,7 @@ class ClientNotificationsPage extends StatelessWidget {
               }
 
               return Padding(
-                padding: const EdgeInsets.only(bottom: 16),
+                padding: const EdgeInsets.only(bottom: 12),
                 child: InkWell(
                   onTap: () async {
                     if (!isRead) await _markAsRead(doc.id);
@@ -136,12 +172,12 @@ class ClientNotificationsPage extends StatelessWidget {
 
                     _showFeedbackDetail(context, title, feedback, date, type);
                   },
-                  borderRadius: BorderRadius.circular(20),
+                  borderRadius: BorderRadius.circular(16),
                   child: Container(
-                    padding: const EdgeInsets.all(16),
+                    padding: const EdgeInsets.all(14),
                     decoration: BoxDecoration(
                       color: isRead ? _surfaceColor.withValues(alpha: 0.4) : _surfaceColor,
-                      borderRadius: BorderRadius.circular(20),
+                      borderRadius: BorderRadius.circular(16),
                       border: Border.all(
                         color: isRead ? Colors.white.withValues(alpha: 0.05) : _primaryColor.withValues(alpha: 0.3),
                         width: 1,
@@ -158,7 +194,7 @@ class ClientNotificationsPage extends StatelessWidget {
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Container(
-                          padding: const EdgeInsets.all(10),
+                          padding: const EdgeInsets.all(8),
                           decoration: BoxDecoration(
                             color: isRead ? Colors.white.withValues(alpha: 0.05) : _primaryColor.withValues(alpha: 0.1),
                             shape: BoxShape.circle,
@@ -166,10 +202,10 @@ class ClientNotificationsPage extends StatelessWidget {
                           child: Icon(
                             icon,
                             color: isRead ? Colors.white38 : (type == 'pdf_approved' ? _primaryColor : (type == 'pdf_rejected' ? Colors.redAccent : _primaryColor)),
-                            size: 22,
+                            size: 20,
                           ),
                         ),
-                        const SizedBox(width: 16),
+                        const SizedBox(width: 12),
                         Expanded(
                           child: Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
@@ -244,7 +280,7 @@ class ClientNotificationsPage extends StatelessWidget {
           color: Color(0xFF1A1F26),
           borderRadius: BorderRadius.vertical(top: Radius.circular(32)),
         ),
-        padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 32),
+        padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 24),
         child: Column(
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -259,11 +295,11 @@ class ClientNotificationsPage extends StatelessWidget {
                 ),
               ),
             ),
-            const SizedBox(height: 24),
+            const SizedBox(height: 18),
             Row(
               children: [
                 Container(
-                  padding: const EdgeInsets.all(12),
+                  padding: const EdgeInsets.all(10),
                   decoration: BoxDecoration(
                     color: (type == 'pdf_rejected' ? Colors.redAccent : _primaryColor).withValues(alpha: 0.1),
                     borderRadius: BorderRadius.circular(16),
@@ -297,7 +333,7 @@ class ClientNotificationsPage extends StatelessWidget {
                 ),
               ],
             ),
-            const SizedBox(height: 24),
+            const SizedBox(height: 18),
             Text(
               type == 'trainer_feedback' ? 'MENSAJE DEL TRAINER:' : 'DETALLES:',
               style: TextStyle(
@@ -307,28 +343,28 @@ class ClientNotificationsPage extends StatelessWidget {
                 letterSpacing: 1,
               ),
             ),
-            const SizedBox(height: 12),
+            const SizedBox(height: 10),
             Container(
               width: double.infinity,
-              padding: const EdgeInsets.all(20),
+              padding: const EdgeInsets.all(16),
               decoration: BoxDecoration(
                 color: Colors.white.withValues(alpha: 0.03),
-                borderRadius: BorderRadius.circular(20),
+                borderRadius: BorderRadius.circular(16),
                 border: Border.all(color: Colors.white.withValues(alpha: 0.05)),
               ),
               child: Text(
                 message,
                 style: TextStyle(
                   color: Colors.white.withValues(alpha: 0.87),
-                  fontSize: 15,
-                  height: 1.6,
+                  fontSize: 14,
+                  height: 1.5,
                 ),
               ),
             ),
-            const SizedBox(height: 32),
+            const SizedBox(height: 24),
             SizedBox(
               width: double.infinity,
-              height: 56,
+              height: 52,
               child: ElevatedButton(
                 onPressed: () => Navigator.pop(context),
                 style: ElevatedButton.styleFrom(

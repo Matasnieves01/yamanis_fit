@@ -69,15 +69,15 @@ class _PromotionDetailPageState extends State<PromotionDetailPage> {
             // Image header
             if (widget.promotion.imageUrl.isNotEmpty)
               ClipRRect(
-                borderRadius: const BorderRadius.vertical(bottom: Radius.circular(24)),
+                borderRadius: const BorderRadius.vertical(bottom: Radius.circular(20)),
                 child: Image.network(
                   widget.promotion.imageUrl,
                   width: double.infinity,
-                  height: 280,
+                  height: 220,
                   fit: BoxFit.cover,
                   errorBuilder: (context, error, stackTrace) => Container(
                     width: double.infinity,
-                    height: 280,
+                    height: 220,
                     color: surfaceColor.withValues(alpha: 0.2),
                     child: const Icon(Icons.image_outlined, color: Colors.white24, size: 80),
                   ),
@@ -85,7 +85,7 @@ class _PromotionDetailPageState extends State<PromotionDetailPage> {
               ),
 
             Padding(
-              padding: const EdgeInsets.all(24),
+              padding: const EdgeInsets.all(18),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
@@ -94,12 +94,12 @@ class _PromotionDetailPageState extends State<PromotionDetailPage> {
                     widget.promotion.title.toUpperCase(),
                     style: const TextStyle(
                       color: Colors.white,
-                      fontSize: 28,
+                      fontSize: 22,
                       fontWeight: FontWeight.w900,
                       letterSpacing: -0.5,
                     ),
                   ),
-                  const SizedBox(height: 16),
+                  const SizedBox(height: 12),
 
                   // Badge
                   Container(
@@ -114,32 +114,32 @@ class _PromotionDetailPageState extends State<PromotionDetailPage> {
                       style: TextStyle(color: Colors.greenAccent, fontSize: 11, fontWeight: FontWeight.bold),
                     ),
                   ),
-                  const SizedBox(height: 20),
+                  const SizedBox(height: 16),
 
                   // Description title
                   const Text(
                     'SOBRE ESTA PROMOCIÓN',
                     style: TextStyle(color: Colors.white54, fontWeight: FontWeight.bold, fontSize: 12, letterSpacing: 1.2),
                   ),
-                  const SizedBox(height: 12),
+                  const SizedBox(height: 10),
 
                   // Description
                   Text(
                     widget.promotion.description,
                     style: const TextStyle(
                       color: Colors.white70,
-                      fontSize: 15,
-                      height: 1.6,
+                      fontSize: 14,
+                      height: 1.5,
                     ),
                   ),
-                  const SizedBox(height: 32),
+                  const SizedBox(height: 24),
 
                   // Videos section
                   Text(
                     'VIDEOS (${widget.promotion.videoUrls.length})',
                     style: const TextStyle(color: Colors.white54, fontWeight: FontWeight.bold, fontSize: 12, letterSpacing: 1.2),
                   ),
-                  const SizedBox(height: 16),
+                  const SizedBox(height: 12),
 
                   // Video player with carousel
                   if (widget.promotion.videoUrls.isNotEmpty)
@@ -215,7 +215,7 @@ class _PromotionDetailPageState extends State<PromotionDetailPage> {
                         ),
                       ),
                     ),
-                  const SizedBox(height: 40),
+                  const SizedBox(height: 24),
                 ],
               ),
             ),

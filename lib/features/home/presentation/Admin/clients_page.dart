@@ -86,11 +86,11 @@ class _ClientsPageState extends State<ClientsPage> {
       body: Column(
         children: [
           Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
             child: TextField(
               controller: _searchController,
               onChanged: (value) => setState(() => _searchQuery = value.toLowerCase()),
-              style: const TextStyle(color: Colors.white),
+              style: const TextStyle(color: Colors.white, fontSize: 14),
               decoration: InputDecoration(
                 hintText: "Buscar por nombre o correo...",
                 hintStyle: TextStyle(color: Colors.white.withValues(alpha: 0.3)),
@@ -98,10 +98,10 @@ class _ClientsPageState extends State<ClientsPage> {
                 filled: true,
                 fillColor: surfaceColor.withValues(alpha: 0.1),
                 border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(20),
+                  borderRadius: BorderRadius.circular(16),
                   borderSide: BorderSide.none,
                 ),
-                contentPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
+                contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
               ),
             ),
           ),
@@ -134,7 +134,7 @@ class _ClientsPageState extends State<ClientsPage> {
                 }
 
                 return ListView.builder(
-                  padding: const EdgeInsets.all(20),
+                  padding: const EdgeInsets.all(16),
                   itemCount: filteredClients.length,
                   itemBuilder: (context, index) {
                     final client = filteredClients[index];
@@ -148,14 +148,15 @@ class _ClientsPageState extends State<ClientsPage> {
                     final bool isActiveNow = isEnabled && activeUntil != null && activeUntil.isAfter(DateTime.now());
 
                     return Container(
-                      margin: const EdgeInsets.only(bottom: 16),
+                      margin: const EdgeInsets.only(bottom: 12),
                       decoration: BoxDecoration(
                         color: surfaceColor.withValues(alpha: 0.1),
-                        borderRadius: BorderRadius.circular(20),
+                        borderRadius: BorderRadius.circular(16),
                         border: Border.all(color: surfaceColor.withValues(alpha: 0.2)),
                       ),
                       child: ListTile(
-                        contentPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
+                        dense: true,
+                        contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
                         leading: CircleAvatar(
                           backgroundColor: secondaryColor.withValues(alpha: 0.2),
                           child: Icon(Icons.person, color: secondaryColor),
@@ -165,7 +166,7 @@ class _ClientsPageState extends State<ClientsPage> {
                           style: const TextStyle(
                             color: Colors.white,
                             fontWeight: FontWeight.bold,
-                            fontSize: 18,
+                            fontSize: 16,
                           ),
                         ),
                         subtitle: Column(

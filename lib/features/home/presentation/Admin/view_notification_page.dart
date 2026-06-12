@@ -113,28 +113,28 @@ class _ViewNotificationPageState extends State<ViewNotificationPage> {
           final clientGeneralFeedback = (data['clientFeedback'] ?? '').toString().trim();
 
           return SingleChildScrollView(
-            padding: const EdgeInsets.all(24),
+            padding: const EdgeInsets.all(18),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 _buildHeader(clientName, routineName, date),
-                const SizedBox(height: 32),
-                
+                const SizedBox(height: 24),
+
                 const Text("COMENTARIO DEL CLIENTE",
                     style: TextStyle(
                         color: Colors.white,
-                        fontSize: 14,
+                        fontSize: 13,
                         fontWeight: FontWeight.w900,
                         letterSpacing: 1.0)),
-                const SizedBox(height: 12),
+                const SizedBox(height: 10),
                 Container(
                   width: double.infinity,
-                  padding: const EdgeInsets.all(20),
+                  padding: const EdgeInsets.all(16),
                   decoration: BoxDecoration(
-                    color: clientGeneralFeedback.isNotEmpty 
+                    color: clientGeneralFeedback.isNotEmpty
                         ? Colors.orangeAccent.withValues(alpha: 0.1)
                         : Colors.white.withValues(alpha: 0.02),
-                    borderRadius: BorderRadius.circular(20),
+                    borderRadius: BorderRadius.circular(16),
                     border: Border.all(
                       color: clientGeneralFeedback.isNotEmpty 
                           ? Colors.orangeAccent.withValues(alpha: 0.3)
@@ -153,24 +153,24 @@ class _ViewNotificationPageState extends State<ViewNotificationPage> {
                     ),
                   ),
                 ),
-                const SizedBox(height: 32),
+                const SizedBox(height: 24),
 
                 const Text("DESGLOSE DE EJERCICIOS",
                     style: TextStyle(
                         color: Colors.white,
-                        fontSize: 14,
+                        fontSize: 13,
                         fontWeight: FontWeight.w900,
                         letterSpacing: 1.0)),
-                const SizedBox(height: 16),
+                const SizedBox(height: 12),
                 ...results.map((res) => _buildWorkoutResultCard(res)),
-                const SizedBox(height: 40),
+                const SizedBox(height: 24),
                 const Text("TU FEEDBACK (TRAINER)",
                     style: TextStyle(
                         color: Colors.white,
-                        fontSize: 14,
+                        fontSize: 13,
                         fontWeight: FontWeight.w900,
                         letterSpacing: 1.0)),
-                const SizedBox(height: 16),
+                const SizedBox(height: 12),
                 TextField(
                   controller: _trainerFeedbackController,
                   maxLines: 4,
@@ -180,7 +180,7 @@ class _ViewNotificationPageState extends State<ViewNotificationPage> {
                     hintStyle: TextStyle(color: Colors.white.withValues(alpha: 0.2)),
                     filled: true,
                     fillColor: Colors.white.withValues(alpha: 0.05),
-                    contentPadding: const EdgeInsets.all(20),
+                    contentPadding: const EdgeInsets.all(16),
                     border: OutlineInputBorder(
                         borderRadius: BorderRadius.circular(16),
                         borderSide: BorderSide.none),
@@ -192,10 +192,10 @@ class _ViewNotificationPageState extends State<ViewNotificationPage> {
                         borderSide: BorderSide(color: primaryColor.withValues(alpha: 0.5))),
                   ),
                 ),
-                const SizedBox(height: 24),
+                const SizedBox(height: 16),
                 SizedBox(
                   width: double.infinity,
-                  height: 60,
+                  height: 52,
                   child: ElevatedButton(
                     onPressed: _isSaving ? null : () => _saveTrainerFeedback(clientId, routineName),
                     style: ElevatedButton.styleFrom(
@@ -212,7 +212,7 @@ class _ViewNotificationPageState extends State<ViewNotificationPage> {
                                 fontWeight: FontWeight.w900, letterSpacing: 1.5)),
                   ),
                 ),
-                const SizedBox(height: 40),
+                const SizedBox(height: 24),
               ],
             ),
           );
@@ -223,10 +223,10 @@ class _ViewNotificationPageState extends State<ViewNotificationPage> {
 
   Widget _buildHeader(String name, String routine, DateTime date) {
     return Container(
-      padding: const EdgeInsets.all(24),
+      padding: const EdgeInsets.all(18),
       decoration: BoxDecoration(
         color: surfaceColor.withValues(alpha: 0.1),
-        borderRadius: BorderRadius.circular(24),
+        borderRadius: BorderRadius.circular(20),
         border: Border.all(color: surfaceColor.withValues(alpha: 0.2)),
       ),
       child: Row(
@@ -281,11 +281,11 @@ class _ViewNotificationPageState extends State<ViewNotificationPage> {
     }
 
     return Container(
-      margin: const EdgeInsets.only(bottom: 16),
-      padding: const EdgeInsets.all(20),
+      margin: const EdgeInsets.only(bottom: 12),
+      padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
         color: Colors.white.withValues(alpha: 0.02),
-        borderRadius: BorderRadius.circular(24),
+        borderRadius: BorderRadius.circular(20),
         border: Border.all(color: Colors.white.withValues(alpha: 0.05)),
       ),
       child: Column(
@@ -316,7 +316,7 @@ class _ViewNotificationPageState extends State<ViewNotificationPage> {
               ),
             ],
           ),
-          const SizedBox(height: 20),
+          const SizedBox(height: 16),
           ...((res['exercises'] as List<dynamic>? ?? []).map((ex) {
             return Padding(
               padding: const EdgeInsets.only(bottom: 12),

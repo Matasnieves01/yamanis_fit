@@ -135,7 +135,7 @@ class _CreateWorkoutPageState extends State<CreateWorkoutPage> {
       prefixIcon: Icon(icon, color: primaryColor),
       filled: true,
       fillColor: Colors.white.withValues(alpha: 0.05),
-      contentPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 18),
+      contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
       border: OutlineInputBorder(
         borderRadius: BorderRadius.circular(16),
         borderSide: BorderSide.none,
@@ -165,15 +165,15 @@ class _CreateWorkoutPageState extends State<CreateWorkoutPage> {
         elevation: 0,
       ),
       body: SingleChildScrollView(
-        padding: const EdgeInsets.all(24),
+        padding: const EdgeInsets.all(18),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text(
               isEditing ? "Editar Detalles" : "Detalles del Ejercicio",
-              style: const TextStyle(color: Colors.white, fontSize: 22, fontWeight: FontWeight.bold),
+              style: const TextStyle(color: Colors.white, fontSize: 20, fontWeight: FontWeight.bold),
             ),
-            const SizedBox(height: 32),
+            const SizedBox(height: 24),
             TextField(
               controller: _nameController,
               style: const TextStyle(color: Colors.white),
@@ -183,7 +183,7 @@ class _CreateWorkoutPageState extends State<CreateWorkoutPage> {
                 icon: Icons.fitness_center_rounded,
               ),
             ),
-            const SizedBox(height: 20),
+            const SizedBox(height: 14),
             TextField(
               controller: _descController,
               maxLines: 4,
@@ -194,7 +194,7 @@ class _CreateWorkoutPageState extends State<CreateWorkoutPage> {
                 icon: Icons.description_rounded,
               ),
             ),
-            const SizedBox(height: 20),
+            const SizedBox(height: 14),
             TextField(
               controller: _videoUrlController,
               style: const TextStyle(color: Colors.white),
@@ -204,20 +204,20 @@ class _CreateWorkoutPageState extends State<CreateWorkoutPage> {
                 icon: Icons.play_circle_fill_rounded,
               ),
             ),
-            const SizedBox(height: 32),
+            const SizedBox(height: 24),
             if (_youtubeController != null)
               ClipRRect(
-                borderRadius: BorderRadius.circular(24),
+                borderRadius: BorderRadius.circular(20),
                 child: YoutubePlayer(
                   controller: _youtubeController!,
                   showVideoProgressIndicator: true,
                   progressIndicatorColor: primaryColor,
                 ),
               ),
-            const SizedBox(height: 40),
+            const SizedBox(height: 24),
             SizedBox(
               width: double.infinity,
-              height: 60,
+              height: 52,
               child: ElevatedButton(
                 onPressed: isLoading ? null : saveWorkout,
                 style: ElevatedButton.styleFrom(

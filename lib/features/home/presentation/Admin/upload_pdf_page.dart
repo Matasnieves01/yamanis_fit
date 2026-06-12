@@ -98,7 +98,7 @@ class _UploadPdfPageState extends State<UploadPdfPage> {
       prefixIcon: Icon(icon, color: primaryColor),
       filled: true,
       fillColor: Colors.white.withOpacity(0.05),
-      contentPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 18),
+      contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
       border: OutlineInputBorder(
         borderRadius: BorderRadius.circular(16),
         borderSide: BorderSide.none,
@@ -126,21 +126,21 @@ class _UploadPdfPageState extends State<UploadPdfPage> {
         elevation: 0,
       ),
       body: SingleChildScrollView(
-        padding: const EdgeInsets.all(24),
+        padding: const EdgeInsets.all(18),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             const Text(
               'Detalles del Recurso',
-              style: TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold),
+              style: TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.bold),
             ),
-            const SizedBox(height: 24),
+            const SizedBox(height: 18),
             TextField(
               controller: _nameController,
               style: const TextStyle(color: Colors.white),
               decoration: _inputDecoration('Nombre (Ej: Guía de Nutrición)', Icons.title_rounded),
             ),
-            const SizedBox(height: 16),
+            const SizedBox(height: 12),
             TextField(
               controller: _urlController,
               style: const TextStyle(color: Colors.white),
@@ -149,7 +149,7 @@ class _UploadPdfPageState extends State<UploadPdfPage> {
                 helperStyle: const TextStyle(color: Colors.white38),
               ),
             ),
-            const SizedBox(height: 24),
+            const SizedBox(height: 18),
             Container(
               padding: const EdgeInsets.all(16),
               decoration: BoxDecoration(
@@ -181,10 +181,10 @@ class _UploadPdfPageState extends State<UploadPdfPage> {
                 ],
               ),
             ),
-            const SizedBox(height: 40),
+            const SizedBox(height: 24),
             SizedBox(
               width: double.infinity,
-              height: 56,
+              height: 52,
               child: ElevatedButton(
                 onPressed: _isUploading ? null : _saveResource,
                 style: ElevatedButton.styleFrom(

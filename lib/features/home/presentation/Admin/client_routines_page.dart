@@ -753,15 +753,15 @@ class _ClientRoutinesPageState extends State<ClientRoutinesPage> {
       body: _isLoading
           ? Center(child: CircularProgressIndicator(color: primaryColor))
           : SingleChildScrollView(
-              padding: const EdgeInsets.all(20),
+              padding: const EdgeInsets.all(16),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   _buildAccountCard(),
-                  const SizedBox(height: 16),
+                  const SizedBox(height: 12),
                   SizedBox(
                     width: double.infinity,
-                    height: 55,
+                    height: 52,
                     child: ElevatedButton.icon(
                       onPressed: () {
                         Navigator.push(
@@ -783,11 +783,11 @@ class _ClientRoutinesPageState extends State<ClientRoutinesPage> {
                       ),
                     ),
                   ),
-                  const SizedBox(height: 20),
+                  const SizedBox(height: 16),
                   Container(
                     decoration: BoxDecoration(
                       color: surfaceColor.withValues(alpha: 0.1),
-                      borderRadius: BorderRadius.circular(24),
+                      borderRadius: BorderRadius.circular(20),
                       border: Border.all(color: surfaceColor.withValues(alpha: 0.2)),
                     ),
                     child: TableCalendar(
@@ -845,13 +845,13 @@ class _ClientRoutinesPageState extends State<ClientRoutinesPage> {
                       ),
                     ),
                   ),
-                  const SizedBox(height: 20),
+                  const SizedBox(height: 16),
                   Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
                       Text(
                         'Rutinas para ${_selectedDay == null ? '-' : _formatDate(_selectedDay!)}',
-                        style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 16),
+                        style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 15),
                       ),
                       IconButton(
                         onPressed: _loadClientData,
@@ -859,13 +859,13 @@ class _ClientRoutinesPageState extends State<ClientRoutinesPage> {
                       ),
                     ],
                   ),
-                  const SizedBox(height: 8),
+                  const SizedBox(height: 6),
                   _buildSelectedDayRoutines(),
-                  const SizedBox(height: 40),
+                  const SizedBox(height: 24),
                   // DANGER ZONE
                   Container(
                     width: double.infinity,
-                    padding: const EdgeInsets.all(20),
+                    padding: const EdgeInsets.all(16),
                     decoration: BoxDecoration(
                       color: Colors.redAccent.withValues(alpha: 0.05),
                       borderRadius: BorderRadius.circular(16),
@@ -901,7 +901,7 @@ class _ClientRoutinesPageState extends State<ClientRoutinesPage> {
                       ],
                     ),
                   ),
-                  const SizedBox(height: 40),
+                  const SizedBox(height: 24),
                 ],
               ),
             ),

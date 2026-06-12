@@ -121,30 +121,32 @@ class _RegisterPageState extends State<RegisterPage> {
         ),
         child: Center(
           child: SingleChildScrollView(
-            padding: const EdgeInsets.all(24),
-            child: Column(
+            padding: const EdgeInsets.all(20),
+            child: ConstrainedBox(
+              constraints: const BoxConstraints(maxWidth: 350),
+              child: Column(
               mainAxisAlignment: MainAxisAlignment.center,
               crossAxisAlignment: CrossAxisAlignment.center,
               children: [
                 Container(
-                  padding: const EdgeInsets.all(20),
+                  padding: const EdgeInsets.all(16),
                   decoration: BoxDecoration(
                     color: primaryColor.withValues(alpha: 0.1),
                     shape: BoxShape.circle,
                   ),
-                  child: Icon(Icons.person_add_rounded, size: 64, color: primaryColor),
+                  child: Icon(Icons.person_add_rounded, size: 56, color: primaryColor),
                 ),
-                const SizedBox(height: 32),
+                const SizedBox(height: 20),
                 const Text(
                   "CREAR CUENTA",
                   style: TextStyle(
                     color: Colors.white,
-                    fontSize: 28,
+                    fontSize: 24,
                     fontWeight: FontWeight.w900,
                     letterSpacing: 2.0,
                   ),
                 ),
-                const SizedBox(height: 8),
+                const SizedBox(height: 6),
                 Text(
                   "ÚNETE A LA COMUNIDAD",
                   style: TextStyle(
@@ -154,11 +156,11 @@ class _RegisterPageState extends State<RegisterPage> {
                     letterSpacing: 4.0,
                   ),
                 ),
-                const SizedBox(height: 48),
-                
-                // Registration Fields in a Fixed Size Box
+                const SizedBox(height: 32),
+
+                // Registration Fields
                 SizedBox(
-                  width: 350, // Fixed width
+                  width: double.infinity,
                   child: Container(
                     decoration: BoxDecoration(
                       color: surfaceColor.withValues(alpha: 0.1),
@@ -197,11 +199,11 @@ class _RegisterPageState extends State<RegisterPage> {
                   ),
                 ),
                 
-                const SizedBox(height: 40),
-                
+                const SizedBox(height: 24),
+
                 SizedBox(
-                  width: 350, // Fixed width matching the input box
-                  height: 60,
+                  width: double.infinity,
+                  height: 52,
                   child: ElevatedButton(
                     onPressed: isLoading ? null : register,
                     style: ElevatedButton.styleFrom(
@@ -225,8 +227,8 @@ class _RegisterPageState extends State<RegisterPage> {
                   ),
                 ),
                 
-                const SizedBox(height: 32),
-                
+                const SizedBox(height: 20),
+
                 Row(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
@@ -247,8 +249,9 @@ class _RegisterPageState extends State<RegisterPage> {
                     ),
                   ],
                 ),
-                const SizedBox(height: 20),
+                const SizedBox(height: 12),
               ],
+              ),
             ),
           ),
         ),

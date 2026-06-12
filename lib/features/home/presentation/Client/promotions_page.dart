@@ -50,13 +50,13 @@ class _PromotionsPageState extends State<PromotionsPage> {
         );
       },
       child: Container(
-        margin: const EdgeInsets.only(bottom: 18),
+        margin: const EdgeInsets.only(bottom: 14),
         decoration: BoxDecoration(
-          borderRadius: BorderRadius.circular(24),
+          borderRadius: BorderRadius.circular(20),
           color: surfaceColor.withValues(alpha: 0.2),
         ),
         child: ClipRRect(
-          borderRadius: BorderRadius.circular(24),
+          borderRadius: BorderRadius.circular(20),
           child: Stack(
             children: [
               if (promotion.imageUrl.isNotEmpty)
@@ -84,7 +84,7 @@ class _PromotionsPageState extends State<PromotionsPage> {
                 ),
               ),
               Padding(
-                padding: const EdgeInsets.all(18),
+                padding: const EdgeInsets.all(14),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
@@ -92,26 +92,26 @@ class _PromotionsPageState extends State<PromotionsPage> {
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
                         _chip('PROMOCIÓN', primaryColor),
-                        Icon(Icons.arrow_forward_rounded, color: primaryColor),
+                        Icon(Icons.arrow_forward_rounded, color: primaryColor, size: 20),
                       ],
                     ),
-                    const SizedBox(height: 8),
+                    const SizedBox(height: 6),
                     Text(
                       promotion.title,
                       style: const TextStyle(
                         color: Colors.white,
-                        fontSize: 20,
+                        fontSize: 18,
                         fontWeight: FontWeight.w900,
                       ),
                     ),
-                    const SizedBox(height: 6),
+                    const SizedBox(height: 4),
                     Text(
                       promotion.description,
-                      style: TextStyle(color: Colors.white.withValues(alpha: 0.75), height: 1.35),
+                      style: TextStyle(color: Colors.white.withValues(alpha: 0.75), fontSize: 13, height: 1.35),
                       maxLines: 2,
                       overflow: TextOverflow.ellipsis,
                     ),
-                    const SizedBox(height: 14),
+                    const SizedBox(height: 10),
                     Row(
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [

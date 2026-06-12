@@ -99,11 +99,11 @@ class _WorkoutsPageState extends State<WorkoutsPage> {
       body: Column(
         children: [
           Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 10),
+            padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 8),
             child: TextField(
               controller: _searchController,
               onChanged: (value) => setState(() => _searchQuery = value.toLowerCase()),
-              style: const TextStyle(color: Colors.white),
+              style: const TextStyle(color: Colors.white, fontSize: 14),
               decoration: InputDecoration(
                 hintText: "Buscar ejercicios por nombre...",
                 hintStyle: TextStyle(color: Colors.white.withValues(alpha: 0.3)),
@@ -111,10 +111,10 @@ class _WorkoutsPageState extends State<WorkoutsPage> {
                 filled: true,
                 fillColor: surfaceColor.withValues(alpha: 0.1),
                 border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(20),
+                  borderRadius: BorderRadius.circular(16),
                   borderSide: BorderSide.none,
                 ),
-                contentPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
+                contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
               ),
             ),
           ),
@@ -141,7 +141,7 @@ class _WorkoutsPageState extends State<WorkoutsPage> {
                 }
 
                 return ListView.builder(
-                  padding: const EdgeInsets.all(24),
+                  padding: const EdgeInsets.all(18),
                   itemCount: filteredWorkouts.length,
                   itemBuilder: (context, index) {
                     final workoutDoc = filteredWorkouts[index];
@@ -160,11 +160,11 @@ class _WorkoutsPageState extends State<WorkoutsPage> {
                         );
                       },
                       child: Container(
-                        margin: const EdgeInsets.only(bottom: 24),
+                        margin: const EdgeInsets.only(bottom: 16),
                         width: double.infinity,
                         decoration: BoxDecoration(
                           color: surfaceColor.withValues(alpha: 0.2),
-                          borderRadius: BorderRadius.circular(32),
+                          borderRadius: BorderRadius.circular(24),
                           image: thumbnailUrl != null
                               ? DecorationImage(
                                   image: NetworkImage(thumbnailUrl),
@@ -174,9 +174,9 @@ class _WorkoutsPageState extends State<WorkoutsPage> {
                               : null,
                         ),
                         child: ClipRRect(
-                          borderRadius: BorderRadius.circular(32),
+                          borderRadius: BorderRadius.circular(24),
                           child: Container(
-                            padding: const EdgeInsets.all(24),
+                            padding: const EdgeInsets.all(18),
                             decoration: BoxDecoration(
                               gradient: LinearGradient(
                                 begin: Alignment.topCenter,
@@ -231,18 +231,18 @@ class _WorkoutsPageState extends State<WorkoutsPage> {
                                     ),
                                   ],
                                 ),
-                                const SizedBox(height: 60),
+                                const SizedBox(height: 44),
                                 Text(
                                   name.toUpperCase(),
                                   style: const TextStyle(
                                     color: Colors.white,
-                                    fontSize: 24,
+                                    fontSize: 20,
                                     fontWeight: FontWeight.w900,
                                     height: 1.1,
                                     letterSpacing: -0.5,
                                   ),
                                 ),
-                                const SizedBox(height: 12),
+                                const SizedBox(height: 10),
                                 Row(
                                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                                   children: [

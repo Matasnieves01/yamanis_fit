@@ -183,17 +183,17 @@ class _DashboardPageState extends State<DashboardPage> {
       body: SafeArea(
               child: SingleChildScrollView(
                 child: Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 24.0),
+                  padding: const EdgeInsets.symmetric(horizontal: 18.0),
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      const SizedBox(height: 20),
+                      const SizedBox(height: 12),
                       Row(
                         mainAxisAlignment: MainAxisAlignment.spaceBetween,
                         children: [
                           Image.asset(
                             'assets/logos/logo.png',
-                            height: 60,
+                            height: 48,
                             fit: BoxFit.contain,
                             errorBuilder: (context, error, stackTrace) => Text(
                               "YAMANI'S FIT",
@@ -213,51 +213,51 @@ class _DashboardPageState extends State<DashboardPage> {
                           ),
                         ],
                       ),
-                      const SizedBox(height: 32),
+                      const SizedBox(height: 20),
                       _buildStreakWidget(),
-                      const SizedBox(height: 24),
+                      const SizedBox(height: 16),
                       _buildMonthCalendar(),
-                      const SizedBox(height: 40),
-                      Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                        children: [
-                          const Text(
-                            "Rutina del Dia",
-                            style: TextStyle(
-                              color: Colors.white,
-                              fontSize: 22,
-                              fontWeight: FontWeight.bold,
-                              letterSpacing: -0.5,
-                            ),
-                          ),
+                       const SizedBox(height: 20),
+                       Row(
+                         mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                         children: [
+                           const Text(
+                             "Rutina del Dia",
+                             style: TextStyle(
+                               color: Colors.white,
+                               fontSize: 18,
+                               fontWeight: FontWeight.bold,
+                               letterSpacing: -0.5,
+                             ),
+                           ),
                           if (_selectedDay != null)
                             Text(
                               DateFormat('MMM dd').format(_selectedDay!),
-                              style: TextStyle(color: secondaryColor, fontWeight: FontWeight.bold),
+                              style: TextStyle(color: secondaryColor, fontWeight: FontWeight.bold, fontSize: 13),
                             ),
-                        ],
-                      ),
-                      const SizedBox(height: 20),
-                      _buildAccessBadge(),
-                      if (routinesForSelectedDay.isEmpty)
-                        Container(
-                          width: double.infinity,
-                          padding: const EdgeInsets.all(40),
-                          decoration: BoxDecoration(
-                            color: surfaceColor.withOpacity(0.1),
-                            borderRadius: BorderRadius.circular(24),
-                            border: Border.all(color: surfaceColor.withOpacity(0.2)),
-                          ),
-                          child: const Center(
-                            child: Text(
-                              'No hay rutinas para hoy',
-                              style: TextStyle(color: Colors.white70, fontSize: 16),
-                            ),
-                          ),
-                        )
-                      else
-                        ...routinesForSelectedDay.map((routine) => _buildProtocolCard(routine)),
-                      const SizedBox(height: 40),
+                         ],
+                       ),
+                       const SizedBox(height: 10),
+                       _buildAccessBadge(),
+                       if (routinesForSelectedDay.isEmpty)
+                         Container(
+                           width: double.infinity,
+                           padding: const EdgeInsets.all(40),
+                           decoration: BoxDecoration(
+                             color: surfaceColor.withOpacity(0.1),
+                             borderRadius: BorderRadius.circular(24),
+                             border: Border.all(color: surfaceColor.withOpacity(0.2)),
+                           ),
+                           child: const Center(
+                             child: Text(
+                               'No hay rutinas para hoy',
+                               style: TextStyle(color: Colors.white70, fontSize: 16),
+                             ),
+                           ),
+                         )
+                       else
+                         ...routinesForSelectedDay.map((routine) => _buildProtocolCard(routine)),
+                       const SizedBox(height: 20),
                     ],
                   ),
                 ),
@@ -268,30 +268,30 @@ class _DashboardPageState extends State<DashboardPage> {
 
   Widget _buildStreakWidget() {
     return Container(
-      padding: const EdgeInsets.all(20),
+      padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
         gradient: LinearGradient(
           colors: [primaryColor.withOpacity(0.2), secondaryColor.withOpacity(0.1)],
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
         ),
-        borderRadius: BorderRadius.circular(24),
+        borderRadius: BorderRadius.circular(20),
         border: Border.all(color: primaryColor.withOpacity(0.3)),
       ),
       child: Row(
         children: [
           Container(
-            padding: const EdgeInsets.all(12),
+            padding: const EdgeInsets.all(10),
             decoration: BoxDecoration(
               color: Colors.orange.withOpacity(0.2),
               shape: BoxShape.circle,
             ),
             child: const Text(
               '🔥',
-              style: TextStyle(fontSize: 24),
+              style: TextStyle(fontSize: 20),
             ),
           ),
-          const SizedBox(width: 16),
+          const SizedBox(width: 14),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -300,7 +300,7 @@ class _DashboardPageState extends State<DashboardPage> {
                   "TU RACHA ACTUAL",
                   style: TextStyle(
                     color: primaryColor,
-                    fontSize: 12,
+                    fontSize: 11,
                     fontWeight: FontWeight.bold,
                     letterSpacing: 1.2,
                   ),
@@ -312,18 +312,18 @@ class _DashboardPageState extends State<DashboardPage> {
                       '$_currentStreak',
                       style: const TextStyle(
                         color: Colors.white,
-                        fontSize: 32,
+                        fontSize: 28,
                         fontWeight: FontWeight.w900,
                       ),
                     ),
-                    const SizedBox(width: 8),
+                    const SizedBox(width: 6),
                     Padding(
-                      padding: const EdgeInsets.only(bottom: 6.0),
+                      padding: const EdgeInsets.only(bottom: 5.0),
                       child: Text(
                         _currentStreak == 1 ? "DÍA" : "DÍAS",
                         style: TextStyle(
                           color: Colors.white.withOpacity(0.7),
-                          fontSize: 16,
+                          fontSize: 14,
                           fontWeight: FontWeight.bold,
                         ),
                       ),
@@ -371,7 +371,7 @@ class _DashboardPageState extends State<DashboardPage> {
     return Container(
       decoration: BoxDecoration(
         color: surfaceColor.withOpacity(0.1),
-        borderRadius: BorderRadius.circular(24),
+        borderRadius: BorderRadius.circular(20),
         border: Border.all(color: surfaceColor.withOpacity(0.2)),
       ),
       child: TableCalendar(
@@ -460,12 +460,12 @@ class _DashboardPageState extends State<DashboardPage> {
     final isMissed = _isRoutineMissed(routine);
     final canStart = _canStartRoutine(routine);
 
-    return Container(
-      margin: const EdgeInsets.only(bottom: 24),
-      width: double.infinity,
+     return Container(
+       margin: const EdgeInsets.only(bottom: 12),
+       width: double.infinity,
       decoration: BoxDecoration(
         color: surfaceColor.withOpacity(0.2),
-        borderRadius: BorderRadius.circular(32),
+        borderRadius: BorderRadius.circular(24),
         image: const DecorationImage(
           image: NetworkImage('https://images.unsplash.com/photo-1517836357463-d25dfeac3438?q=80&w=1000&auto=format&fit=crop'),
           fit: BoxFit.cover,
@@ -473,7 +473,7 @@ class _DashboardPageState extends State<DashboardPage> {
         ),
       ),
       child: ClipRRect(
-        borderRadius: BorderRadius.circular(32),
+        borderRadius: BorderRadius.circular(24),
         child: Container(
           decoration: BoxDecoration(
             gradient: LinearGradient(
@@ -482,70 +482,68 @@ class _DashboardPageState extends State<DashboardPage> {
               colors: [Colors.transparent, backgroundColor.withOpacity(0.9)],
             ),
           ),
-          child: Theme(
-            data: Theme.of(context).copyWith(dividerColor: Colors.transparent),
-            child: ExpansionTile(
-              iconColor: primaryColor,
-              collapsedIconColor: Colors.white,
-              tilePadding: const EdgeInsets.all(24),
-              title: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Row(
-                    children: [
-                      _buildTag("INTENSIDAD ALTA", primaryColor),
-                      const SizedBox(width: 8),
-                      _buildTag("POWER", secondaryColor),
-                      if (isCompleted)
-                        Padding(
-                          padding: const EdgeInsets.only(left: 8),
-                          child: _buildTag("✓ COMPLETADA", Colors.greenAccent),
-                        ),
-                      if (isMissed)
-                        Padding(
-                          padding: const EdgeInsets.only(left: 8),
-                          child: _buildTag("MISSED", Colors.redAccent),
-                        ),
-                    ],
-                  ),
-                  const SizedBox(height: 16),
-                  Text(
-                    (routine['name'] ?? 'Untitled').toUpperCase(),
-                    style: const TextStyle(
-                      color: Colors.white,
-                      fontSize: 28,
-                      fontWeight: FontWeight.w900,
-                      height: 1.1,
-                      letterSpacing: -1.0,
-                    ),
-                  ),
-                ],
-              ),
-              subtitle: Padding(
-                padding: const EdgeInsets.only(top: 8.0),
-                child: Text(
-                  isCompleted
-                      ? "Esta rutina ya ha sido completada"
-                      : isMissed
-                          ? "Rutina pendiente (Pasada)"
-                          : !canStart
-                              ? "Solo puedes iniciar esta rutina en su dia programado"
-                              : "Protocolo enfocado en hipertrofia y potencia muscular.",
-                  style: TextStyle(
-                    color: isCompleted
-                        ? Colors.greenAccent.withOpacity(0.7)
-                        : isMissed
-                            ? Colors.redAccent.withOpacity(0.8)
-                            : Colors.white.withOpacity(0.7),
-                    fontSize: 13,
-                  ),
-                ),
-              ),
+           child: Theme(
+             data: Theme.of(context).copyWith(dividerColor: Colors.transparent),
+             child: ExpansionTile(
+               iconColor: primaryColor,
+               collapsedIconColor: Colors.white,
+               tilePadding: const EdgeInsets.all(16),
+               title: Column(
+                 crossAxisAlignment: CrossAxisAlignment.start,
+                 children: [
+                   Row(
+                     children: [
+                       _buildTag("${workouts.length} EJERCICIOS", primaryColor),
+                       if (isCompleted)
+                         Padding(
+                           padding: const EdgeInsets.only(left: 6),
+                           child: _buildTag("✓ COMPLETADA", Colors.greenAccent),
+                         ),
+                       if (isMissed)
+                         Padding(
+                           padding: const EdgeInsets.only(left: 6),
+                           child: _buildTag("MISSED", Colors.redAccent),
+                         ),
+                     ],
+                   ),
+                   const SizedBox(height: 10),
+                   Text(
+                     (routine['name'] ?? 'Untitled').toUpperCase(),
+                     style: const TextStyle(
+                       color: Colors.white,
+                       fontSize: 19,
+                       fontWeight: FontWeight.w900,
+                       height: 1.1,
+                       letterSpacing: -0.5,
+                     ),
+                   ),
+                 ],
+               ),
+               subtitle: Padding(
+                 padding: const EdgeInsets.only(top: 8.0),
+                 child: Text(
+                   isCompleted
+                       ? "Esta rutina ya ha sido completada"
+                       : isMissed
+                           ? "Rutina pendiente (Pasada)"
+                           : !canStart
+                               ? "Solo puedes iniciar esta rutina en su dia programado"
+                               : "Toca para ver los ejercicios",
+                   style: TextStyle(
+                     color: isCompleted
+                         ? Colors.greenAccent.withOpacity(0.7)
+                         : isMissed
+                             ? Colors.redAccent.withOpacity(0.8)
+                             : Colors.white.withOpacity(0.7),
+                     fontSize: 12,
+                   ),
+                 ),
+               ),
                children: [
                  // Mostrar PDF de plan de alimentación si existe
                  if ((routine['nutritionPlanUrl'] as String?)?.isNotEmpty ?? false)
                    Padding(
-                     padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+                     padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
                      child: GestureDetector(
                        onTap: () async {
                          final url = routine['nutritionPlanUrl'] as String;
@@ -611,123 +609,147 @@ class _DashboardPageState extends State<DashboardPage> {
                        ),
                      ),
                    ),
-                 ...workouts.map((workout) {
-                   final exercises = (workout['exercises'] as List?) ?? [];
-                   final isSuperset = exercises.length > 1;
+                  // Ejercicios compactos
+                  Padding(
+                    padding: const EdgeInsets.fromLTRB(16, 8, 16, 4),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          'EJERCICIOS',
+                          style: TextStyle(
+                            color: primaryColor,
+                            fontSize: 10,
+                            fontWeight: FontWeight.bold,
+                            letterSpacing: 1,
+                          ),
+                        ),
+                        const SizedBox(height: 8),
+                        ...workouts.asMap().entries.map((entry) {
+                          final idx = entry.key;
+                          final workout = entry.value;
+                          final exercises = (workout['exercises'] as List?) ?? [];
 
-                   return Container(
-                     margin: const EdgeInsets.symmetric(horizontal: 24, vertical: 8),
-                     padding: const EdgeInsets.all(16),
-                     decoration: BoxDecoration(
-                       color: Colors.white.withOpacity(0.05),
-                       borderRadius: BorderRadius.circular(16),
-                       border: isSuperset ? Border.all(color: secondaryColor.withOpacity(0.3)) : null,
-                     ),
-                     child: Column(
-                       crossAxisAlignment: CrossAxisAlignment.start,
-                       children: [
-                         if (isSuperset)
-                           Padding(
-                             padding: const EdgeInsets.only(bottom: 8.0),
-                             child: _buildTag("SUPERSET", secondaryColor),
-                           ),
-                         Text(
-                           'Sets: ${workout['sets'] ?? '0'}',
-                           style: TextStyle(color: primaryColor, fontWeight: FontWeight.bold, fontSize: 14),
-                         ),
-                         const SizedBox(height: 8),
-                         ...exercises.map((ex) {
-                           return ListTile(
-                             contentPadding: EdgeInsets.zero,
-                             title: Text(
-                               ex['workoutName'] ?? 'Unknown Workout',
-                               style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 15),
-                             ),
-                             subtitle: Text(
-                               'Reps: ${ex['reps'] ?? '0'} | ${ex['weight'] ?? '0'}kg',
-                               style: TextStyle(color: Colors.white.withOpacity(0.6), fontSize: 13),
-                             ),
-                             trailing: Icon(Icons.play_circle_fill, color: primaryColor),
-                             onTap: (isCompleted || !canStart)
-                                 ? null
-                                 : () {
-                                     if (ex['workoutId'] != null) {
-                                       Navigator.push(
-                                         context,
-                                         MaterialPageRoute(
-                                           builder: (context) => ViewWorkoutPage(
-                                             workoutId: ex['workoutId'],
-                                           ),
-                                         ),
-                                       );
-                                     }
-                                   },
-                           );
-                         }),
-                       ],
-                     ),
-                   );
-                 }),
-                 Padding(
-                  padding: const EdgeInsets.all(24.0),
-                  child: Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      Row(
-                        children: [
-                          _buildStatInfo("WORKOUTS", "${workouts.length}"),
-                          const SizedBox(width: 20),
-                          _buildStatInfo("NIVEL", "ADV", color: primaryColor),
-                        ],
-                      ),
-                      GestureDetector(
-                        onTap: (isCompleted || !canStart)
-                            ? null
-                            : () async {
-                                final result = await Navigator.push(
-                                  context,
-                                  MaterialPageRoute(
-                                    builder: (context) => StartRoutinePage(
-                                      routine: routine,
-                                      routineId: routine['id'],
+                          return Column(
+                            children: [
+                              ...exercises.map((ex) {
+                                return Padding(
+                                  padding: const EdgeInsets.only(bottom: 6),
+                                  child: GestureDetector(
+                                    onTap: (isCompleted || !canStart)
+                                        ? null
+                                        : () {
+                                            if (ex['workoutId'] != null) {
+                                              Navigator.push(
+                                                context,
+                                                MaterialPageRoute(
+                                                  builder: (context) => ViewWorkoutPage(
+                                                    workoutId: ex['workoutId'],
+                                                  ),
+                                                ),
+                                              );
+                                            }
+                                          },
+                                    child: Container(
+                                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                                      decoration: BoxDecoration(
+                                        color: Colors.white.withOpacity(0.04),
+                                        borderRadius: BorderRadius.circular(10),
+                                        border: Border.all(color: Colors.white.withOpacity(0.08)),
+                                      ),
+                                      child: Row(
+                                        children: [
+                                          Expanded(
+                                            child: Text(
+                                              ex['workoutName'] ?? 'Unknown',
+                                              style: const TextStyle(
+                                                color: Colors.white,
+                                                fontWeight: FontWeight.w700,
+                                                fontSize: 13,
+                                              ),
+                                              overflow: TextOverflow.ellipsis,
+                                            ),
+                                          ),
+                                          const SizedBox(width: 8),
+                                          Text(
+                                            "${workout['sets'] ?? '0'}x${ex['reps'] ?? '0'}",
+                                            style: TextStyle(
+                                              color: primaryColor,
+                                              fontWeight: FontWeight.bold,
+                                              fontSize: 11,
+                                            ),
+                                          ),
+                                          if (!isCompleted && canStart) ...[
+                                            const SizedBox(width: 8),
+                                            Icon(Icons.chevron_right, color: primaryColor, size: 16),
+                                          ],
+                                        ],
+                                      ),
                                     ),
                                   ),
                                 );
-
-                                if (result == true) {
-                                  _fetchRoutines();
-                                }
-                              },
-                        child: Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
-                          decoration: BoxDecoration(
-                            color: (isCompleted || !canStart) ? Colors.grey : (isMissed ? Colors.redAccent : primaryColor),
-                            borderRadius: BorderRadius.circular(12),
-                            boxShadow: [
-                              BoxShadow(
-                                color: ((isCompleted || !canStart) ? Colors.grey : (isMissed ? Colors.redAccent : primaryColor)).withOpacity(0.3),
-                                blurRadius: 15,
-                                offset: const Offset(0, 5),
-                              )
+                              }),
+                              if (idx < workouts.length - 1) const SizedBox(height: 8),
                             ],
-                          ),
-                          child: Text(
-                            isCompleted
-                                ? "COMPLETADA"
-                                : canStart
-                                    ? (isMissed ? "COMPLETAR" : "EMPEZAR")
-                                    : "NO DISPONIBLE",
-                            style: TextStyle(
-                              color: backgroundColor,
-                              fontWeight: FontWeight.w900,
-                              fontSize: 12,
-                            ),
-                          ),
-                        ),
-                      ),
-                    ],
+                          );
+                        }),
+                      ],
+                    ),
                   ),
-                ),
+                  Padding(
+                   padding: const EdgeInsets.fromLTRB(16, 12, 16, 16),
+                   child: Row(
+                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                     children: [
+                       GestureDetector(
+                         onTap: (isCompleted || !canStart)
+                             ? null
+                             : () async {
+                                 final result = await Navigator.push(
+                                   context,
+                                   MaterialPageRoute(
+                                     builder: (context) => StartRoutinePage(
+                                       routine: routine,
+                                       routineId: routine['id'],
+                                     ),
+                                   ),
+                                 );
+
+                                 if (result == true) {
+                                   _fetchRoutines();
+                                 }
+                               },
+                         child: Container(
+                           padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
+                           decoration: BoxDecoration(
+                             color: (isCompleted || !canStart) ? Colors.grey : (isMissed ? Colors.redAccent : primaryColor),
+                             borderRadius: BorderRadius.circular(12),
+                             boxShadow: [
+                               BoxShadow(
+                                 color: ((isCompleted || !canStart) ? Colors.grey : (isMissed ? Colors.redAccent : primaryColor)).withOpacity(0.3),
+                                 blurRadius: 15,
+                                 offset: const Offset(0, 5),
+                               )
+                             ],
+                           ),
+                           child: Text(
+                             isCompleted
+                                 ? "COMPLETADA"
+                                 : canStart
+                                     ? (isMissed ? "COMPLETAR" : "EMPEZAR")
+                                     : "NO DISPONIBLE",
+                             style: TextStyle(
+                               color: backgroundColor,
+                               fontWeight: FontWeight.w900,
+                               fontSize: 12,
+                               letterSpacing: 0.5,
+                             ),
+                           ),
+                         ),
+                       ),
+                     ],
+                   ),
+                 ),
               ],
             ),
           ),
@@ -736,41 +758,21 @@ class _DashboardPageState extends State<DashboardPage> {
     );
   }
 
-  Widget _buildTag(String label, Color color) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-      decoration: BoxDecoration(
-        color: color.withOpacity(0.2),
-        borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: color.withOpacity(0.3)),
-      ),
-      child: Text(
-        label,
-        style: TextStyle(color: color, fontSize: 9, fontWeight: FontWeight.bold),
-      ),
-    );
-  }
+   Widget _buildTag(String label, Color color) {
+     return Container(
+       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+       decoration: BoxDecoration(
+         color: color.withOpacity(0.2),
+         borderRadius: BorderRadius.circular(20),
+         border: Border.all(color: color.withOpacity(0.3)),
+       ),
+       child: Text(
+         label,
+         style: TextStyle(color: color, fontSize: 9, fontWeight: FontWeight.bold),
+       ),
+     );
+   }
 
-  Widget _buildStatInfo(String label, String value, {Color color = Colors.white}) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(
-          label,
-          style: TextStyle(
-            color: Colors.white.withOpacity(0.5),
-            fontSize: 9,
-            fontWeight: FontWeight.bold,
-            letterSpacing: 1.0,
-          ),
-        ),
-        Text(
-          value,
-          style: TextStyle(color: color, fontSize: 16, fontWeight: FontWeight.bold),
-        ),
-      ],
-    );
-  }
 
   DateTime _normalizeDay(DateTime date) => DateTime.utc(date.year, date.month, date.day);
 

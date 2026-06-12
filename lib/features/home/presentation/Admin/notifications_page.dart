@@ -18,6 +18,7 @@ class _NotificationsPageState extends State<NotificationsPage> {
   // Track processing state for each notification
   final Set<String> _processingNotifications = {};
   final Map<String, String> _notificationStatus = {};
+  bool _showAll = false;
 
   Stream<QuerySnapshot> _getNotifications() {
     // Updated query to match security rules: only fetch notifications targeted to admin
@@ -180,16 +181,54 @@ class _NotificationsPageState extends State<NotificationsPage> {
           }
           if (!snapshot.hasData) return const Center(child: CircularProgressIndicator());
           
-          final docs = snapshot.data!.docs;
+          final allDocs = snapshot.data!.docs;
+          final unreadDocs = allDocs.where((doc) => (doc.data() as Map<String, dynamic>)['read'] != true).toList();
+          final docs = _showAll ? allDocs : unreadDocs;
+
           if (docs.isEmpty) {
-            return const Center(child: Text("No hay notificaciones", style: TextStyle(color: Colors.white54)));
+            return Center(
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Icon(Icons.notifications_off_outlined, size: 56, color: Colors.white.withValues(alpha: 0.1)),
+                  const SizedBox(height: 12),
+                  Text(
+                    _showAll ? "No hay notificaciones" : "No tienes notificaciones nuevas",
+                    style: const TextStyle(color: Colors.white54),
+                  ),
+                  if (!_showAll && allDocs.isNotEmpty) ...[
+                    const SizedBox(height: 16),
+                    TextButton(
+                      onPressed: () => setState(() => _showAll = true),
+                      child: Text('VER NOTIFICACIONES PASADAS', style: TextStyle(color: primaryColor, fontWeight: FontWeight.bold)),
+                    ),
+                  ],
+                ],
+              ),
+            );
           }
 
           return ListView.builder(
             padding: const EdgeInsets.all(20),
-            itemCount: docs.length,
+            itemCount: docs.length + 1,
             itemBuilder: (context, index) {
-              final doc = docs[index];
+              if (index == 0) {
+                return Padding(
+                  padding: const EdgeInsets.only(bottom: 12),
+                  child: Align(
+                    alignment: Alignment.centerRight,
+                    child: TextButton.icon(
+                      onPressed: () => setState(() => _showAll = !_showAll),
+                      icon: Icon(_showAll ? Icons.visibility_off_outlined : Icons.history, size: 16, color: primaryColor),
+                      label: Text(
+                        _showAll ? 'VER SOLO NO LEÍDAS' : 'VER NOTIFICACIONES PASADAS',
+                        style: TextStyle(color: primaryColor, fontWeight: FontWeight.bold, fontSize: 12),
+                      ),
+                    ),
+                  ),
+                );
+              }
+              final doc = docs[index - 1];
               final data = doc.data() as Map<String, dynamic>;
               final bool isRead = data['read'] ?? false;
               final DateTime date = (data['createdAt'] as Timestamp?)?.toDate() ?? DateTime.now();

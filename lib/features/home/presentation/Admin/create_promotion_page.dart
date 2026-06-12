@@ -42,7 +42,7 @@ class _CreatePromotionPageState extends State<CreatePromotionPage> {
       prefixIcon: Icon(icon, color: primaryColor),
       filled: true,
       fillColor: Colors.white.withValues(alpha: 0.05),
-      contentPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 18),
+      contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
       border: OutlineInputBorder(
         borderRadius: BorderRadius.circular(16),
         borderSide: BorderSide.none,
@@ -164,7 +164,7 @@ class _CreatePromotionPageState extends State<CreatePromotionPage> {
         elevation: 0,
       ),
       body: SingleChildScrollView(
-        padding: const EdgeInsets.all(24),
+        padding: const EdgeInsets.all(18),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
@@ -173,21 +173,21 @@ class _CreatePromotionPageState extends State<CreatePromotionPage> {
               style: const TextStyle(color: Colors.white),
               decoration: _inputDecoration('Título', Icons.fitness_center_rounded),
             ),
-            const SizedBox(height: 16),
+            const SizedBox(height: 12),
             TextField(
               controller: _descriptionController,
               maxLines: 4,
               style: const TextStyle(color: Colors.white),
               decoration: _inputDecoration('Descripción', Icons.description_rounded),
             ),
-            const SizedBox(height: 16),
+            const SizedBox(height: 12),
             TextField(
               controller: _imageUrlController,
               onChanged: (_) => setState(() {}),
               style: const TextStyle(color: Colors.white),
               decoration: _inputDecoration('URL de imagen', Icons.image_rounded),
             ),
-            const SizedBox(height: 12),
+            const SizedBox(height: 10),
             SizedBox(
               width: double.infinity,
               child: OutlinedButton.icon(
@@ -203,24 +203,24 @@ class _CreatePromotionPageState extends State<CreatePromotionPage> {
                 label: Text(_isUploadingImage ? 'Subiendo...' : 'Subir imagen'),
               ),
             ),
-            const SizedBox(height: 14),
+            const SizedBox(height: 10),
             ClipRRect(
-              borderRadius: BorderRadius.circular(18),
+              borderRadius: BorderRadius.circular(16),
               child: Container(
                 width: double.infinity,
-                height: 150,
+                height: 130,
                 color: surfaceColor.withValues(alpha: 0.1),
                 child: imagePreview.isEmpty
                     ? const Center(child: Icon(Icons.image_outlined, color: Colors.white24, size: 42))
                     : Image.network(imagePreview, fit: BoxFit.cover),
               ),
             ),
-            const SizedBox(height: 24),
+            const SizedBox(height: 20),
             const Text(
               'VIDEOS',
-              style: TextStyle(color: Colors.white, fontSize: 14, fontWeight: FontWeight.bold, letterSpacing: 1.0),
+              style: TextStyle(color: Colors.white, fontSize: 13, fontWeight: FontWeight.bold, letterSpacing: 1.0),
             ),
-            const SizedBox(height: 12),
+            const SizedBox(height: 10),
             Row(
               children: [
                 Expanded(
@@ -256,11 +256,11 @@ class _CreatePromotionPageState extends State<CreatePromotionPage> {
                 ),
               ],
             ),
-            const SizedBox(height: 16),
+            const SizedBox(height: 12),
             if (_videoIds.isEmpty)
               Container(
                 width: double.infinity,
-                padding: const EdgeInsets.all(20),
+                padding: const EdgeInsets.all(16),
                 decoration: BoxDecoration(
                   color: surfaceColor.withValues(alpha: 0.1),
                   borderRadius: BorderRadius.circular(12),
@@ -308,10 +308,10 @@ class _CreatePromotionPageState extends State<CreatePromotionPage> {
                   );
                 }).toList(),
               ),
-            const SizedBox(height: 32),
+            const SizedBox(height: 24),
             SizedBox(
               width: double.infinity,
-              height: 56,
+              height: 52,
               child: ElevatedButton(
                 onPressed: _isSaving ? null : _savePromotion,
                 style: ElevatedButton.styleFrom(

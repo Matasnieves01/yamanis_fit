@@ -18,20 +18,20 @@ class PrivacyPolicyPage extends StatelessWidget {
         elevation: 0,
       ),
       body: SingleChildScrollView(
-        padding: const EdgeInsets.all(24),
+        padding: const EdgeInsets.all(18),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             const Text(
               "Tu Privacidad es Importante",
-              style: TextStyle(color: Colors.white, fontSize: 24, fontWeight: FontWeight.bold),
+              style: TextStyle(color: Colors.white, fontSize: 20, fontWeight: FontWeight.bold),
             ),
-            const SizedBox(height: 16),
+            const SizedBox(height: 10),
             const Text(
               "En Yamani's Fit nos tomamos muy en serio la protección de tus datos personales. A continuación, detallamos cómo manejamos tu información.",
-              style: TextStyle(color: Colors.white70, fontSize: 15, height: 1.5),
+              style: TextStyle(color: Colors.white70, fontSize: 14, height: 1.5),
             ),
-            const SizedBox(height: 32),
+            const SizedBox(height: 20),
             _buildSection(
               "1. Información que Recolectamos",
               "Recopilamos tu nombre, correo electrónico y datos de entrenamiento (ejercicios, pesos y feedback) para personalizar tu experiencia y permitir que tu trainer realice el seguimiento adecuado.",
@@ -64,18 +64,18 @@ class PrivacyPolicyPage extends StatelessWidget {
 
   Widget _buildSection(String title, String content) {
     return Padding(
-      padding: const EdgeInsets.only(bottom: 32.0),
+      padding: const EdgeInsets.only(bottom: 22.0),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(
             title,
-            style: TextStyle(color: primaryColor, fontWeight: FontWeight.bold, fontSize: 16),
+            style: TextStyle(color: primaryColor, fontWeight: FontWeight.bold, fontSize: 15),
           ),
-          const SizedBox(height: 12),
+          const SizedBox(height: 8),
           Text(
             content,
-            style: const TextStyle(color: Colors.white60, fontSize: 14, height: 1.6),
+            style: const TextStyle(color: Colors.white60, fontSize: 13, height: 1.5),
           ),
         ],
       ),

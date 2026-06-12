@@ -171,7 +171,7 @@ class _ResourcesPageState extends State<ResourcesPage> {
           }
 
           return ListView.builder(
-            padding: const EdgeInsets.all(20),
+            padding: const EdgeInsets.all(16),
             itemCount: docs.length,
             itemBuilder: (context, index) {
               final resource = PdfResource.fromFirestore(docs[index]);
@@ -203,8 +203,8 @@ class _ResourcesPageState extends State<ResourcesPage> {
 
                     if (accessSnapshot.connectionState == ConnectionState.waiting && !accessSnapshot.hasData) {
                       return Container(
-                        margin: const EdgeInsets.only(bottom: 16),
-                        height: 80,
+                        margin: const EdgeInsets.only(bottom: 12),
+                        height: 72,
                         decoration: BoxDecoration(
                           color: surfaceColor.withOpacity(0.05),
                           borderRadius: BorderRadius.circular(16),
@@ -230,7 +230,7 @@ class _ResourcesPageState extends State<ResourcesPage> {
 
     Widget _buildResourceCard(PdfResource resource, String userId, String status, bool hasAccess) {
       return Container(
-        margin: const EdgeInsets.only(bottom: 16),
+        margin: const EdgeInsets.only(bottom: 12),
         decoration: BoxDecoration(
           color: surfaceColor.withOpacity(0.1),
          borderRadius: BorderRadius.circular(16),
@@ -239,9 +239,10 @@ class _ResourcesPageState extends State<ResourcesPage> {
          ),
        ),
        child: ListTile(
-         contentPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
+         dense: true,
+         contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
          leading: Container(
-           padding: const EdgeInsets.all(10),
+           padding: const EdgeInsets.all(8),
            decoration: BoxDecoration(
              color: (resource.isFree ? Colors.greenAccent : Colors.orangeAccent).withOpacity(0.1),
              shape: BoxShape.circle,
@@ -253,7 +254,7 @@ class _ResourcesPageState extends State<ResourcesPage> {
          ),
          title: Text(
            resource.name,
-           style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
+           style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 14),
          ),
          subtitle: Row(
            children: [

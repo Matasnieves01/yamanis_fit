@@ -129,15 +129,17 @@ class _LoginPageState extends State<LoginPage> {
         ),
         child: Center(
           child: SingleChildScrollView(
-            padding: const EdgeInsets.all(24),
-            child: Column(
+            padding: const EdgeInsets.all(20),
+            child: ConstrainedBox(
+              constraints: const BoxConstraints(maxWidth: 350),
+              child: Column(
               mainAxisAlignment: MainAxisAlignment.center,
               crossAxisAlignment: CrossAxisAlignment.center,
               children: [
                 // Logo
                 Container(
-                  height: 140,
-                  width: 140,
+                  height: 120,
+                  width: 120,
                   padding: const EdgeInsets.all(10),
                   child: Image.asset(
                     'assets/logos/logo.png',
@@ -152,17 +154,17 @@ class _LoginPageState extends State<LoginPage> {
                     ),
                   ),
                 ),
-                const SizedBox(height: 32),
+                const SizedBox(height: 20),
                 const Text(
                   "BIENVENIDO",
                   style: TextStyle(
                     color: Colors.white,
-                    fontSize: 28,
+                    fontSize: 24,
                     fontWeight: FontWeight.w900,
                     letterSpacing: 2.0,
                   ),
                 ),
-                const SizedBox(height: 8),
+                const SizedBox(height: 6),
                 Text(
                   "ENTRENA CON PROPÓSITO",
                   style: TextStyle(
@@ -172,11 +174,11 @@ class _LoginPageState extends State<LoginPage> {
                     letterSpacing: 4.0,
                   ),
                 ),
-                const SizedBox(height: 48),
-                
-                // TextFields in a Fixed Size Box
+                const SizedBox(height: 32),
+
+                // TextFields
                 SizedBox(
-                  width: 350, // Fixed width
+                  width: double.infinity,
                   child: Container(
                     decoration: BoxDecoration(
                       color: surfaceColor.withValues(alpha: 0.1),
@@ -203,11 +205,11 @@ class _LoginPageState extends State<LoginPage> {
                   ),
                 ),
                 
-                const SizedBox(height: 16),
+                const SizedBox(height: 12),
 
                 // Forgot password and Stay logged in checkbox
                 SizedBox(
-                  width: 350,
+                  width: double.infinity,
                   child: Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
@@ -245,11 +247,11 @@ class _LoginPageState extends State<LoginPage> {
                   ),
                 ),
 
-                const SizedBox(height: 16),
-                
+                const SizedBox(height: 12),
+
                 SizedBox(
-                  width: 350, // Fixed width matching the input box
-                  height: 60,
+                  width: double.infinity,
+                  height: 52,
                   child: ElevatedButton(
                     onPressed: isLoading ? null : login,
                     style: ElevatedButton.styleFrom(
@@ -273,8 +275,8 @@ class _LoginPageState extends State<LoginPage> {
                   ),
                 ),
                 
-                const SizedBox(height: 32),
-                
+                const SizedBox(height: 20),
+
                 Row(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
@@ -296,6 +298,7 @@ class _LoginPageState extends State<LoginPage> {
                   ],
                 ),
               ],
+              ),
             ),
           ),
         ),

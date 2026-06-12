@@ -553,10 +553,9 @@ class _SettingsPageState extends State<SettingsPage> {
             )
           : SingleChildScrollView(
               child: Padding(
-                padding: const EdgeInsets.all(24.0),
+                padding: const EdgeInsets.symmetric(horizontal: 20.0, vertical: 12.0),
                 child: Column(
                   children: [
-                    const SizedBox(height: 20),
                     // Name Section
                     _buildSettingCard(
                       icon: Icons.person_outline,
@@ -564,7 +563,7 @@ class _SettingsPageState extends State<SettingsPage> {
                       subtitle: '$_firstName $_lastName'.trim(),
                       onTap: _showChangeNameDialog,
                     ),
-                    const SizedBox(height: 16),
+                    const SizedBox(height: 12),
                     // Email Section
                     _buildSettingCard(
                       icon: Icons.email_outlined,
@@ -572,7 +571,7 @@ class _SettingsPageState extends State<SettingsPage> {
                       subtitle: _email,
                       onTap: _showChangeEmailDialog,
                     ),
-                    const SizedBox(height: 16),
+                    const SizedBox(height: 12),
                     // Password Section
                     _buildSettingCard(
                       icon: Icons.lock_outline,
@@ -580,11 +579,11 @@ class _SettingsPageState extends State<SettingsPage> {
                       subtitle: '••••••••',
                       onTap: _showChangePasswordDialog,
                     ),
-                    const SizedBox(height: 40),
+                    const SizedBox(height: 24),
                     // Delete Account Button
                     SizedBox(
                       width: double.infinity,
-                      height: 60,
+                      height: 52,
                       child: ElevatedButton.icon(
                         onPressed: _showDeleteAccountDialog,
                         icon: const Icon(Icons.delete_outline_rounded),
@@ -602,7 +601,7 @@ class _SettingsPageState extends State<SettingsPage> {
                         ),
                       ),
                     ),
-                    const SizedBox(height: 40),
+                    const SizedBox(height: 24),
                   ],
                 ),
               ),
@@ -619,21 +618,22 @@ class _SettingsPageState extends State<SettingsPage> {
     return Container(
       decoration: BoxDecoration(
         color: surfaceColor.withValues(alpha: 0.05),
-        borderRadius: BorderRadius.circular(20),
+        borderRadius: BorderRadius.circular(16),
         border: Border.all(color: surfaceColor.withValues(alpha: 0.1)),
       ),
       child: ListTile(
-        contentPadding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
-        leading: Icon(icon, color: primaryColor, size: 28),
+        dense: true,
+        contentPadding: const EdgeInsets.symmetric(horizontal: 18, vertical: 6),
+        leading: Icon(icon, color: primaryColor, size: 24),
         title: Text(
           title,
-          style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 16),
+          style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 14),
         ),
         subtitle: Text(
           subtitle,
-          style: TextStyle(color: Colors.white.withValues(alpha: 0.6), fontSize: 14),
+          style: TextStyle(color: Colors.white.withValues(alpha: 0.6), fontSize: 13),
         ),
-        trailing: Icon(Icons.arrow_forward_ios_rounded, size: 16, color: Colors.white.withValues(alpha: 0.2)),
+        trailing: Icon(Icons.arrow_forward_ios_rounded, size: 14, color: Colors.white.withValues(alpha: 0.2)),
         onTap: onTap,
       ),
     );

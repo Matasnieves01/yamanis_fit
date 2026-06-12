@@ -751,15 +751,15 @@ class _CreateRoutinePageState extends State<CreateRoutinePage> {
         elevation: 0,
       ),
       body: SingleChildScrollView(
-        padding: const EdgeInsets.all(24),
+        padding: const EdgeInsets.all(18),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             _buildSectionTitle('Rutina para ${widget.clientEmail}'),
-            const SizedBox(height: 32),
+            const SizedBox(height: 24),
             if (widget.initialRoutineId != null)
               Container(
-                decoration: BoxDecoration(color: surfaceColor.withValues(alpha: 0.1), borderRadius: BorderRadius.circular(24), border: Border.all(color: surfaceColor.withValues(alpha: 0.2))),
+                decoration: BoxDecoration(color: surfaceColor.withValues(alpha: 0.1), borderRadius: BorderRadius.circular(20), border: Border.all(color: surfaceColor.withValues(alpha: 0.2))),
                 child: TableCalendar(
                   firstDay: DateTime.utc(2020, 1, 1), lastDay: DateTime.utc(2030, 12, 31), focusedDay: _focusedDay,
                   selectedDayPredicate: (day) => isSameDay(_selectedDay, day),
@@ -855,11 +855,11 @@ class _CreateRoutinePageState extends State<CreateRoutinePage> {
                   ],
                 ),
               ),
-             const SizedBox(height: 32),
+             const SizedBox(height: 24),
              _buildSectionTitle('Datos de la rutina'),
              const SizedBox(height: 8),
              TextField(controller: _nameController, style: const TextStyle(color: Colors.white), decoration: _buildInputDecoration(label: 'Nombre de la Rutina', hint: 'Ej: Empuje Potencia', icon: Icons.edit_rounded)),
-             const SizedBox(height: 16),
+             const SizedBox(height: 12),
              TextField(
                controller: _nutritionPlanUrlController,
                style: const TextStyle(color: Colors.white),
@@ -869,17 +869,17 @@ class _CreateRoutinePageState extends State<CreateRoutinePage> {
                  icon: Icons.file_download_rounded,
                ),
              ),
-             const SizedBox(height: 24),
+             const SizedBox(height: 16),
             Row(
               children: [
                 Expanded(child: _buildDropdownField(label: 'Intensidad', value: _selectedIntensity, items: _intensities, onChanged: (v) => setState(() => _selectedIntensity = v!))),
-                const SizedBox(width: 16),
+                const SizedBox(width: 12),
                 Expanded(child: _buildDropdownField(label: 'Nivel', value: _selectedLevel, items: _levels, onChanged: (v) => setState(() => _selectedLevel = v!))),
               ],
             ),
-            const SizedBox(height: 32),
+            const SizedBox(height: 24),
             _buildSectionTitle('Enfoque Muscular'),
-            const SizedBox(height: 12),
+            const SizedBox(height: 10),
             Wrap(
               spacing: 8, runSpacing: 4,
               children: _muscleGroups.map((muscle) {
@@ -891,9 +891,9 @@ class _CreateRoutinePageState extends State<CreateRoutinePage> {
                 );
               }).toList(),
             ),
-            const SizedBox(height: 32),
+            const SizedBox(height: 24),
             _buildSectionTitle('Ejercicios Seleccionados'),
-            const SizedBox(height: 16),
+            const SizedBox(height: 12),
             if (selectedWorkouts.isEmpty)
               Container(
                 width: double.infinity,
@@ -911,11 +911,11 @@ class _CreateRoutinePageState extends State<CreateRoutinePage> {
                   itemBuilder: (context, index) {
                     final item = selectedWorkouts[index];
                     return Container(
-                      margin: const EdgeInsets.only(bottom: 24),
-                      padding: const EdgeInsets.all(20),
+                      margin: const EdgeInsets.only(bottom: 16),
+                      padding: const EdgeInsets.all(16),
                       decoration: BoxDecoration(
                         color: surfaceColor.withValues(alpha: 0.12),
-                        borderRadius: BorderRadius.circular(24),
+                        borderRadius: BorderRadius.circular(20),
                         border: Border.all(
                           color: primaryColor.withValues(alpha: 0.2),
                           width: 1.5,
@@ -1139,7 +1139,7 @@ class _CreateRoutinePageState extends State<CreateRoutinePage> {
                     );
                   },
                 ),
-             const SizedBox(height: 32),
+             const SizedBox(height: 24),
              Row(
                mainAxisAlignment: MainAxisAlignment.spaceBetween,
                children: [
@@ -1327,9 +1327,9 @@ class _CreateRoutinePageState extends State<CreateRoutinePage> {
                      ),
                  ],
                ),
-            const SizedBox(height: 40),
-            SizedBox(width: double.infinity, height: 60, child: ElevatedButton(onPressed: isLoading ? null : _saveRoutine, style: ElevatedButton.styleFrom(backgroundColor: primaryColor, foregroundColor: backgroundColor, shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16))), child: isLoading ? const SizedBox(width: 24, height: 24, child: CircularProgressIndicator(strokeWidth: 3, color: Colors.black)) : Text(_isCreateMode ? 'GUARDAR RUTINAS' : 'GUARDAR RUTINA', style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold, letterSpacing: 1.2)))),
-            const SizedBox(height: 40),
+            const SizedBox(height: 24),
+            SizedBox(width: double.infinity, height: 52, child: ElevatedButton(onPressed: isLoading ? null : _saveRoutine, style: ElevatedButton.styleFrom(backgroundColor: primaryColor, foregroundColor: backgroundColor, shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16))), child: isLoading ? const SizedBox(width: 24, height: 24, child: CircularProgressIndicator(strokeWidth: 3, color: Colors.black)) : Text(_isCreateMode ? 'GUARDAR RUTINAS' : 'GUARDAR RUTINA', style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold, letterSpacing: 1.2)))),
+            const SizedBox(height: 24),
           ],
         ),
       ),

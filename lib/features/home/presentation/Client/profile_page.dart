@@ -90,27 +90,26 @@ class _ProfilePageState extends State<ProfilePage> {
       ),
       body: SingleChildScrollView(
         child: Padding(
-          padding: const EdgeInsets.all(24.0),
+          padding: const EdgeInsets.symmetric(horizontal: 20.0, vertical: 12.0),
           child: Column(
             children: [
-              const SizedBox(height: 20),
               // Profile Header Card
               Container(
                 width: double.infinity,
-                padding: const EdgeInsets.all(32),
+                padding: const EdgeInsets.all(24),
                 decoration: BoxDecoration(
                   color: surfaceColor.withValues(alpha: 0.1),
-                  borderRadius: BorderRadius.circular(32),
+                  borderRadius: BorderRadius.circular(24),
                   border: Border.all(color: surfaceColor.withValues(alpha: 0.2)),
                 ),
                 child: Column(
                   children: [
                     CircleAvatar(
-                      radius: 50,
+                      radius: 40,
                       backgroundColor: primaryColor.withValues(alpha: 0.2),
-                      child: Icon(Icons.person, size: 60, color: primaryColor),
+                      child: Icon(Icons.person, size: 48, color: primaryColor),
                     ),
-                    const SizedBox(height: 24),
+                    const SizedBox(height: 16),
                     _isLoading
                         ? CircularProgressIndicator(color: primaryColor)
                         : Text(
@@ -118,44 +117,44 @@ class _ProfilePageState extends State<ProfilePage> {
                             textAlign: TextAlign.center,
                             style: const TextStyle(
                               color: Colors.white,
-                              fontSize: 22,
+                              fontSize: 20,
                               fontWeight: FontWeight.w900,
                               letterSpacing: -0.5,
                             ),
                           ),
-                    const SizedBox(height: 8),
+                    const SizedBox(height: 6),
                     Text(
                       _email,
                       style: TextStyle(
                         color: Colors.white.withValues(alpha: 0.5),
-                        fontSize: 14,
+                        fontSize: 13,
                       ),
                     ),
                   ],
                 ),
               ),
-              const SizedBox(height: 40),
+              const SizedBox(height: 24),
               // Menu Options
               _buildProfileOption(
-                icon: Icons.settings_outlined, 
-                title: "Configuración", 
+                icon: Icons.settings_outlined,
+                title: "Configuración",
                 onTap: () => _navigateToSettings(context)
               ),
               _buildProfileOption(
-                icon: Icons.help_outline_rounded, 
+                icon: Icons.help_outline_rounded,
                 title: "Ayuda y Soporte",
                 onTap: () => Navigator.push(context, MaterialPageRoute(builder: (context) => const HelpSupportPage()))
               ),
               _buildProfileOption(
-                icon: Icons.privacy_tip_outlined, 
+                icon: Icons.privacy_tip_outlined,
                 title: "Política de Privacidad",
                 onTap: () => Navigator.push(context, MaterialPageRoute(builder: (context) => const PrivacyPolicyPage()))
               ),
-              const SizedBox(height: 40),
+              const SizedBox(height: 24),
               // Logout Button
               SizedBox(
                 width: double.infinity,
-                height: 60,
+                height: 52,
                 child: ElevatedButton.icon(
                   onPressed: () => _handleSignOut(context),
                   icon: const Icon(Icons.logout_rounded),
@@ -168,12 +167,12 @@ class _ProfilePageState extends State<ProfilePage> {
                     foregroundColor: Colors.white,
                     elevation: 0,
                     shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(16),
+                      borderRadius: BorderRadius.circular(14),
                     ),
                   ),
                 ),
               ),
-              const SizedBox(height: 40),
+              const SizedBox(height: 24),
             ],
           ),
         ),
@@ -183,20 +182,21 @@ class _ProfilePageState extends State<ProfilePage> {
 
   Widget _buildProfileOption({required IconData icon, required String title, VoidCallback? onTap}) {
     return Container(
-      margin: const EdgeInsets.only(bottom: 16),
+      margin: const EdgeInsets.only(bottom: 12),
       decoration: BoxDecoration(
         color: surfaceColor.withValues(alpha: 0.05),
-        borderRadius: BorderRadius.circular(20),
+        borderRadius: BorderRadius.circular(16),
         border: Border.all(color: surfaceColor.withValues(alpha: 0.1)),
       ),
       child: ListTile(
-        contentPadding: const EdgeInsets.symmetric(horizontal: 24, vertical: 4),
-        leading: Icon(icon, color: primaryColor),
+        dense: true,
+        contentPadding: const EdgeInsets.symmetric(horizontal: 18, vertical: 0),
+        leading: Icon(icon, color: primaryColor, size: 22),
         title: Text(
           title,
-          style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
+          style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 14),
         ),
-        trailing: Icon(Icons.arrow_forward_ios_rounded, size: 16, color: Colors.white.withValues(alpha: 0.2)),
+        trailing: Icon(Icons.arrow_forward_ios_rounded, size: 14, color: Colors.white.withValues(alpha: 0.2)),
         onTap: onTap ?? () {},
       ),
     );
