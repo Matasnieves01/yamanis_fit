@@ -1,4 +1,4 @@
-package com.vyofitness.yamanis_fit
+package com.yamasfit.app
 
 import io.flutter.embedding.android.FlutterActivity
 
