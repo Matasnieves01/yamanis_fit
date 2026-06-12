@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 class HelpSupportPage extends StatelessWidget {
   const HelpSupportPage({super.key});
@@ -6,6 +7,30 @@ class HelpSupportPage extends StatelessWidget {
   final Color backgroundColor = const Color(0xFF11151C);
   final Color primaryColor = const Color(0xFFAEE084);
   final Color surfaceColor = const Color(0xFF55768C);
+
+  Future<void> _openEmail(BuildContext context) async {
+    final uri = Uri.parse('mailto:vyofitsoporte@gmail.com');
+    if (await canLaunchUrl(uri)) {
+      await launchUrl(uri);
+    } else if (context.mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('No se pudo abrir el correo')),
+      );
+    }
+  }
+
+  Future<void> _openWhatsApp(BuildContext context) async {
+    const phone = '50769184836';
+    final message = Uri.encodeComponent('Hola! Necesito ayuda con la app Yamani\'s Fit.');
+    final uri = Uri.parse('https://wa.me/$phone?text=$message');
+    if (await canLaunchUrl(uri)) {
+      await launchUrl(uri, mode: LaunchMode.externalApplication);
+    } else if (context.mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('No se pudo abrir WhatsApp')),
+      );
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -36,14 +61,14 @@ class HelpSupportPage extends StatelessWidget {
               icon: Icons.email_outlined,
               title: "Correo Electrónico",
               subtitle: "vyofitsoporte@gmail.com",
-              onTap: () {},
+              onTap: () => _openEmail(context),
             ),
             const SizedBox(height: 12),
             _buildContactCard(
               icon: Icons.message_outlined,
               title: "WhatsApp",
               subtitle: "+507 6918-4836",
-              onTap: () {},
+              onTap: () => _openWhatsApp(context),
             ),
             const SizedBox(height: 24),
             const Text(
@@ -54,6 +79,10 @@ class HelpSupportPage extends StatelessWidget {
             _buildFAQItem("¿Cómo activo mi cuenta?", "Contacta a tu trainer para que habilite tu acceso después de registrarte."),
             _buildFAQItem("¿Qué pasa si mi plan expira?", "Podrás seguir viendo tu perfil pero no tendrás acceso a las rutinas diarias hasta renovar."),
             _buildFAQItem("¿Cómo veo los videos?", "Haz clic en cualquier ejercicio de tu rutina diaria para abrir el reproductor."),
+            _buildFAQItem(
+              "¿Las rutinas y planes de alimentación son asesoría médica?",
+              "No. Las rutinas de ejercicio y los planes de alimentación son orientativos y elaborados por tu entrenador. No sustituyen la consulta con un médico o nutricionista. Consulta a un profesional de la salud antes de iniciar cualquier programa, especialmente si tienes una condición médica preexistente.",
+            ),
           ],
         ),
       ),
