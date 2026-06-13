@@ -70,6 +70,7 @@ class RoutineDayPlan {
   String level;
   List<RoutineWorkout> workouts;
   String nutritionPlanUrl;
+  String notes;
 
   RoutineDayPlan({
     required this.name,
@@ -78,6 +79,7 @@ class RoutineDayPlan {
     required this.level,
     required this.workouts,
     this.nutritionPlanUrl = '',
+    this.notes = '',
   });
 }
 
@@ -108,6 +110,7 @@ class _CreateRoutinePageState extends State<CreateRoutinePage> {
   List<String> _selectedMuscles = [];
   String _workoutSearchQuery = '';
   final TextEditingController _nutritionPlanUrlController = TextEditingController();
+  final TextEditingController _notesController = TextEditingController();
 
   String _selectedIntensity = 'Alta';
   String _selectedLevel = 'Intermedio';
@@ -131,7 +134,8 @@ class _CreateRoutinePageState extends State<CreateRoutinePage> {
   bool isLoading = false;
   bool _isLoadingWorkouts = false;
 
-  static const int _repeatWeeks = 4;
+  int _durationWeeks = 4;
+  static const List<int> _durationOptions = [1, 2, 4, 8, 12];
   static const List<MapEntry<int, String>> _weekdays = [
     MapEntry(DateTime.monday, 'Lunes'),
     MapEntry(DateTime.tuesday, 'Martes'),
@@ -187,6 +191,7 @@ class _CreateRoutinePageState extends State<CreateRoutinePage> {
       level: _selectedLevel,
       workouts: _cloneWorkouts(selectedWorkouts),
       nutritionPlanUrl: _nutritionPlanUrlController.text.trim(),
+      notes: _notesController.text.trim(),
     );
   }
 
@@ -198,6 +203,7 @@ class _CreateRoutinePageState extends State<CreateRoutinePage> {
       level: 'Intermedio',
       workouts: [],
       nutritionPlanUrl: '',
+      notes: '',
     );
   }
 
@@ -216,6 +222,7 @@ class _CreateRoutinePageState extends State<CreateRoutinePage> {
     _selectedIntensity = plan.intensity;
     _selectedLevel = plan.level;
     selectedWorkouts = _cloneWorkouts(plan.workouts);
+    _notesController.text = plan.notes;
   }
 
   void _clearEditorForCreateMode() {
@@ -224,6 +231,7 @@ class _CreateRoutinePageState extends State<CreateRoutinePage> {
     _selectedIntensity = 'Alta';
     _selectedLevel = 'Intermedio';
     selectedWorkouts = [];
+    _notesController.clear();
   }
 
   void _setActiveWeekday(int weekday) {
@@ -330,16 +338,288 @@ class _CreateRoutinePageState extends State<CreateRoutinePage> {
     });
   }
 
-  Widget _buildSectionTitle(String title, {String? subtitle}) {
+  Widget _buildSectionTitle(String title, {String? subtitle, IconData? icon}) {
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Container(
+          width: 4,
+          height: icon != null ? 38 : 22,
+          margin: const EdgeInsets.only(right: 12, top: 2),
+          decoration: BoxDecoration(
+            color: primaryColor,
+            borderRadius: BorderRadius.circular(4),
+          ),
+        ),
+        if (icon != null) ...[
+          Container(
+            padding: const EdgeInsets.all(8),
+            margin: const EdgeInsets.only(right: 10),
+            decoration: BoxDecoration(
+              color: primaryColor.withValues(alpha: 0.12),
+              borderRadius: BorderRadius.circular(12),
+            ),
+            child: Icon(icon, color: primaryColor, size: 20),
+          ),
+        ],
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(title, style: const TextStyle(color: Colors.white, fontSize: 17, fontWeight: FontWeight.bold)),
+              if (subtitle != null) ...[
+                const SizedBox(height: 3),
+                Text(subtitle, style: TextStyle(color: Colors.white.withValues(alpha: 0.6), fontSize: 12)),
+              ],
+            ],
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildDurationSelector() {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text(title, style: const TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold)),
-        if (subtitle != null) ...[
-          const SizedBox(height: 4),
-          Text(subtitle, style: TextStyle(color: Colors.white.withValues(alpha: 0.6), fontSize: 12)),
-        ],
+        Row(
+          children: [
+            Icon(Icons.repeat_rounded, color: primaryColor, size: 18),
+            const SizedBox(width: 8),
+            const Text(
+              'Duración del plan',
+              style: TextStyle(color: Colors.white, fontSize: 14, fontWeight: FontWeight.w700),
+            ),
+          ],
+        ),
+        const SizedBox(height: 4),
+        Text(
+          'La Semana 1 que configures se duplicará automáticamente.',
+          style: TextStyle(color: Colors.white.withValues(alpha: 0.55), fontSize: 11),
+        ),
+        const SizedBox(height: 10),
+        Wrap(
+          spacing: 8,
+          runSpacing: 8,
+          children: _durationOptions.map((weeks) {
+            final isSelected = _durationWeeks == weeks;
+            return GestureDetector(
+              onTap: () => setState(() => _durationWeeks = weeks),
+              child: AnimatedContainer(
+                duration: const Duration(milliseconds: 180),
+                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+                decoration: BoxDecoration(
+                  color: isSelected ? primaryColor : Colors.white.withValues(alpha: 0.04),
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(
+                    color: isSelected ? primaryColor : Colors.white.withValues(alpha: 0.1),
+                    width: isSelected ? 1.5 : 1,
+                  ),
+                ),
+                child: Text(
+                  weeks == 1 ? '1 semana' : '$weeks semanas',
+                  style: TextStyle(
+                    color: isSelected ? backgroundColor : Colors.white70,
+                    fontWeight: FontWeight.bold,
+                    fontSize: 12,
+                  ),
+                ),
+              ),
+            );
+          }).toList(),
+        ),
       ],
+    );
+  }
+
+  Widget _buildPlanSummary() {
+    final daysPerWeek = _selectedWeekdays.length;
+    final totalSessions = _buildDatesForPlan(_startDate, _selectedWeekdays, _durationWeeks).length;
+    final endDate = _planEndDate(_startDate, _durationWeeks);
+
+    String fmt(DateTime d) =>
+        '${d.day.toString().padLeft(2, '0')}/${d.month.toString().padLeft(2, '0')}/${d.year}';
+
+    Widget row(IconData icon, String label, String value, {Color? valueColor}) {
+      return Padding(
+        padding: const EdgeInsets.symmetric(vertical: 4),
+        child: Row(
+          children: [
+            Icon(icon, size: 15, color: secondaryColor),
+            const SizedBox(width: 8),
+            Text(label, style: TextStyle(color: Colors.white.withValues(alpha: 0.6), fontSize: 12)),
+            const Spacer(),
+            Text(
+              value,
+              style: TextStyle(
+                color: valueColor ?? Colors.white,
+                fontSize: 12.5,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+          ],
+        ),
+      );
+    }
+
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: backgroundColor.withValues(alpha: 0.5),
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: primaryColor.withValues(alpha: 0.2)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Icon(Icons.insights_rounded, color: primaryColor, size: 16),
+              const SizedBox(width: 8),
+              Text(
+                'RESUMEN DEL PLAN',
+                style: TextStyle(
+                  color: primaryColor,
+                  fontSize: 11,
+                  fontWeight: FontWeight.bold,
+                  letterSpacing: 1.1,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 8),
+          row(Icons.repeat_rounded, 'Duración',
+              _durationWeeks == 1 ? '1 semana' : '$_durationWeeks semanas'),
+          row(Icons.event_repeat_rounded, 'Días por semana', '$daysPerWeek'),
+          row(Icons.fitness_center_rounded, 'Sesiones totales', '$totalSessions'),
+          row(Icons.play_circle_outline_rounded, 'Inicia', fmt(_startDate)),
+          row(Icons.timer_off_outlined, 'Cuenta expira', fmt(endDate), valueColor: Colors.orangeAccent),
+          const SizedBox(height: 6),
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+            decoration: BoxDecoration(
+              color: secondaryColor.withValues(alpha: 0.12),
+              borderRadius: BorderRadius.circular(10),
+            ),
+            child: Row(
+              children: [
+                Icon(Icons.auto_awesome_rounded, color: secondaryColor, size: 14),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: Text(
+                    'Al guardar, la cuenta se activará automáticamente y vencerá el ${fmt(endDate)}.',
+                    style: TextStyle(color: Colors.white.withValues(alpha: 0.7), fontSize: 11, height: 1.3),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildActiveDayBanner() {
+    if (!_isCreateMode || _activeWeekday == null || _selectedWeekdays.isEmpty) {
+      return const SizedBox.shrink();
+    }
+
+    final orderedDays = _weekdays.where((e) => _selectedWeekdays.contains(e.key)).toList();
+
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: [primaryColor.withValues(alpha: 0.22), secondaryColor.withValues(alpha: 0.12)],
+        ),
+        borderRadius: BorderRadius.circular(18),
+        border: Border.all(color: primaryColor.withValues(alpha: 0.35)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.all(8),
+                decoration: BoxDecoration(
+                  color: primaryColor.withValues(alpha: 0.2),
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                child: Icon(_weekdayIcon(_activeWeekday!), color: primaryColor, size: 18),
+              ),
+              const SizedBox(width: 10),
+              Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    'EDITANDO SEMANA 1',
+                    style: TextStyle(color: primaryColor, fontSize: 10, fontWeight: FontWeight.bold, letterSpacing: 1.1),
+                  ),
+                  Text(
+                    _weekdayLabel(_activeWeekday!),
+                    style: const TextStyle(color: Colors.white, fontSize: 17, fontWeight: FontWeight.w900),
+                  ),
+                ],
+              ),
+            ],
+          ),
+          if (orderedDays.length > 1) ...[
+            const SizedBox(height: 12),
+            SingleChildScrollView(
+              scrollDirection: Axis.horizontal,
+              child: Row(
+                children: orderedDays.map((entry) {
+                  final isActive = _activeWeekday == entry.key;
+                  final isConfigured = _hasPlanData(entry.key);
+                  return Padding(
+                    padding: const EdgeInsets.only(right: 8),
+                    child: GestureDetector(
+                      onTap: () => setState(() => _setActiveWeekday(entry.key)),
+                      child: AnimatedContainer(
+                        duration: const Duration(milliseconds: 180),
+                        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+                        decoration: BoxDecoration(
+                          color: isActive ? primaryColor : Colors.white.withValues(alpha: 0.06),
+                          borderRadius: BorderRadius.circular(10),
+                          border: Border.all(
+                            color: isActive ? primaryColor : Colors.white.withValues(alpha: 0.12),
+                          ),
+                        ),
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            if (isConfigured) ...[
+                              Icon(
+                                Icons.check_circle,
+                                size: 13,
+                                color: isActive ? backgroundColor : Colors.greenAccent,
+                              ),
+                              const SizedBox(width: 5),
+                            ],
+                            Text(
+                              entry.value.substring(0, 3),
+                              style: TextStyle(
+                                color: isActive ? backgroundColor : Colors.white70,
+                                fontWeight: FontWeight.bold,
+                                fontSize: 12,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                  );
+                }).toList(),
+              ),
+            ),
+          ],
+        ],
+      ),
     );
   }
 
@@ -455,6 +735,7 @@ class _CreateRoutinePageState extends State<CreateRoutinePage> {
 
      _nameController.text = (initial['name'] ?? '').toString();
      _nutritionPlanUrlController.text = (initial['nutritionPlanUrl'] ?? '').toString();
+     _notesController.text = (initial['notes'] ?? '').toString();
      _selectedMuscles = List<String>.from((initial['muscleFocus'] as List<dynamic>? ?? []).map((e) => e.toString()));
      
      if (initial['intensity'] != null) _selectedIntensity = initial['intensity'];
@@ -499,6 +780,8 @@ class _CreateRoutinePageState extends State<CreateRoutinePage> {
   @override
   void dispose() {
     _nameController.dispose();
+    _nutritionPlanUrlController.dispose();
+    _notesController.dispose();
     super.dispose();
   }
 
@@ -620,6 +903,7 @@ class _CreateRoutinePageState extends State<CreateRoutinePage> {
           'muscleFocus': currentPlan.muscleFocus,
           'intensity': currentPlan.intensity,
           'level': currentPlan.level,
+          'notes': currentPlan.notes,
           'clientId': widget.clientId,
           'updatedAt': FieldValue.serverTimestamp(),
           'updatedBy': user.uid,
@@ -631,7 +915,7 @@ class _CreateRoutinePageState extends State<CreateRoutinePage> {
         if (!mounted) return;
         _showSuccessSnackBar('Rutina actualizada');
       } else {
-        final datesToCreate = _buildDatesForFourWeeks(_startDate, _selectedWeekdays);
+        final datesToCreate = _buildDatesForPlan(_startDate, _selectedWeekdays, _durationWeeks);
         if (datesToCreate.isEmpty) {
           _showErrorSnackBar('No se generaron fechas. Revisa inicio y dias seleccionados.');
           setState(() => isLoading = false);
@@ -671,6 +955,7 @@ class _CreateRoutinePageState extends State<CreateRoutinePage> {
              'muscleFocus': plan.muscleFocus,
              'intensity': plan.intensity,
              'level': plan.level,
+             'notes': plan.notes,
              'clientId': widget.clientId,
              'updatedAt': FieldValue.serverTimestamp(),
              'updatedBy': user.uid,
@@ -691,6 +976,9 @@ class _CreateRoutinePageState extends State<CreateRoutinePage> {
           }
         }
 
+        // Activación automática + expiración dinámica ligada a la duración del plan.
+        await _autoActivateClient(_startDate, _durationWeeks, user.uid);
+
         if (!mounted) return;
         _showSuccessSnackBar('Rutinas generadas: $created nuevas, $updated actualizadas');
       }
@@ -709,11 +997,16 @@ class _CreateRoutinePageState extends State<CreateRoutinePage> {
 
   String _dateKey(DateTime date) => '${date.year}-${date.month.toString().padLeft(2, '0')}-${date.day.toString().padLeft(2, '0')}';
 
-  List<DateTime> _buildDatesForFourWeeks(DateTime startDate, Set<int> weekdays) {
+  /// Fecha en la que expira el plan: inicio + (semanas * 7 días).
+  DateTime _planEndDate(DateTime startDate, int weeks) {
+    return _dateOnlyLocal(startDate).add(Duration(days: weeks * 7));
+  }
+
+  List<DateTime> _buildDatesForPlan(DateTime startDate, Set<int> weekdays, int weeks) {
     if (weekdays.isEmpty) return [];
 
     final start = _dateOnlyLocal(startDate);
-    final endExclusive = start.add(const Duration(days: _repeatWeeks * 7));
+    final endExclusive = start.add(Duration(days: weeks * 7));
     final dates = <DateTime>[];
 
     for (DateTime day = start; day.isBefore(endExclusive); day = day.add(const Duration(days: 1))) {
@@ -723,6 +1016,37 @@ class _CreateRoutinePageState extends State<CreateRoutinePage> {
     }
 
     return dates;
+  }
+
+  /// Activa la cuenta del cliente automáticamente al asignarle su primer plan y
+  /// fija la expiración según la duración del plan (inicio + semanas * 7 días).
+  /// Nunca acorta una suscripción vigente más larga: usa la fecha mayor.
+  Future<void> _autoActivateClient(DateTime startDate, int weeks, String adminUid) async {
+    final userRef = FirebaseFirestore.instance.collection('users').doc(widget.clientId);
+    final planEnd = _dateForStorage(_planEndDate(startDate, weeks));
+
+    DateTime activeUntil = planEnd;
+    try {
+      final snapshot = await userRef.get();
+      final existing = (snapshot.data()?['activeUntil'] as Timestamp?)?.toDate();
+      // No recortar una suscripción vigente que termina más tarde.
+      if (existing != null && existing.isAfter(activeUntil)) {
+        activeUntil = existing;
+      }
+    } catch (_) {
+      // Si falla la lectura usamos el fin del plan calculado.
+    }
+
+    await userRef.set({
+      'isActive': true,
+      'activeUntil': Timestamp.fromDate(activeUntil),
+      'planDurationWeeks': weeks,
+      'planStartDate': Timestamp.fromDate(_dateForStorage(startDate)),
+      'activatedAt': FieldValue.serverTimestamp(),
+      'activatedBy': adminUid,
+      'autoActivated': true,
+      'updatedAt': FieldValue.serverTimestamp(),
+    }, SetOptions(merge: true));
   }
 
   Future<void> _pickStartDate() async {
@@ -781,49 +1105,13 @@ class _CreateRoutinePageState extends State<CreateRoutinePage> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    _buildSectionTitle('Dias de la semana'),
-                    const SizedBox(height: 10),
+                    _buildSectionTitle('Días de la Semana 1', subtitle: 'Define la estructura; se duplicará por todo el plan', icon: Icons.view_week_rounded),
+                    const SizedBox(height: 12),
                     Wrap(
                       spacing: 8,
                       runSpacing: 8,
                       children: _weekdays.map(_buildWeekdayTile).toList(),
                     ),
-                    if (_selectedWeekdays.isNotEmpty) ...[
-                      const SizedBox(height: 12),
-                      Wrap(
-                        spacing: 8,
-                        runSpacing: 8,
-                        children: _weekdays
-                            .where((entry) => _selectedWeekdays.contains(entry.key))
-                            .map((entry) {
-                          final isActive = _activeWeekday == entry.key;
-                          return ChoiceChip(
-                            label: Row(
-                              mainAxisSize: MainAxisSize.min,
-                              children: [
-                                if (isActive) ...[
-                                  Icon(Icons.edit, size: 14, color: primaryColor),
-                                  const SizedBox(width: 6),
-                                ],
-                                Text(entry.value),
-                              ],
-                            ),
-                            selected: isActive,
-                            onSelected: (_) {
-                              setState(() {
-                                _setActiveWeekday(entry.key);
-                              });
-                            },
-                            selectedColor: primaryColor.withValues(alpha: 0.25),
-                            labelStyle: TextStyle(color: isActive ? primaryColor : Colors.white70),
-                            backgroundColor: Colors.white.withValues(alpha: 0.05),
-                            side: BorderSide(
-                              color: isActive ? primaryColor : Colors.white.withValues(alpha: 0.12),
-                            ),
-                          );
-                        }).toList(),
-                      ),
-                    ],
                     const SizedBox(height: 14),
                     InkWell(
                       onTap: _pickStartDate,
@@ -851,13 +1139,19 @@ class _CreateRoutinePageState extends State<CreateRoutinePage> {
                         ),
                       ),
                     ),
+                    const SizedBox(height: 16),
+                    _buildDurationSelector(),
+                    const SizedBox(height: 16),
+                    _buildPlanSummary(),
                     const SizedBox(height: 4),
                   ],
                 ),
               ),
-             const SizedBox(height: 24),
-             _buildSectionTitle('Datos de la rutina'),
-             const SizedBox(height: 8),
+             const SizedBox(height: 20),
+             _buildActiveDayBanner(),
+             const SizedBox(height: 20),
+             _buildSectionTitle('Datos de la rutina', icon: Icons.assignment_rounded),
+             const SizedBox(height: 12),
              TextField(controller: _nameController, style: const TextStyle(color: Colors.white), decoration: _buildInputDecoration(label: 'Nombre de la Rutina', hint: 'Ej: Empuje Potencia', icon: Icons.edit_rounded)),
              const SizedBox(height: 12),
              TextField(
@@ -869,6 +1163,18 @@ class _CreateRoutinePageState extends State<CreateRoutinePage> {
                  icon: Icons.file_download_rounded,
                ),
              ),
+             const SizedBox(height: 12),
+             TextField(
+               controller: _notesController,
+               style: const TextStyle(color: Colors.white),
+               maxLines: 3,
+               minLines: 2,
+               decoration: _buildInputDecoration(
+                 label: 'Notas de la entrenadora (Opcional)',
+                 hint: 'Ej: Enfócate en la técnica, descansa 60s entre series...',
+                 icon: Icons.sticky_note_2_rounded,
+               ),
+             ),
              const SizedBox(height: 16),
             Row(
               children: [
@@ -878,8 +1184,8 @@ class _CreateRoutinePageState extends State<CreateRoutinePage> {
               ],
             ),
             const SizedBox(height: 24),
-            _buildSectionTitle('Enfoque Muscular'),
-            const SizedBox(height: 10),
+            _buildSectionTitle('Enfoque Muscular', icon: Icons.accessibility_new_rounded),
+            const SizedBox(height: 12),
             Wrap(
               spacing: 8, runSpacing: 4,
               children: _muscleGroups.map((muscle) {
@@ -892,7 +1198,7 @@ class _CreateRoutinePageState extends State<CreateRoutinePage> {
               }).toList(),
             ),
             const SizedBox(height: 24),
-            _buildSectionTitle('Ejercicios Seleccionados'),
+            _buildSectionTitle('Ejercicios Seleccionados', icon: Icons.checklist_rounded),
             const SizedBox(height: 12),
             if (selectedWorkouts.isEmpty)
               Container(
@@ -1143,7 +1449,7 @@ class _CreateRoutinePageState extends State<CreateRoutinePage> {
              Row(
                mainAxisAlignment: MainAxisAlignment.spaceBetween,
                children: [
-                 _buildSectionTitle('Ejercicios Disponibles'),
+                 Expanded(child: _buildSectionTitle('Ejercicios Disponibles', icon: Icons.fitness_center_rounded)),
                  TextButton.icon(
                    onPressed: () async {
                      await Navigator.push(context, MaterialPageRoute(builder: (context) => const CreateWorkoutPage()));

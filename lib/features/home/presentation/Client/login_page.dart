@@ -15,6 +15,7 @@ class _LoginPageState extends State<LoginPage> {
   final AuthService _authService = AuthService();
   bool isLoading = false;
   bool _stayLoggedIn = true;
+  bool _obscurePassword = true;
 
   final Color backgroundColor = const Color(0xFF11151C);
   final Color surfaceColor = const Color(0xFF55768C);
@@ -99,11 +100,12 @@ class _LoginPageState extends State<LoginPage> {
     }
   }
 
-  InputDecoration _buildInputDecoration(String label, IconData icon) {
+  InputDecoration _buildInputDecoration(String label, IconData icon, {Widget? suffixIcon}) {
     return InputDecoration(
       labelText: label,
       labelStyle: TextStyle(color: primaryColor.withValues(alpha: 0.8), fontSize: 14),
       prefixIcon: Icon(icon, color: primaryColor, size: 20),
+      suffixIcon: suffixIcon,
       filled: true,
       fillColor: Colors.transparent,
       contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
@@ -197,8 +199,19 @@ class _LoginPageState extends State<LoginPage> {
                         TextField(
                           controller: _passwordController,
                           style: const TextStyle(color: Colors.white, fontSize: 15),
-                          decoration: _buildInputDecoration('CONTRASEÑA', Icons.lock_outline_rounded),
-                          obscureText: true,
+                          decoration: _buildInputDecoration(
+                            'CONTRASEÑA',
+                            Icons.lock_outline_rounded,
+                            suffixIcon: IconButton(
+                              icon: Icon(
+                                _obscurePassword ? Icons.visibility_off_outlined : Icons.visibility_outlined,
+                                color: primaryColor.withValues(alpha: 0.7),
+                                size: 20,
+                              ),
+                              onPressed: () => setState(() => _obscurePassword = !_obscurePassword),
+                            ),
+                          ),
+                          obscureText: _obscurePassword,
                         ),
                       ],
                     ),
