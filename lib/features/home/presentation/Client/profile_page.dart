@@ -188,16 +188,21 @@ class _ProfilePageState extends State<ProfilePage> {
         borderRadius: BorderRadius.circular(16),
         border: Border.all(color: surfaceColor.withValues(alpha: 0.1)),
       ),
-      child: ListTile(
-        dense: true,
-        contentPadding: const EdgeInsets.symmetric(horizontal: 18, vertical: 0),
-        leading: Icon(icon, color: primaryColor, size: 22),
-        title: Text(
-          title,
-          style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 14),
+      child: Material(
+        type: MaterialType.transparency,
+        borderRadius: BorderRadius.circular(16),
+        child: ListTile(
+          dense: true,
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+          contentPadding: const EdgeInsets.symmetric(horizontal: 18, vertical: 0),
+          leading: Icon(icon, color: primaryColor, size: 22),
+          title: Text(
+            title,
+            style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 14),
+          ),
+          trailing: Icon(Icons.arrow_forward_ios_rounded, size: 14, color: Colors.white.withValues(alpha: 0.2)),
+          onTap: onTap ?? () {},
         ),
-        trailing: Icon(Icons.arrow_forward_ios_rounded, size: 14, color: Colors.white.withValues(alpha: 0.2)),
-        onTap: onTap ?? () {},
       ),
     );
   }

@@ -214,6 +214,7 @@ class _LoginPageState extends State<LoginPage> {
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
                       Row(
+                        mainAxisSize: MainAxisSize.min,
                         children: [
                           Theme(
                             data: ThemeData(
@@ -228,8 +229,11 @@ class _LoginPageState extends State<LoginPage> {
                               },
                               activeColor: primaryColor,
                               checkColor: backgroundColor,
+                              visualDensity: VisualDensity.compact,
+                              materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
                             ),
                           ),
+                          const SizedBox(width: 4),
                           const Text(
                             "Mantener sesión",
                             style: TextStyle(color: Colors.white, fontSize: 13),
@@ -238,6 +242,11 @@ class _LoginPageState extends State<LoginPage> {
                       ),
                       TextButton(
                         onPressed: _forgotPassword,
+                        style: TextButton.styleFrom(
+                          padding: EdgeInsets.zero,
+                          minimumSize: Size.zero,
+                          tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                        ),
                         child: Text(
                           "¿OLVIDASTE TU CONTRASEÑA?",
                           style: TextStyle(color: primaryColor, fontSize: 11, fontWeight: FontWeight.bold),

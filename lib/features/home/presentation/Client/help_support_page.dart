@@ -96,12 +96,17 @@ class HelpSupportPage extends StatelessWidget {
         borderRadius: BorderRadius.circular(16),
         border: Border.all(color: surfaceColor.withValues(alpha: 0.2)),
       ),
-      child: ListTile(
-        dense: true,
-        leading: Icon(icon, color: primaryColor, size: 22),
-        title: Text(title, style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 14)),
-        subtitle: Text(subtitle, style: TextStyle(color: Colors.white.withValues(alpha: 0.5), fontSize: 13)),
-        onTap: onTap,
+      child: Material(
+        type: MaterialType.transparency,
+        borderRadius: BorderRadius.circular(16),
+        child: ListTile(
+          dense: true,
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+          leading: Icon(icon, color: primaryColor, size: 22),
+          title: Text(title, style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 14)),
+          subtitle: Text(subtitle, style: TextStyle(color: Colors.white.withValues(alpha: 0.5), fontSize: 13)),
+          onTap: onTap,
+        ),
       ),
     );
   }
