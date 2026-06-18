@@ -18,7 +18,11 @@ class DashboardPage extends StatefulWidget {
 class _DashboardPageState extends State<DashboardPage> {
   DateTime _focusedDay = DateTime.now();
   DateTime? _selectedDay;
+  bool _isWeekView = false;
   final Map<DateTime, List<Map<String, dynamic>>> _routines = {};
+
+  static const List<String> _esWeekdays = ['LUN', 'MAR', 'MIÉ', 'JUE', 'VIE', 'SÁB', 'DOM'];
+  static const List<String> _esMonths = ['Ene', 'Feb', 'Mar', 'Abr', 'May', 'Jun', 'Jul', 'Ago', 'Sep', 'Oct', 'Nov', 'Dic'];
   final Set<String> _completedRoutineIds = {};
   final Set<DateTime> _completedDates = {};
   int _currentStreak = 0;
@@ -216,7 +220,7 @@ class _DashboardPageState extends State<DashboardPage> {
                       const SizedBox(height: 20),
                       _buildStreakWidget(),
                       const SizedBox(height: 16),
-                      _buildMonthCalendar(),
+                      _buildCalendarSection(),
                        const SizedBox(height: 20),
                        Row(
                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -369,6 +373,7 @@ class _DashboardPageState extends State<DashboardPage> {
 
   Widget _buildMonthCalendar() {
     return Container(
+      key: const ValueKey('month'),
       decoration: BoxDecoration(
         color: surfaceColor.withOpacity(0.1),
         borderRadius: BorderRadius.circular(20),
@@ -378,6 +383,7 @@ class _DashboardPageState extends State<DashboardPage> {
         firstDay: DateTime.utc(2020, 1, 1),
         lastDay: DateTime.utc(2030, 12, 31),
         focusedDay: _focusedDay,
+        startingDayOfWeek: StartingDayOfWeek.monday,
         selectedDayPredicate: (day) => isSameDay(_selectedDay, day),
         eventLoader: (day) => _getRoutinesForDay(day),
         onDaySelected: (selectedDay, focusedDay) {
@@ -450,6 +456,439 @@ class _DashboardPageState extends State<DashboardPage> {
             );
           },
         ),
+      ),
+    );
+  }
+
+  // ---------------------------------------------------------------------------
+  // Calendario híbrido (Mensual / Semanal)
+  // ---------------------------------------------------------------------------
+
+  Widget _buildCalendarSection() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            const Text(
+              "Calendario",
+              style: TextStyle(
+                color: Colors.white,
+                fontSize: 18,
+                fontWeight: FontWeight.bold,
+                letterSpacing: -0.5,
+              ),
+            ),
+            _buildViewToggle(),
+          ],
+        ),
+        const SizedBox(height: 12),
+        AnimatedSwitcher(
+          duration: const Duration(milliseconds: 250),
+          transitionBuilder: (child, animation) => FadeTransition(
+            opacity: animation,
+            child: SizeTransition(sizeFactor: animation, child: child),
+          ),
+          child: _isWeekView ? _buildWeekView() : _buildMonthCalendar(),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildViewToggle() {
+    return Container(
+      padding: const EdgeInsets.all(4),
+      decoration: BoxDecoration(
+        color: surfaceColor.withOpacity(0.15),
+        borderRadius: BorderRadius.circular(12),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          _toggleChip('Mensual', !_isWeekView, () {
+            if (_isWeekView) setState(() => _isWeekView = false);
+          }),
+          _toggleChip('Semanal', _isWeekView, () {
+            if (!_isWeekView) setState(() => _isWeekView = true);
+          }),
+        ],
+      ),
+    );
+  }
+
+  Widget _toggleChip(String label, bool active, VoidCallback onTap) {
+    return GestureDetector(
+      onTap: onTap,
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 200),
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 7),
+        decoration: BoxDecoration(
+          color: active ? primaryColor : Colors.transparent,
+          borderRadius: BorderRadius.circular(9),
+        ),
+        child: Text(
+          label,
+          style: TextStyle(
+            color: active ? backgroundColor : Colors.white60,
+            fontWeight: FontWeight.bold,
+            fontSize: 12,
+          ),
+        ),
+      ),
+    );
+  }
+
+  DateTime _startOfWeek(DateTime day) {
+    final d = DateTime(day.year, day.month, day.day);
+    return d.subtract(Duration(days: d.weekday - 1)); // lunes
+  }
+
+  String _weekRangeLabel(DateTime start, DateTime end) {
+    final startMonth = _esMonths[start.month - 1];
+    final endMonth = _esMonths[end.month - 1];
+    if (start.month == end.month) {
+      return '${start.day} - ${end.day} $endMonth';
+    }
+    return '${start.day} $startMonth - ${end.day} $endMonth';
+  }
+
+  Widget _buildWeekView() {
+    final weekStart = _startOfWeek(_focusedDay);
+    final days = List.generate(7, (i) => weekStart.add(Duration(days: i)));
+    final weekEnd = days.last;
+
+    int totalScheduled = 0;
+    int totalCompleted = 0;
+    for (final d in days) {
+      final routines = _getRoutinesForDay(d);
+      totalScheduled += routines.length;
+      totalCompleted += routines.where(_isRoutineCompleted).length;
+    }
+    final progress = totalScheduled == 0 ? 0.0 : totalCompleted / totalScheduled;
+
+    return Container(
+      key: const ValueKey('week'),
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: surfaceColor.withOpacity(0.1),
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: surfaceColor.withOpacity(0.2)),
+      ),
+      child: Column(
+        children: [
+          // Navegación de semana
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              _weekNavButton(Icons.chevron_left, () {
+                setState(() {
+                  _focusedDay = _focusedDay.subtract(const Duration(days: 7));
+                });
+              }),
+              Column(
+                children: [
+                  Text(
+                    _weekRangeLabel(weekStart, weekEnd),
+                    style: const TextStyle(
+                      color: Colors.white,
+                      fontSize: 16,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                  Text(
+                    weekStart.year.toString(),
+                    style: TextStyle(color: Colors.white.withOpacity(0.4), fontSize: 11),
+                  ),
+                ],
+              ),
+              _weekNavButton(Icons.chevron_right, () {
+                setState(() {
+                  _focusedDay = _focusedDay.add(const Duration(days: 7));
+                });
+              }),
+            ],
+          ),
+          const SizedBox(height: 14),
+          _buildWeeklyProgress(totalCompleted, totalScheduled, progress),
+          const SizedBox(height: 6),
+          ...days.map(_buildDayBlock),
+        ],
+      ),
+    );
+  }
+
+  Widget _weekNavButton(IconData icon, VoidCallback onTap) {
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        padding: const EdgeInsets.all(6),
+        decoration: BoxDecoration(
+          color: primaryColor.withOpacity(0.12),
+          borderRadius: BorderRadius.circular(10),
+        ),
+        child: Icon(icon, color: primaryColor, size: 22),
+      ),
+    );
+  }
+
+  Widget _buildWeeklyProgress(int completed, int total, double progress) {
+    return Container(
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: backgroundColor.withOpacity(0.4),
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: primaryColor.withOpacity(0.15)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Text(
+                "PROGRESO SEMANAL",
+                style: TextStyle(
+                  color: primaryColor,
+                  fontSize: 11,
+                  fontWeight: FontWeight.bold,
+                  letterSpacing: 1.1,
+                ),
+              ),
+              Text(
+                total == 0 ? "Sin rutinas" : "$completed/$total rutinas",
+                style: const TextStyle(
+                  color: Colors.white,
+                  fontSize: 12,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 10),
+          ClipRRect(
+            borderRadius: BorderRadius.circular(6),
+            child: LinearProgressIndicator(
+              value: progress,
+              minHeight: 8,
+              backgroundColor: Colors.white.withOpacity(0.08),
+              valueColor: AlwaysStoppedAnimation(
+                progress >= 1.0 ? Colors.greenAccent : primaryColor,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildDayBlock(DateTime day) {
+    final routines = _getRoutinesForDay(day);
+    final isToday = isSameDay(day, DateTime.now());
+    final isSelected = isSameDay(day, _selectedDay);
+    final normalized = DateTime.utc(day.year, day.month, day.day);
+    final isStreakDay = _completedDates.contains(normalized);
+
+    return GestureDetector(
+      onTap: () {
+        setState(() {
+          _selectedDay = day;
+          _focusedDay = day;
+        });
+      },
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 200),
+        margin: const EdgeInsets.only(top: 10),
+        padding: const EdgeInsets.all(12),
+        decoration: BoxDecoration(
+          color: isSelected ? primaryColor.withOpacity(0.10) : Colors.white.withOpacity(0.03),
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(
+            color: isSelected
+                ? primaryColor.withOpacity(0.6)
+                : isToday
+                    ? secondaryColor.withOpacity(0.6)
+                    : Colors.white.withOpacity(0.06),
+            width: (isSelected || isToday) ? 1.5 : 1,
+          ),
+        ),
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            // Pastilla de fecha
+            SizedBox(
+              width: 44,
+              child: Column(
+                children: [
+                  Text(
+                    _esWeekdays[day.weekday - 1],
+                    style: TextStyle(
+                      color: isToday ? primaryColor : Colors.white.withOpacity(0.5),
+                      fontSize: 10,
+                      fontWeight: FontWeight.bold,
+                      letterSpacing: 0.5,
+                    ),
+                  ),
+                  const SizedBox(height: 4),
+                  Container(
+                    width: 34,
+                    height: 34,
+                    alignment: Alignment.center,
+                    decoration: BoxDecoration(
+                      color: isToday ? primaryColor : Colors.transparent,
+                      shape: BoxShape.circle,
+                      border: isToday ? null : Border.all(color: Colors.white.withOpacity(0.12)),
+                    ),
+                    child: Text(
+                      '${day.day}',
+                      style: TextStyle(
+                        color: isToday ? backgroundColor : Colors.white,
+                        fontSize: 15,
+                        fontWeight: FontWeight.w900,
+                      ),
+                    ),
+                  ),
+                  if (isStreakDay)
+                    const Padding(
+                      padding: EdgeInsets.only(top: 3),
+                      child: Text('🔥', style: TextStyle(fontSize: 11)),
+                    ),
+                ],
+              ),
+            ),
+            const SizedBox(width: 14),
+            Expanded(
+              child: routines.isEmpty
+                  ? _buildRestRow()
+                  : Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        for (int i = 0; i < routines.length; i++) ...[
+                          if (i > 0) const SizedBox(height: 8),
+                          _buildWeekEventCard(routines[i]),
+                        ],
+                      ],
+                    ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildRestRow() {
+    return Container(
+      height: 44,
+      alignment: Alignment.centerLeft,
+      child: Row(
+        children: [
+          Icon(Icons.bedtime_outlined, color: Colors.white.withOpacity(0.25), size: 16),
+          const SizedBox(width: 8),
+          Text(
+            'Día de descanso',
+            style: TextStyle(color: Colors.white.withOpacity(0.3), fontSize: 13),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildWeekEventCard(Map<String, dynamic> routine) {
+    final workouts = routine['workouts'] as List<dynamic>? ?? [];
+    final exerciseCount = workouts.fold<int>(
+      0,
+      (sum, w) => sum + (((w as Map)['exercises'] as List?)?.length ?? 0),
+    );
+    final isCompleted = _isRoutineCompleted(routine);
+    final isMissed = _isRoutineMissed(routine);
+
+    final Color statusColor = isCompleted
+        ? Colors.greenAccent
+        : isMissed
+            ? Colors.redAccent
+            : primaryColor;
+    final String statusLabel = isCompleted
+        ? 'Completada'
+        : isMissed
+            ? 'Pendiente'
+            : 'Programada';
+    final IconData statusIcon = isCompleted
+        ? Icons.check_circle_rounded
+        : isMissed
+            ? Icons.error_outline_rounded
+            : Icons.schedule_rounded;
+
+    return Container(
+      padding: const EdgeInsets.all(10),
+      decoration: BoxDecoration(
+        color: Colors.white.withOpacity(0.04),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: Colors.white.withOpacity(0.07)),
+      ),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // Barra de color (categoría/estado)
+          Container(
+            width: 4,
+            height: 38,
+            decoration: BoxDecoration(
+              color: statusColor,
+              borderRadius: BorderRadius.circular(4),
+            ),
+          ),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  (routine['name'] ?? 'Rutina').toString(),
+                  style: const TextStyle(
+                    color: Colors.white,
+                    fontSize: 13.5,
+                    fontWeight: FontWeight.w800,
+                    height: 1.15,
+                  ),
+                ),
+                const SizedBox(height: 5),
+                Row(
+                  children: [
+                    Icon(Icons.fitness_center, color: Colors.white.withOpacity(0.4), size: 12),
+                    const SizedBox(width: 4),
+                    Text(
+                      '$exerciseCount ejercicios',
+                      style: TextStyle(color: Colors.white.withOpacity(0.55), fontSize: 11),
+                    ),
+                    const SizedBox(width: 8),
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                      decoration: BoxDecoration(
+                        color: statusColor.withOpacity(0.15),
+                        borderRadius: BorderRadius.circular(20),
+                      ),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Icon(statusIcon, color: statusColor, size: 10),
+                          const SizedBox(width: 3),
+                          Text(
+                            statusLabel,
+                            style: TextStyle(
+                              color: statusColor,
+                              fontSize: 9.5,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+              ],
+            ),
+          ),
+        ],
       ),
     );
   }

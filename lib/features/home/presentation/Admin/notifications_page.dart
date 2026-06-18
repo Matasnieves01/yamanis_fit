@@ -233,186 +233,267 @@ class _NotificationsPageState extends State<NotificationsPage> {
               final bool isRead = data['read'] ?? false;
               final DateTime date = (data['createdAt'] as Timestamp?)?.toDate() ?? DateTime.now();
 
-              return Container(
-                margin: const EdgeInsets.only(bottom: 12),
-                decoration: BoxDecoration(
-                  color: isRead ? Colors.transparent : surfaceColor.withValues(alpha: 0.1),
-                  borderRadius: BorderRadius.circular(16),
-                  border: Border.all(color: isRead ? Colors.white10 : primaryColor.withValues(alpha: 0.3)),
-                ),
-                child: ListTile(
-                  onTap: data['type'] == 'pdf_request' 
-                    ? null // No hacer nada al clickear la tarjeta si es solicitud de PDF
-                    : () {
-                        _markAsRead(doc.id);
-                        final logId = data['logId']?.toString();
-                        if (logId == null || logId.isEmpty) return;
-                        Navigator.push(
-                          context,
-                          MaterialPageRoute(
-                            builder: (_) => ViewNotificationPage(
-                              logId: logId,
-                              notificationId: doc.id,
-                            ),
-                          ),
-                        );
-                      },
-                  leading: CircleAvatar(
-                    backgroundColor: isRead ? Colors.white10 : primaryColor.withValues(alpha: 0.2),
-                    child: Icon(
-                      data['type'] == 'routine_completed' ? Icons.fitness_center : Icons.notifications,
-                      color: isRead ? Colors.white38 : primaryColor,
-                    ),
-                  ),
-                  title: Text(
-                    data['title'] ?? 'Notificación',
-                    style: TextStyle(
-                      color: isRead ? Colors.white60 : Colors.white,
-                      fontWeight: isRead ? FontWeight.normal : FontWeight.bold,
-                    ),
-                  ),
-                   subtitle: Column(
-                     crossAxisAlignment: CrossAxisAlignment.start,
-                     children: [
-                       Text(data['message'] ?? '', style: TextStyle(color: Colors.white38, fontSize: 12)),
-                       if (data['type'] == 'pdf_request') ...[
-                         const SizedBox(height: 12),
-                         // Mostrar estado si ya fue procesado
-                         if (data['processed'] == true || _notificationStatus[doc.id] != null) ...[
-                           Container(
-                             padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                             decoration: BoxDecoration(
-                               color: ((data['processedBy'] ?? _notificationStatus[doc.id]) == 'approved' ? Colors.green : Colors.red).withOpacity(0.1),
-                               borderRadius: BorderRadius.circular(8),
-                               border: Border.all(
-                                 color: ((data['processedBy'] ?? _notificationStatus[doc.id]) == 'approved' ? Colors.green : Colors.red).withOpacity(0.3),
-                               ),
-                             ),
-                             child: Row(
-                               children: [
-                                 Icon(
-                                   (data['processedBy'] ?? _notificationStatus[doc.id]) == 'approved' ? Icons.check_circle : Icons.cancel,
-                                   color: (data['processedBy'] ?? _notificationStatus[doc.id]) == 'approved' ? Colors.green : Colors.red,
-                                   size: 16,
-                                 ),
-                                 const SizedBox(width: 8),
-                                 Text(
-                                   (data['processedBy'] ?? _notificationStatus[doc.id]) == 'approved' ? 'APROBADO' : 'RECHAZADO',
-                                   style: TextStyle(
-                                     color: (data['processedBy'] ?? _notificationStatus[doc.id]) == 'approved' ? Colors.green : Colors.red,
-                                     fontWeight: FontWeight.bold,
-                                     fontSize: 11,
-                                   ),
-                                 ),
-                               ],
-                             ),
-                           ),
-                          ] else ...[
-                            // Mostrar botones solo si NO ha sido procesado
-                            SizedBox(
-                              width: double.infinity,
-                              child: Wrap(
-                                spacing: 8,
-                                runSpacing: 8,
-                                children: [
-                                  Expanded(
-                                    child: SizedBox(
-                                      child: ElevatedButton.icon(
-                                        onPressed: _processingNotifications.contains(doc.id)
-                                            ? null
-                                            : () => _handlePdfRequest(
-                                                  context,
-                                                  doc.id,
-                                                  data['userId'],
-                                                  data['resourceId'],
-                                                  true,
-                                                ),
-                                        icon: _processingNotifications.contains(doc.id)
-                                            ? const SizedBox(
-                                                height: 14,
-                                                width: 14,
-                                                child: CircularProgressIndicator(
-                                                  strokeWidth: 2,
-                                                  color: Color(0xFF11151C),
-                                                ),
-                                              )
-                                            : const Icon(Icons.check, size: 16),
-                                        label: const Text('APROBAR', overflow: TextOverflow.ellipsis),
-                                        style: ElevatedButton.styleFrom(
-                                          backgroundColor: _processingNotifications.contains(doc.id)
-                                              ? primaryColor.withValues(alpha: 0.5)
-                                              : primaryColor,
-                                          foregroundColor: const Color(0xFF11151C),
-                                          disabledBackgroundColor: primaryColor.withValues(alpha: 0.3),
-                                          disabledForegroundColor: Colors.white38,
-                                          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-                                          textStyle: const TextStyle(fontSize: 11, fontWeight: FontWeight.bold),
-                                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-                                        ),
-                                      ),
-                                    ),
-                                  ),
-                                  Expanded(
-                                    child: SizedBox(
-                                      child: OutlinedButton.icon(
-                                        onPressed: _processingNotifications.contains(doc.id)
-                                            ? null
-                                            : () => _handlePdfRequest(
-                                                  context,
-                                                  doc.id,
-                                                  data['userId'],
-                                                  data['resourceId'],
-                                                  false,
-                                                ),
-                                        icon: _processingNotifications.contains(doc.id)
-                                            ? const SizedBox(
-                                                height: 14,
-                                                width: 14,
-                                                child: CircularProgressIndicator(
-                                                  strokeWidth: 2,
-                                                  valueColor: AlwaysStoppedAnimation<Color>(Colors.redAccent),
-                                                ),
-                                              )
-                                            : const Icon(Icons.close, size: 16),
-                                        label: const Text('RECHAZAR', overflow: TextOverflow.ellipsis),
-                                        style: OutlinedButton.styleFrom(
-                                          foregroundColor: _processingNotifications.contains(doc.id)
-                                              ? Colors.white24
-                                              : Colors.redAccent,
-                                          disabledForegroundColor: Colors.white24,
-                                          side: BorderSide(
-                                            color: _processingNotifications.contains(doc.id)
-                                                ? Colors.white24
-                                                : Colors.redAccent,
-                                          ),
-                                          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-                                          textStyle: const TextStyle(fontSize: 11, fontWeight: FontWeight.bold),
-                                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-                                        ),
-                                      ),
-                                    ),
-                                  ),
-                                ],
-                              ),
-                            ),
-                          ],
-                       ],
-                       const SizedBox(height: 4),
-                       Text(
-                         DateFormat('HH:mm - dd MMM').format(date),
-                         style: const TextStyle(color: Colors.white24, fontSize: 10),
-                       ),
-                     ],
-                   ),
-                  trailing: isRead
-                    ? null 
-                    : Container(width: 8, height: 8, decoration: BoxDecoration(color: primaryColor, shape: BoxShape.circle)),
-                ),
-              );
+              return _buildNotificationCard(doc, data, isRead, date);
             },
           );
         },
       ),
+    );
+  }
+
+  // ---------------------------------------------------------------------------
+  // Tarjeta de notificación (rediseño moderno)
+  // ---------------------------------------------------------------------------
+
+  ({IconData icon, Color color}) _notificationVisual(String type) {
+    switch (type) {
+      case 'routine_completed':
+        return (icon: Icons.fitness_center_rounded, color: primaryColor);
+      case 'pdf_request':
+        return (icon: Icons.picture_as_pdf_rounded, color: const Color(0xFF64B5F6));
+      case 'pdf_approved':
+        return (icon: Icons.check_circle_rounded, color: Colors.greenAccent);
+      case 'pdf_rejected':
+        return (icon: Icons.cancel_rounded, color: Colors.redAccent);
+      default:
+        return (icon: Icons.notifications_rounded, color: const Color(0xFF89AC76));
+    }
+  }
+
+  Widget _buildNotificationCard(
+    QueryDocumentSnapshot doc,
+    Map<String, dynamic> data,
+    bool isRead,
+    DateTime date,
+  ) {
+    final type = (data['type'] ?? '').toString();
+    final visual = _notificationVisual(type);
+    final isPdfRequest = type == 'pdf_request';
+    final isProcessed = data['processed'] == true || _notificationStatus[doc.id] != null;
+
+    void onCardTap() {
+      if (isPdfRequest) return;
+      _markAsRead(doc.id);
+      final logId = data['logId']?.toString();
+      if (logId == null || logId.isEmpty) return;
+      Navigator.push(
+        context,
+        MaterialPageRoute(
+          builder: (_) => ViewNotificationPage(logId: logId, notificationId: doc.id),
+        ),
+      );
+    }
+
+    return AnimatedContainer(
+      duration: const Duration(milliseconds: 200),
+      margin: const EdgeInsets.only(bottom: 14),
+      decoration: BoxDecoration(
+        color: isRead ? surfaceColor.withValues(alpha: 0.04) : const Color(0xFF1A2029),
+        borderRadius: BorderRadius.circular(18),
+        border: Border.all(
+          color: isRead ? Colors.white.withValues(alpha: 0.06) : visual.color.withValues(alpha: 0.35),
+        ),
+        boxShadow: isRead
+            ? null
+            : [
+                BoxShadow(
+                  color: Colors.black.withValues(alpha: 0.25),
+                  blurRadius: 14,
+                  offset: const Offset(0, 5),
+                ),
+              ],
+      ),
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(18),
+        child: IntrinsicHeight(
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              // Barra lateral de estado (no leída)
+              Container(width: 4, color: isRead ? Colors.transparent : visual.color),
+              Expanded(
+                child: Material(
+                  color: Colors.transparent,
+                  child: InkWell(
+                    onTap: isPdfRequest ? null : onCardTap,
+                    child: Padding(
+                      padding: const EdgeInsets.fromLTRB(14, 14, 12, 14),
+                      child: Row(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          // Ícono según tipo
+                          Container(
+                            width: 44,
+                            height: 44,
+                            alignment: Alignment.center,
+                            decoration: BoxDecoration(
+                              color: visual.color.withValues(alpha: isRead ? 0.10 : 0.18),
+                              borderRadius: BorderRadius.circular(13),
+                            ),
+                            child: Icon(
+                              visual.icon,
+                              color: isRead ? visual.color.withValues(alpha: 0.6) : visual.color,
+                              size: 22,
+                            ),
+                          ),
+                          const SizedBox(width: 12),
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                // Título + indicador / cierre
+                                Row(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Expanded(
+                                      child: Text(
+                                        data['title'] ?? 'Notificación',
+                                        style: TextStyle(
+                                          color: isRead ? Colors.white70 : Colors.white,
+                                          fontWeight: FontWeight.w800,
+                                          fontSize: 15,
+                                          height: 1.2,
+                                        ),
+                                      ),
+                                    ),
+                                    if (!isRead)
+                                      GestureDetector(
+                                        onTap: () => _markAsRead(doc.id),
+                                        behavior: HitTestBehavior.opaque,
+                                        child: Padding(
+                                          padding: const EdgeInsets.only(left: 8),
+                                          child: Icon(
+                                            Icons.close_rounded,
+                                            size: 18,
+                                            color: Colors.white.withValues(alpha: 0.35),
+                                          ),
+                                        ),
+                                      ),
+                                  ],
+                                ),
+                                const SizedBox(height: 6),
+                                // Cuerpo
+                                Text(
+                                  data['message'] ?? '',
+                                  style: TextStyle(
+                                    color: Colors.white.withValues(alpha: 0.55),
+                                    fontSize: 13,
+                                    height: 1.4,
+                                  ),
+                                ),
+                                // Acciones / estado de solicitud de PDF
+                                if (isPdfRequest) ...[
+                                  const SizedBox(height: 12),
+                                  if (isProcessed)
+                                    _buildStatusChip(data, doc.id)
+                                  else
+                                    _buildPdfActions(doc.id, data),
+                                ],
+                                const SizedBox(height: 10),
+                                Text(
+                                  DateFormat('HH:mm - dd MMM').format(date),
+                                  style: TextStyle(
+                                    color: Colors.white.withValues(alpha: 0.3),
+                                    fontSize: 10.5,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildStatusChip(Map<String, dynamic> data, String docId) {
+    final approved = (data['processedBy'] ?? _notificationStatus[docId]) == 'approved';
+    final color = approved ? Colors.greenAccent : Colors.redAccent;
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 7),
+      decoration: BoxDecoration(
+        color: color.withValues(alpha: 0.12),
+        borderRadius: BorderRadius.circular(10),
+        border: Border.all(color: color.withValues(alpha: 0.3)),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(approved ? Icons.check_circle_rounded : Icons.cancel_rounded, color: color, size: 16),
+          const SizedBox(width: 8),
+          Text(
+            approved ? 'APROBADO' : 'RECHAZADO',
+            style: TextStyle(color: color, fontWeight: FontWeight.bold, fontSize: 11, letterSpacing: 0.5),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildPdfActions(String docId, Map<String, dynamic> data) {
+    final processing = _processingNotifications.contains(docId);
+    return Row(
+      children: [
+        Expanded(
+          child: ElevatedButton.icon(
+            onPressed: processing
+                ? null
+                : () => _handlePdfRequest(context, docId, data['userId'], data['resourceId'], true),
+            icon: processing
+                ? const SizedBox(
+                    height: 14,
+                    width: 14,
+                    child: CircularProgressIndicator(strokeWidth: 2, color: Color(0xFF11151C)),
+                  )
+                : const Icon(Icons.check_rounded, size: 16),
+            label: const Text('APROBAR', overflow: TextOverflow.ellipsis),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: processing ? primaryColor.withValues(alpha: 0.5) : primaryColor,
+              foregroundColor: const Color(0xFF11151C),
+              disabledBackgroundColor: primaryColor.withValues(alpha: 0.3),
+              disabledForegroundColor: Colors.white38,
+              elevation: 0,
+              padding: const EdgeInsets.symmetric(vertical: 11),
+              textStyle: const TextStyle(fontSize: 11, fontWeight: FontWeight.bold, letterSpacing: 0.5),
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+            ),
+          ),
+        ),
+        const SizedBox(width: 10),
+        Expanded(
+          child: OutlinedButton.icon(
+            onPressed: processing
+                ? null
+                : () => _handlePdfRequest(context, docId, data['userId'], data['resourceId'], false),
+            icon: processing
+                ? const SizedBox(
+                    height: 14,
+                    width: 14,
+                    child: CircularProgressIndicator(
+                      strokeWidth: 2,
+                      valueColor: AlwaysStoppedAnimation<Color>(Colors.redAccent),
+                    ),
+                  )
+                : const Icon(Icons.close_rounded, size: 16),
+            label: const Text('RECHAZAR', overflow: TextOverflow.ellipsis),
+            style: OutlinedButton.styleFrom(
+              foregroundColor: processing ? Colors.white24 : Colors.redAccent,
+              disabledForegroundColor: Colors.white24,
+              side: BorderSide(color: processing ? Colors.white24 : Colors.redAccent.withValues(alpha: 0.6)),
+              padding: const EdgeInsets.symmetric(vertical: 11),
+              textStyle: const TextStyle(fontSize: 11, fontWeight: FontWeight.bold, letterSpacing: 0.5),
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+            ),
+          ),
+        ),
+      ],
     );
   }
 }

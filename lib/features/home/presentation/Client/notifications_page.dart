@@ -154,118 +154,165 @@ class _ClientNotificationsPageState extends State<ClientNotificationsPage> {
               final date = (data['createdAt'] as Timestamp?)?.toDate() ?? DateTime.now();
               final title = data['title'] ?? (type == 'pdf_approved' ? 'Acceso concedido' : 'Feedback de tu rutina');
 
-              IconData icon = Icons.mark_email_unread_rounded;
-              if (isRead) {
-                icon = Icons.mark_email_read_outlined;
-              } else if (type == 'pdf_approved') {
-                icon = Icons.picture_as_pdf_rounded;
-              } else if (type == 'pdf_rejected') {
-                icon = Icons.error_outline_rounded;
-              }
-
-              return Padding(
-                padding: const EdgeInsets.only(bottom: 12),
-                child: InkWell(
-                  onTap: () async {
-                    if (!isRead) await _markAsRead(doc.id);
-                    if (!context.mounted) return;
-
-                    _showFeedbackDetail(context, title, feedback, date, type);
-                  },
-                  borderRadius: BorderRadius.circular(16),
-                  child: Container(
-                    padding: const EdgeInsets.all(14),
-                    decoration: BoxDecoration(
-                      color: isRead ? _surfaceColor.withValues(alpha: 0.4) : _surfaceColor,
-                      borderRadius: BorderRadius.circular(16),
-                      border: Border.all(
-                        color: isRead ? Colors.white.withValues(alpha: 0.05) : _primaryColor.withValues(alpha: 0.3),
-                        width: 1,
-                      ),
-                      boxShadow: isRead ? [] : [
-                        BoxShadow(
-                          color: _primaryColor.withValues(alpha: 0.05),
-                          blurRadius: 10,
-                          offset: const Offset(0, 4),
-                        ),
-                      ],
-                    ),
-                    child: Row(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Container(
-                          padding: const EdgeInsets.all(8),
-                          decoration: BoxDecoration(
-                            color: isRead ? Colors.white.withValues(alpha: 0.05) : _primaryColor.withValues(alpha: 0.1),
-                            shape: BoxShape.circle,
-                          ),
-                          child: Icon(
-                            icon,
-                            color: isRead ? Colors.white38 : (type == 'pdf_approved' ? _primaryColor : (type == 'pdf_rejected' ? Colors.redAccent : _primaryColor)),
-                            size: 20,
-                          ),
-                        ),
-                        const SizedBox(width: 12),
-                        Expanded(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Row(
-                                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                                children: [
-                                  Expanded(
-                                    child: Text(
-                                      title.toUpperCase(),
-                                      style: TextStyle(
-                                        color: isRead ? Colors.white60 : Colors.white,
-                                        fontWeight: isRead ? FontWeight.w600 : FontWeight.w900,
-                                        fontSize: 14,
-                                        letterSpacing: 0.5,
-                                      ),
-                                    ),
-                                  ),
-                                  if (!isRead)
-                                    Container(
-                                      width: 8,
-                                      height: 8,
-                                      decoration: const BoxDecoration(
-                                        color: _primaryColor,
-                                        shape: BoxShape.circle,
-                                      ),
-                                    ),
-                                ],
-                              ),
-                              const SizedBox(height: 6),
-                              Text(
-                                feedback,
-                                maxLines: 2,
-                                overflow: TextOverflow.ellipsis,
-                                style: TextStyle(
-                                  color: isRead ? Colors.white38 : Colors.white70,
-                                  fontSize: 13,
-                                  height: 1.4,
-                                ),
-                              ),
-                              const SizedBox(height: 12),
-                              Text(
-                                _formatDate(date),
-                                style: TextStyle(
-                                  color: isRead ? Colors.white24 : _primaryColor.withValues(alpha: 0.5),
-                                  fontSize: 11,
-                                  fontWeight: FontWeight.w500,
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                ),
+              return _buildNotificationCard(
+                docId: doc.id,
+                title: title.toString(),
+                feedback: feedback,
+                date: date,
+                type: type.toString(),
+                isRead: isRead,
               );
             },
           );
         },
+      ),
+    );
+  }
+
+  ({IconData icon, Color color}) _notificationVisual(String type) {
+    switch (type) {
+      case 'pdf_approved':
+        return (icon: Icons.picture_as_pdf_rounded, color: _primaryColor);
+      case 'pdf_rejected':
+        return (icon: Icons.error_outline_rounded, color: Colors.redAccent);
+      default:
+        return (icon: Icons.forum_rounded, color: _primaryColor);
+    }
+  }
+
+  Widget _buildNotificationCard({
+    required String docId,
+    required String title,
+    required String feedback,
+    required DateTime date,
+    required String type,
+    required bool isRead,
+  }) {
+    final visual = _notificationVisual(type);
+
+    return AnimatedContainer(
+      duration: const Duration(milliseconds: 200),
+      margin: const EdgeInsets.only(bottom: 14),
+      decoration: BoxDecoration(
+        color: isRead ? _surfaceColor.withValues(alpha: 0.4) : _surfaceColor,
+        borderRadius: BorderRadius.circular(18),
+        border: Border.all(
+          color: isRead ? Colors.white.withValues(alpha: 0.05) : visual.color.withValues(alpha: 0.35),
+        ),
+        boxShadow: isRead
+            ? null
+            : [
+                BoxShadow(
+                  color: Colors.black.withValues(alpha: 0.25),
+                  blurRadius: 14,
+                  offset: const Offset(0, 5),
+                ),
+              ],
+      ),
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(18),
+        child: IntrinsicHeight(
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              // Barra lateral de estado (no leída)
+              Container(width: 4, color: isRead ? Colors.transparent : visual.color),
+              Expanded(
+                child: Material(
+                  color: Colors.transparent,
+                  child: InkWell(
+                    onTap: () async {
+                      if (!isRead) await _markAsRead(docId);
+                      if (!context.mounted) return;
+                      _showFeedbackDetail(context, title, feedback, date, type);
+                    },
+                    child: Padding(
+                      padding: const EdgeInsets.fromLTRB(14, 14, 12, 14),
+                      child: Row(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          // Ícono según tipo
+                          Container(
+                            width: 44,
+                            height: 44,
+                            alignment: Alignment.center,
+                            decoration: BoxDecoration(
+                              color: visual.color.withValues(alpha: isRead ? 0.10 : 0.18),
+                              borderRadius: BorderRadius.circular(13),
+                            ),
+                            child: Icon(
+                              visual.icon,
+                              color: isRead ? visual.color.withValues(alpha: 0.6) : visual.color,
+                              size: 22,
+                            ),
+                          ),
+                          const SizedBox(width: 12),
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Row(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Expanded(
+                                      child: Text(
+                                        title.toUpperCase(),
+                                        style: TextStyle(
+                                          color: isRead ? Colors.white70 : Colors.white,
+                                          fontWeight: FontWeight.w800,
+                                          fontSize: 14,
+                                          letterSpacing: 0.5,
+                                          height: 1.2,
+                                        ),
+                                      ),
+                                    ),
+                                    if (!isRead)
+                                      GestureDetector(
+                                        onTap: () => _markAsRead(docId),
+                                        behavior: HitTestBehavior.opaque,
+                                        child: Padding(
+                                          padding: const EdgeInsets.only(left: 8),
+                                          child: Icon(
+                                            Icons.close_rounded,
+                                            size: 18,
+                                            color: Colors.white.withValues(alpha: 0.35),
+                                          ),
+                                        ),
+                                      ),
+                                  ],
+                                ),
+                                const SizedBox(height: 6),
+                                Text(
+                                  feedback,
+                                  maxLines: 2,
+                                  overflow: TextOverflow.ellipsis,
+                                  style: TextStyle(
+                                    color: Colors.white.withValues(alpha: isRead ? 0.4 : 0.6),
+                                    fontSize: 13,
+                                    height: 1.4,
+                                  ),
+                                ),
+                                const SizedBox(height: 10),
+                                Text(
+                                  _formatDate(date),
+                                  style: TextStyle(
+                                    color: Colors.white.withValues(alpha: 0.3),
+                                    fontSize: 10.5,
+                                    fontWeight: FontWeight.w500,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
       ),
     );
   }
