@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:youtube_player_flutter/youtube_player_flutter.dart';
+import 'package:yamanis_fit/core/widgets/app_back_button.dart';
 
 class StartRoutinePage extends StatefulWidget {
   final Map<String, dynamic> routine;
@@ -274,6 +275,7 @@ class _StartRoutinePageState extends State<StartRoutinePage> {
         centerTitle: true,
         backgroundColor: Colors.transparent,
         elevation: 0,
+        leading: const AppBackButton(),
       ),
       body: !_canStartToday
           ? _buildNotAvailableView()

@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:youtube_player_flutter/youtube_player_flutter.dart';
 import 'package:url_launcher/url_launcher.dart';
+import 'package:yamanis_fit/core/widgets/app_back_button.dart';
 import '../../../../core/widgets/branded_loading_screen.dart';
 
 class ViewWorkoutPage extends StatefulWidget {
@@ -230,7 +231,11 @@ class _ViewWorkoutPageState extends State<ViewWorkoutPage> {
     if (workoutData == null) {
       return Scaffold(
         backgroundColor: backgroundColor,
-        appBar: AppBar(backgroundColor: Colors.transparent, elevation: 0),
+        appBar: AppBar(
+          backgroundColor: Colors.transparent,
+          elevation: 0,
+          leading: const AppBackButton(),
+        ),
         body: const Center(child: Text("Ejercicio no encontrado", style: TextStyle(color: Colors.white))),
       );
     }
@@ -245,6 +250,7 @@ class _ViewWorkoutPageState extends State<ViewWorkoutPage> {
         centerTitle: true,
         backgroundColor: Colors.transparent,
         elevation: 0,
+        leading: const AppBackButton(),
         actions: [
           IconButton(
             icon: Icon(Icons.cast, color: primaryColor),

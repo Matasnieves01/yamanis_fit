@@ -3,6 +3,7 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:table_calendar/table_calendar.dart';
 import 'create_routine_page.dart';
+import 'package:yamanis_fit/core/widgets/app_back_button.dart';
 
 class ClientRoutinesPage extends StatefulWidget {
   final String clientId;
@@ -749,6 +750,7 @@ class _ClientRoutinesPageState extends State<ClientRoutinesPage> {
         centerTitle: true,
         backgroundColor: Colors.transparent,
         elevation: 0,
+        leading: const AppBackButton(),
       ),
       body: _isLoading
           ? Center(child: CircularProgressIndicator(color: primaryColor))

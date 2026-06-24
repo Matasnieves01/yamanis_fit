@@ -1,5 +1,6 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
+import 'package:yamanis_fit/core/widgets/app_back_button.dart';
 
 class UploadPdfPage extends StatefulWidget {
   const UploadPdfPage({super.key});
@@ -124,6 +125,7 @@ class _UploadPdfPageState extends State<UploadPdfPage> {
         centerTitle: true,
         backgroundColor: Colors.transparent,
         elevation: 0,
+        leading: const AppBackButton(),
       ),
       body: SingleChildScrollView(
         padding: const EdgeInsets.all(18),

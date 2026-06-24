@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:yamanis_fit/core/widgets/app_back_button.dart';
 import 'package:yamanis_fit/models/promotion.dart';
 import 'package:youtube_player_flutter/youtube_player_flutter.dart';
 
@@ -57,10 +58,7 @@ class _PromotionDetailPageState extends State<PromotionDetailPage> {
         centerTitle: true,
         backgroundColor: Colors.transparent,
         elevation: 0,
-        leading: IconButton(
-          icon: const Icon(Icons.arrow_back_ios_rounded),
-          onPressed: () => Navigator.pop(context),
-        ),
+        leading: const AppBackButton(),
       ),
       body: SingleChildScrollView(
         child: Column(

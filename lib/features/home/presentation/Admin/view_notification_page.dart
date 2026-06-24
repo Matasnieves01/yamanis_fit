@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:intl/intl.dart';
+import 'package:yamanis_fit/core/widgets/app_back_button.dart';
 
 class ViewNotificationPage extends StatefulWidget {
   final String logId;
@@ -87,6 +88,7 @@ class _ViewNotificationPageState extends State<ViewNotificationPage> {
         centerTitle: true,
         backgroundColor: Colors.transparent,
         elevation: 0,
+        leading: const AppBackButton(),
       ),
       body: FutureBuilder<DocumentSnapshot>(
         future: FirebaseFirestore.instance

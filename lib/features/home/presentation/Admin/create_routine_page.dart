@@ -3,6 +3,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:table_calendar/table_calendar.dart';
 import 'create_workout_page.dart';
+import 'package:yamanis_fit/core/widgets/app_back_button.dart';
 
 class RoutineExercise {
   String workoutId;
@@ -1073,6 +1074,7 @@ class _CreateRoutinePageState extends State<CreateRoutinePage> {
         centerTitle: true,
         backgroundColor: Colors.transparent,
         elevation: 0,
+        leading: const AppBackButton(),
       ),
       body: SingleChildScrollView(
         padding: const EdgeInsets.all(18),

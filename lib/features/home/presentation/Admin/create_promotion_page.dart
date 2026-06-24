@@ -2,6 +2,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_storage/firebase_storage.dart';
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
+import 'package:yamanis_fit/core/widgets/app_back_button.dart';
 
 class CreatePromotionPage extends StatefulWidget {
   const CreatePromotionPage({super.key});
@@ -162,6 +163,7 @@ class _CreatePromotionPageState extends State<CreatePromotionPage> {
         centerTitle: true,
         backgroundColor: Colors.transparent,
         elevation: 0,
+        leading: const AppBackButton(),
       ),
       body: SingleChildScrollView(
         padding: const EdgeInsets.all(18),

@@ -1,6 +1,7 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import 'package:youtube_player_flutter/youtube_player_flutter.dart';
+import 'package:yamanis_fit/core/widgets/app_back_button.dart';
 
 class CreateWorkoutPage extends StatefulWidget {
   final String? workoutId;
@@ -163,6 +164,7 @@ class _CreateWorkoutPageState extends State<CreateWorkoutPage> {
         centerTitle: true,
         backgroundColor: Colors.transparent,
         elevation: 0,
+        leading: const AppBackButton(),
       ),
       body: SingleChildScrollView(
         padding: const EdgeInsets.all(18),

@@ -3,6 +3,7 @@ import 'package:firebase_storage/firebase_storage.dart';
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:yamanis_fit/models/promotion.dart';
+import 'package:yamanis_fit/core/widgets/app_back_button.dart';
 
 class EditPromotionPage extends StatefulWidget {
   final Promotion promotion;
@@ -173,6 +174,7 @@ class _EditPromotionPageState extends State<EditPromotionPage> {
         centerTitle: true,
         backgroundColor: Colors.transparent,
         elevation: 0,
+        leading: const AppBackButton(),
       ),
       body: SingleChildScrollView(
         padding: const EdgeInsets.all(18),

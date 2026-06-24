@@ -4,6 +4,21 @@
 <dict>
 	<key>CADisableMinimumFrameDurationOnPhone</key>
 	<true/>
+	<key>NSPhotoLibraryUsageDescription</key>
+	<string>Yamanis Fit necesita acceso a tus fotos para que puedas elegir imágenes para promociones.</string>
+	<key>NSCameraUsageDescription</key>
+	<string>Yamanis Fit necesita acceso a la cámara para que puedas tomar fotos para promociones.</string>
+	<key>NSPhotoLibraryAddUsageDescription</key>
+	<string>Yamanis Fit necesita permiso para guardar imágenes en tu galería.</string>
+	<key>ITSAppUsesNonExemptEncryption</key>
+	<false/>
+	<key>LSApplicationQueriesSchemes</key>
+	<array>
+		<string>https</string>
+		<string>http</string>
+		<string>mailto</string>
+		<string>whatsapp</string>
+	</array>
 	<key>CFBundleDevelopmentRegion</key>
 	<string>$(DEVELOPMENT_LANGUAGE)</string>
 	<key>CFBundleDisplayName</key>

@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:yamanis_fit/core/widgets/app_back_button.dart';
 import 'package:pdfrx/pdfrx.dart';
 import 'package:yamanis_fit/models/pdf_resource.dart';
 
@@ -20,10 +21,7 @@ class PdfViewerPage extends StatelessWidget {
         ),
         backgroundColor: Colors.transparent,
         elevation: 0,
-        leading: IconButton(
-          icon: const Icon(Icons.arrow_back_ios_rounded),
-          onPressed: () => Navigator.pop(context),
-        ),
+        leading: const AppBackButton(),
       ),
       body: PdfViewer.uri(
         Uri.parse(resource.url),
