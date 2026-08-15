@@ -37,46 +37,65 @@ class _ViewNotificationPageState extends State<ViewNotificationPage> {
         .update({'read': true});
   }
 
-  Future<void> _saveTrainerFeedback(String userId, String routineName) async {
-    final feedbackText = _trainerFeedbackController.text.trim();
-    if (feedbackText.isEmpty) return;
+   Future<void> _saveTrainerFeedback(String userId, String routineName) async {
+     final feedbackText = _trainerFeedbackController.text.trim();
+     if (feedbackText.isEmpty) return;
 
-    setState(() => _isSaving = true);
-    try {
-      await FirebaseFirestore.instance
-          .collection('routine_logs')
-          .doc(widget.logId)
-          .update({
-        'trainerFeedback': feedbackText,
-        'feedbackAt': FieldValue.serverTimestamp(),
-      });
+     setState(() => _isSaving = true);
+     try {
+       await FirebaseFirestore.instance
+           .collection('routine_logs')
+           .doc(widget.logId)
+           .update({
+         'trainerFeedback': feedbackText,
+         'feedbackAt': FieldValue.serverTimestamp(),
+       });
 
-      await FirebaseFirestore.instance.collection('notifications').add({
-        'type': 'trainer_feedback',
-        'title': '¡Tu Trainer ha respondido!',
-        'message': 'Feedback sobre tu rutina: $routineName',
-        'trainerFeedback': feedbackText,
-        'userId': userId,
-        'targetRole': 'client',
-        'logId': widget.logId,
-        'read': false,
-        'createdAt': FieldValue.serverTimestamp(),
-      });
+       // Also save the feedback to the routine document for display during workout
+       final logDoc = await FirebaseFirestore.instance
+           .collection('routine_logs')
+           .doc(widget.logId)
+           .get();
 
-      if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Feedback enviado al cliente'), behavior: SnackBarBehavior.floating),
-      );
-      Navigator.pop(context);
-    } catch (e) {
-      if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Error: $e'), behavior: SnackBarBehavior.floating),
-      );
-    } finally {
-      if (mounted) setState(() => _isSaving = false);
-    }
-  }
+       if (logDoc.exists) {
+         final routineId = logDoc.data()?['routineId'];
+         if (routineId != null) {
+           await FirebaseFirestore.instance
+               .collection('routines')
+               .doc(routineId)
+               .update({
+             'trainerComment': feedbackText,
+             'trainerCommentAt': FieldValue.serverTimestamp(),
+           });
+         }
+       }
+
+       await FirebaseFirestore.instance.collection('notifications').add({
+         'type': 'trainer_feedback',
+         'title': '¡Tu Trainer ha respondido!',
+         'message': 'Feedback sobre tu rutina: $routineName',
+         'trainerFeedback': feedbackText,
+         'userId': userId,
+         'targetRole': 'client',
+         'logId': widget.logId,
+         'read': false,
+         'createdAt': FieldValue.serverTimestamp(),
+       });
+
+       if (!mounted) return;
+       ScaffoldMessenger.of(context).showSnackBar(
+         const SnackBar(content: Text('Feedback enviado al cliente'), behavior: SnackBarBehavior.floating),
+       );
+       Navigator.pop(context);
+     } catch (e) {
+       if (!mounted) return;
+       ScaffoldMessenger.of(context).showSnackBar(
+         SnackBar(content: Text('Error: $e'), behavior: SnackBarBehavior.floating),
+       );
+     } finally {
+       if (mounted) setState(() => _isSaving = false);
+     }
+   }
 
   @override
   Widget build(BuildContext context) {

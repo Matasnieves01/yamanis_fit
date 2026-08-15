@@ -1213,31 +1213,69 @@ class _DashboardPageState extends State<DashboardPage> {
    }
 
 
-  DateTime _normalizeDay(DateTime date) => DateTime.utc(date.year, date.month, date.day);
+   DateTime _normalizeDay(DateTime date) => DateTime.utc(date.year, date.month, date.day);
 
-  bool _isRoutineCompleted(Map<String, dynamic> routine) {
-    return _completedRoutineIds.contains((routine['id'] ?? '').toString());
-  }
+   /// Get the start of the current week (Monday)
+   DateTime _getWeekStart() {
+     final now = DateTime.now();
+     final today = _normalizeDay(now);
+     final daysToMonday = (today.weekday == DateTime.monday) ? 0 : (today.weekday - DateTime.monday);
+     return today.subtract(Duration(days: daysToMonday));
+   }
 
-  bool _isRoutineMissed(Map<String, dynamic> routine) {
-    final ts = routine['date'] as Timestamp?;
-    if (ts == null) return false;
-    final routineDay = _normalizeDay(ts.toDate());
-    final today = _normalizeDay(DateTime.now());
-    return routineDay.isBefore(today) && !_isRoutineCompleted(routine);
-  }
+   /// Get the end of the current week (Sunday at 23:59:59)
+   DateTime _getWeekEnd() {
+     final now = DateTime.now();
+     final today = _normalizeDay(now);
+     final daysToSunday = (today.weekday == DateTime.sunday) ? 0 : (DateTime.sunday - today.weekday);
+     return today.add(Duration(days: daysToSunday));
+   }
 
-  bool _canStartRoutine(Map<String, dynamic> routine) {
-    final isCompleted = _isRoutineCompleted(routine);
-    if (isCompleted) return false;
+   /// Check if a routine is in the current week (Monday-Sunday)
+   bool _isRoutineInCurrentWeek(Map<String, dynamic> routine) {
+     final ts = routine['date'] as Timestamp?;
+     if (ts == null) return false;
+     final routineDay = _normalizeDay(ts.toDate());
+     final weekStart = _getWeekStart();
+     final weekEnd = _getWeekEnd();
+     return !routineDay.isBefore(weekStart) && !routineDay.isAfter(weekEnd);
+   }
 
-    final ts = routine['date'] as Timestamp?;
-    if (ts == null) return false;
-    final routineDay = _normalizeDay(ts.toDate());
-    final today = _normalizeDay(DateTime.now());
+   bool _isRoutineCompleted(Map<String, dynamic> routine) {
+     return _completedRoutineIds.contains((routine['id'] ?? '').toString());
+   }
 
-    return !routineDay.isAfter(today);
-  }
+   bool _isRoutineMissed(Map<String, dynamic> routine) {
+     final ts = routine['date'] as Timestamp?;
+     if (ts == null) return false;
+     final routineDay = _normalizeDay(ts.toDate());
+     final today = _normalizeDay(DateTime.now());
+     return routineDay.isBefore(today) && !_isRoutineCompleted(routine);
+   }
+
+   bool _canStartRoutine(Map<String, dynamic> routine) {
+     final isCompleted = _isRoutineCompleted(routine);
+     if (isCompleted) return false;
+
+     final ts = routine['date'] as Timestamp?;
+     if (ts == null) return false;
+     final routineDay = _normalizeDay(ts.toDate());
+     final today = _normalizeDay(DateTime.now());
+
+     // Can only start routines that are today or earlier AND in the current week
+     return !routineDay.isAfter(today) && _isRoutineInCurrentWeek(routine);
+   }
+
+   /// Check if a routine is within 24 hours of being completed (grace period)
+   bool _isInGracePeriod(Map<String, dynamic> routine) {
+     final logId = routine['id'] ?? '';
+     if (logId.isEmpty) return false;
+
+     // Check the completed routine logs
+     // This will be updated when we fetch routine_logs
+     // For now, return false - will be enhanced in the future
+     return false;
+   }
 
   Future<void> _openWhatsApp() async {
     const phone = '50769184836';
