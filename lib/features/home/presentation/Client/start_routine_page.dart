@@ -1339,35 +1339,7 @@ class _WorkoutDetailSheetState extends State<WorkoutDetailSheet> {
               ),
             ),
           // Descripción y detalles
-          if (details?['description'] != null &&
-              details!['description'].toString().isNotEmpty) ...[
-            Padding(
-              padding: const EdgeInsets.fromLTRB(16, 16, 16, 0),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    "INSTRUCCIONES",
-                    style: TextStyle(
-                      color: widget.primaryColor,
-                      fontSize: 10,
-                      fontWeight: FontWeight.w900,
-                      letterSpacing: 1.2,
-                    ),
-                  ),
-                  const SizedBox(height: 8),
-                  Text(
-                    details['description'],
-                    style: TextStyle(
-                      color: Colors.white.withValues(alpha: 0.7),
-                      fontSize: 13,
-                      height: 1.5,
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ],
+          _buildExerciseInstructions(ex, details),
           // Peso (discreto)
           Padding(
             padding: const EdgeInsets.all(16),
@@ -1377,6 +1349,84 @@ class _WorkoutDetailSheetState extends State<WorkoutDetailSheet> {
               ex['reps']?.toString() ?? "0",
             ),
           ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildExerciseInstructions(dynamic ex, Map<String, dynamic>? details) {
+    final String specificNote = (ex['description'] ?? '').toString().trim();
+    final String globalDescription = (details?['description'] ?? '').toString().trim();
+
+    if (specificNote.isEmpty && globalDescription.isEmpty) return const SizedBox.shrink();
+
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(16, 16, 16, 0),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          if (specificNote.isNotEmpty) ...[
+            Container(
+              width: double.infinity,
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: widget.primaryColor.withValues(alpha: 0.1),
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(color: widget.primaryColor.withValues(alpha: 0.2)),
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    children: [
+                      Icon(Icons.tips_and_updates_rounded, size: 14, color: widget.primaryColor),
+                      const SizedBox(width: 8),
+                      Text(
+                        "NOTA DE LA ENTRENADORA",
+                        style: TextStyle(
+                          color: widget.primaryColor,
+                          fontSize: 10,
+                          fontWeight: FontWeight.w900,
+                          letterSpacing: 0.5,
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 6),
+                  Text(
+                    specificNote,
+                    style: const TextStyle(
+                      color: Colors.white,
+                      fontSize: 13,
+                      fontWeight: FontWeight.w600,
+                      height: 1.4,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(height: 16),
+          ],
+          if (globalDescription.isNotEmpty) ...[
+            Text(
+              "INSTRUCCIONES GENERALES",
+              style: TextStyle(
+                color: Colors.white.withValues(alpha: 0.5),
+                fontSize: 10,
+                fontWeight: FontWeight.w900,
+                letterSpacing: 1.2,
+              ),
+            ),
+            const SizedBox(height: 8),
+            Text(
+              globalDescription,
+              style: TextStyle(
+                color: Colors.white.withValues(alpha: 0.65),
+                fontSize: 12.5,
+                height: 1.5,
+              ),
+            ),
+          ],
         ],
       ),
     );
