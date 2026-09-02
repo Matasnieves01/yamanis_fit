@@ -11,21 +11,21 @@ dependencies:
   flutter:
     sdk: flutter
   table_calendar: ^3.1.2
-  firebase_core: ^4.7.0
-  firebase_auth: ^6.3.0
-  cloud_firestore: ^6.2.0
-  firebase_storage: ^13.0.7
+  firebase_core: ^4.10.0
+  firebase_auth: ^6.5.2
+  cloud_firestore: ^6.5.0
+  firebase_storage: ^13.4.2
   image_picker: ^1.1.2
   youtube_player_flutter: ^9.1.3
   cupertino_icons: ^1.0.8
-  firebase_messaging: ^16.1.3
+  firebase_messaging: ^16.3.0
   shared_preferences: ^2.3.2
   url_launcher: ^6.3.1
   file_picker: ^8.0.0
   path: ^1.9.0
-  pdfrx: ^1.0.67
+  pdfrx: 2.4.8
   intl: any
-  firebase_app_check: ^0.4.3
+  firebase_app_check: ^0.4.4
 
 dev_dependencies:
   flutter_test:

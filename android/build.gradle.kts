@@ -37,11 +37,19 @@ subprojects {
 }
 
 subprojects {
-    // Set Java compatibility for all tasks
+    // Force Java 17 compatibility and suppress obsolete source/target warnings
     tasks.withType<JavaCompile> {
         sourceCompatibility = JavaVersion.VERSION_17.toString()
         targetCompatibility = JavaVersion.VERSION_17.toString()
         options.encoding = "UTF-8"
+        options.compilerArgs.addAll(listOf("-Xlint:-options"))
+    }
+    
+    // Force Kotlin compatibility with newer compilerOptions DSL
+    tasks.withType<org.jetbrains.kotlin.gradle.tasks.KotlinCompile> {
+        compilerOptions {
+            jvmTarget.set(org.jetbrains.kotlin.gradle.dsl.JvmTarget.JVM_17)
+        }
     }
 }
 
