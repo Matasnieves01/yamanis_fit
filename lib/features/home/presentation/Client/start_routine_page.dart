@@ -72,9 +72,10 @@ class _StartRoutinePageState extends State<StartRoutinePage> {
     final routineDateTs = widget.routine['date'] as Timestamp?;
     if (routineDateTs != null) {
       final routineDay = _normalizeDay(routineDateTs.toDate());
-      final today = _normalizeDay(DateTime.now());
-      // Can only start if it's today or earlier AND in the current week
-      _canStartToday = !routineDay.isAfter(today) && _isRoutineInCurrentWeek();
+      final weekEnd = _getWeekEnd();
+      
+      // Desbloqueo semanal: se permite cualquier rutina de esta semana o anteriores
+      _canStartToday = !routineDay.isAfter(weekEnd);
     }
 
     workouts = widget.routine['workouts'] ?? [];

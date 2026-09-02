@@ -966,7 +966,7 @@ class _DashboardPageState extends State<DashboardPage> {
                        : isMissed
                            ? "Rutina pendiente (Pasada)"
                            : !canStart
-                               ? "Solo puedes iniciar esta rutina en su dia programado"
+                               ? "Esta rutina pertenece a otra semana"
                                : "Toca para ver los ejercicios",
                    style: TextStyle(
                      color: isCompleted
@@ -1257,13 +1257,8 @@ class _DashboardPageState extends State<DashboardPage> {
      final isCompleted = _isRoutineCompleted(routine);
      if (isCompleted) return false;
 
-     final ts = routine['date'] as Timestamp?;
-     if (ts == null) return false;
-     final routineDay = _normalizeDay(ts.toDate());
-     final today = _normalizeDay(DateTime.now());
-
-     // Can only start routines that are today or earlier AND in the current week
-     return !routineDay.isAfter(today) && _isRoutineInCurrentWeek(routine);
+     // Permite iniciar cualquier rutina que esté en la semana actual (desbloqueo semanal)
+     return _isRoutineInCurrentWeek(routine);
    }
 
    /// Check if a routine is within 24 hours of being completed (grace period)
