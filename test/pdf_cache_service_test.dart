@@ -20,5 +20,11 @@ void main() {
       final result = PdfCacheService.normalizeDriveUrl(inputUrl);
       expect(result, inputUrl);
     });
+
+    test('getDriveThumbnailUrl extracts thumbnail link with given width', () {
+      const inputUrl = 'https://drive.google.com/file/d/test12345/view';
+      final thumb = PdfCacheService.getDriveThumbnailUrl(inputUrl, width: 800);
+      expect(thumb, 'https://drive.google.com/thumbnail?id=test12345&sz=w800');
+    });
   });
 }

@@ -76,5 +76,24 @@ service cloud.firestore {
 
        allow delete: if isAdmin();
      }
+
+    match /predetermined_routines/{routineId} {
+      allow read: if isSignedIn();
+      allow create, update, delete: if isAdmin();
+    }
+
+    match /routine_requests/{requestId} {
+      allow read: if isSignedIn() && (
+        isAdmin() ||
+        (exists(/databases/$(database)/documents/routine_requests/$(requestId)) &&
+         get(/databases/$(database)/documents/routine_requests/$(requestId)).data.userId == request.auth.uid) ||
+        requestId.startsWith(request.auth.uid + '_')
+      );
+      allow create: if isSignedIn() && (
+        request.resource.data.userId == request.auth.uid ||
+        isAdmin()
+      );
+      allow update, delete: if isAdmin();
+    }
   }
 }

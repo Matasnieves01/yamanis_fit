@@ -7,8 +7,8 @@ import '../../../auth/auth_service.dart';
 import 'dashboard_page.dart';
 import '../Admin/clients_page.dart';
 import '../Admin/notifications_page.dart';
-import 'package:yamanis_fit/features/home/presentation/Admin/promotions_page.dart' as admin_promotions;
-import 'promotions_page.dart';
+import 'package:yamanis_fit/features/home/presentation/Admin/predetermined_routines_page.dart' as admin_predetermined;
+import 'predetermined_routines_page.dart' as client_predetermined;
 import '../Shared/resources_page.dart';
 import 'profile_page.dart';
 import 'notifications_page.dart';
@@ -55,7 +55,7 @@ class _MainNavigationBarState extends State<MainNavigationBar> {
         DashboardPage(),
         WorkoutsPage(),
         ClientsPage(),
-        admin_promotions.PromotionsPage(),
+        admin_predetermined.PredeterminedRoutinesPage(),
         ResourcesPage(isAdmin: true),
         NotificationsPage(),
         ProfilePage(),
@@ -63,7 +63,7 @@ class _MainNavigationBarState extends State<MainNavigationBar> {
     }
     return const [
       DashboardPage(),
-      PromotionsPage(),
+      client_predetermined.PredeterminedRoutinesPage(),
       ResourcesPage(isAdmin: false),
       ClientNotificationsPage(),
       ProfilePage(),
@@ -240,7 +240,7 @@ class _MainNavigationBarState extends State<MainNavigationBar> {
           if (_isAccessExpired && widget.role == UserRole.user)
             Positioned.fill(
               child: Container(
-                color: Colors.black.withOpacity(0.85),
+                color: Colors.black.withValues(alpha: 0.85),
                 padding: const EdgeInsets.symmetric(horizontal: 32),
                 child: Center(
                   child: Container(
@@ -248,10 +248,10 @@ class _MainNavigationBarState extends State<MainNavigationBar> {
                     decoration: BoxDecoration(
                       color: const Color(0xFF1C222D),
                       borderRadius: BorderRadius.circular(24),
-                      border: Border.all(color: Colors.orangeAccent.withOpacity(0.5)),
+                      border: Border.all(color: Colors.orangeAccent.withValues(alpha: 0.5)),
                       boxShadow: [
                         BoxShadow(
-                          color: Colors.black.withOpacity(0.5),
+                          color: Colors.black.withValues(alpha: 0.5),
                           blurRadius: 20,
                           spreadRadius: 5,
                         )
