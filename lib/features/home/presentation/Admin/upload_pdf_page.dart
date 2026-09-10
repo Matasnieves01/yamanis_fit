@@ -63,8 +63,8 @@ class _UploadPdfPageState extends State<UploadPdfPage> {
         }
 
         if (fileId != null) {
-          finalUrl = 'https://drive.google.com/uc?export=download&id=$fileId';
-          print('Enlace convertido a descarga directa: $finalUrl');
+          finalUrl = 'https://drive.google.com/uc?export=download&id=$fileId&confirm=t';
+          debugPrint('Enlace convertido a descarga directa: $finalUrl');
         }
       }
 
