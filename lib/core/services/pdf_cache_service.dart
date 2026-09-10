@@ -15,31 +15,41 @@ class PdfCacheService {
     return cacheDir;
   }
 
-  /// Normaliza URLs de Google Drive para descarga directa si es necesario
-  static String normalizeDriveUrl(String url) {
+  /// Extrae el ID del archivo de Google Drive si la URL pertenece a Drive
+  static String? extractDriveFileId(String url) {
     if (!url.contains('drive.google.com')) {
-      return url;
+      return null;
     }
-
     try {
       final uri = Uri.parse(url);
-      String? fileId;
       if (uri.path.contains('/file/d/')) {
         final segments = uri.pathSegments;
         final dIndex = segments.indexOf('d');
         if (dIndex != -1 && dIndex + 1 < segments.length) {
-          fileId = segments[dIndex + 1];
+          return segments[dIndex + 1];
         }
-      } else {
-        fileId = uri.queryParameters['id'];
       }
-
-      if (fileId != null && fileId.isNotEmpty) {
-        // &confirm=t ayuda a omitir pantallas de advertencia de virus en Drive
-        return 'https://drive.google.com/uc?export=download&id=$fileId&confirm=t';
-      }
+      return uri.queryParameters['id'];
     } catch (_) {
-      // Si falla el parsing, se devuelve la URL original
+      return null;
+    }
+  }
+
+  /// Genera el enlace de la imagen de portada/miniatura generada por Google Drive
+  static String? getDriveThumbnailUrl(String url, {int width = 600}) {
+    final fileId = extractDriveFileId(url);
+    if (fileId != null && fileId.isNotEmpty) {
+      return 'https://drive.google.com/thumbnail?id=$fileId&sz=w$width';
+    }
+    return null;
+  }
+
+  /// Normaliza URLs de Google Drive para descarga directa si es necesario
+  static String normalizeDriveUrl(String url) {
+    final fileId = extractDriveFileId(url);
+    if (fileId != null && fileId.isNotEmpty) {
+      // &confirm=t ayuda a omitir pantallas de advertencia de virus en Drive
+      return 'https://drive.google.com/uc?export=download&id=$fileId&confirm=t';
     }
     return url;
   }
