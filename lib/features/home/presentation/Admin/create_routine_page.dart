@@ -36,7 +36,7 @@ class RoutineExercise {
       workoutName: (map['workoutName'] ?? '').toString(),
       reps: (map['reps'] ?? '').toString(),
       weight: (map['weight'] ?? '').toString(),
-      description: (map['description'] ?? '').toString(),
+      description: (map['description'] ?? map['notes'] ?? '').toString(),
     );
   }
 }
@@ -59,6 +59,8 @@ class RoutineWorkout {
         'workoutName': exercises[0].workoutName,
         'reps': exercises[0].reps,
         'weight': exercises[0].weight,
+        if (exercises[0].description.isNotEmpty)
+          'description': exercises[0].description,
       }
     };
   }
@@ -767,6 +769,7 @@ class _CreateRoutinePageState extends State<CreateRoutinePage> {
             workoutName: (map['workoutName'] ?? '').toString(),
             reps: (map['reps'] ?? '').toString(),
             weight: (map['weight'] ?? '').toString(),
+            description: (map['description'] ?? map['notes'] ?? '').toString(),
           )
         ];
       }
@@ -1219,6 +1222,7 @@ class _CreateRoutinePageState extends State<CreateRoutinePage> {
                   itemBuilder: (context, index) {
                     final item = selectedWorkouts[index];
                     return Container(
+                      key: ObjectKey(item),
                       margin: const EdgeInsets.only(bottom: 16),
                       padding: const EdgeInsets.all(16),
                       decoration: BoxDecoration(
@@ -1257,6 +1261,7 @@ class _CreateRoutinePageState extends State<CreateRoutinePage> {
                                     ),
                                     const SizedBox(height: 6),
                                     _buildSmallField(
+                                      key: ValueKey('sets_${identityHashCode(item)}'),
                                       label: 'Series',
                                       initialValue: item.sets,
                                       onChanged: (v) => item.sets = v,
@@ -1278,6 +1283,7 @@ class _CreateRoutinePageState extends State<CreateRoutinePage> {
                             final exIdx = entry.key;
                             final ex = entry.value;
                             return Column(
+                              key: ObjectKey(ex),
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
                                 if (exIdx > 0) ...[
@@ -1339,12 +1345,14 @@ class _CreateRoutinePageState extends State<CreateRoutinePage> {
                                 Row(
                                   children: [
                                     _buildNumericStepper(
+                                      key: ValueKey('reps_${identityHashCode(ex)}'),
                                       label: 'Reps',
                                       value: ex.reps,
                                       onChanged: (v) => setState(() => ex.reps = v),
                                     ),
                                     const SizedBox(width: 12),
                                     _buildNumericStepper(
+                                      key: ValueKey('weight_${identityHashCode(ex)}'),
                                       label: 'Peso',
                                       value: ex.weight,
                                       suffix: 'kg',
@@ -1363,6 +1371,7 @@ class _CreateRoutinePageState extends State<CreateRoutinePage> {
                                       ),
                                     ),
                                     child: TextFormField(
+                                      key: ValueKey('desc_${identityHashCode(ex)}'),
                                       initialValue: ex.description,
                                       maxLines: 2,
                                       minLines: 1,
@@ -1370,7 +1379,13 @@ class _CreateRoutinePageState extends State<CreateRoutinePage> {
                                         color: Colors.white,
                                         fontSize: 12,
                                       ),
-                                      onChanged: (v) => ex.description = v,
+                                      onChanged: (v) {
+                                        final wasEmpty = ex.description.isEmpty;
+                                        ex.description = v;
+                                        if (wasEmpty != v.isEmpty) {
+                                          setState(() {});
+                                        }
+                                      },
                                       decoration: InputDecoration(
                                         labelText: 'Descripción opcional',
                                         labelStyle: TextStyle(
@@ -1661,15 +1676,35 @@ class _CreateRoutinePageState extends State<CreateRoutinePage> {
     );
   }
 
-  Widget _buildSmallField({required String label, required String initialValue, required Function(String) onChanged}) {
-    return Expanded(child: TextFormField(initialValue: initialValue, keyboardType: TextInputType.text, style: const TextStyle(color: Colors.white, fontSize: 14), onChanged: onChanged, decoration: InputDecoration(labelText: label, isDense: true, contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12), filled: true, fillColor: Colors.white.withValues(alpha: 0.05), border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none), enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide(color: Colors.white.withValues(alpha: 0.1))), labelStyle: TextStyle(color: primaryColor, fontSize: 12))));
+  Widget _buildSmallField({Key? key, required String label, required String initialValue, required Function(String) onChanged}) {
+    return Expanded(
+      key: key,
+      child: TextFormField(
+        key: key != null ? ValueKey('field_${key.toString()}') : null,
+        initialValue: initialValue,
+        keyboardType: TextInputType.text,
+        style: const TextStyle(color: Colors.white, fontSize: 14),
+        onChanged: onChanged,
+        decoration: InputDecoration(
+          labelText: label,
+          isDense: true,
+          contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+          filled: true,
+          fillColor: Colors.white.withValues(alpha: 0.05),
+          border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none),
+          enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide(color: Colors.white.withValues(alpha: 0.1))),
+          labelStyle: TextStyle(color: primaryColor, fontSize: 12),
+        ),
+      ),
+    );
   }
 
-  Widget _buildNumericStepper({required String label, required String value, String? suffix, required Function(String) onChanged}) {
+  Widget _buildNumericStepper({Key? key, required String label, required String value, String? suffix, required Function(String) onChanged}) {
     // Use a TextEditingController created on the fly to keep the UI simple; rebuilds will reset cursor but keep data consistent.
     final controller = TextEditingController(text: value);
     int current = int.tryParse(value) ?? 0;
     return Expanded(
+      key: key,
       child: Row(
         children: [
           Container(
@@ -1822,42 +1857,46 @@ class _CreateRoutinePageState extends State<CreateRoutinePage> {
                                   borderRadius: BorderRadius.circular(16),
                                   border: Border.all(color: surfaceColor.withValues(alpha: 0.2)),
                                 ),
-                                child: ListTile(
-                                  contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-                                  leading: Container(
-                                    padding: const EdgeInsets.all(10),
-                                    decoration: BoxDecoration(
-                                      color: primaryColor.withValues(alpha: 0.15),
-                                      borderRadius: BorderRadius.circular(12),
+                                child: Material(
+                                  type: MaterialType.transparency,
+                                  borderRadius: BorderRadius.circular(16),
+                                  child: ListTile(
+                                    contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                                    leading: Container(
+                                      padding: const EdgeInsets.all(10),
+                                      decoration: BoxDecoration(
+                                        color: primaryColor.withValues(alpha: 0.15),
+                                        borderRadius: BorderRadius.circular(12),
+                                      ),
+                                      child: Icon(Icons.fitness_center_rounded, color: primaryColor, size: 20),
                                     ),
-                                    child: Icon(Icons.fitness_center_rounded, color: primaryColor, size: 20),
+                                    title: Text(
+                                      workout['name'],
+                                      style: const TextStyle(
+                                        color: Colors.white,
+                                        fontWeight: FontWeight.w600,
+                                        fontSize: 14,
+                                      ),
+                                    ),
+                                    trailing: Container(
+                                      decoration: BoxDecoration(
+                                        color: primaryColor.withValues(alpha: 0.2),
+                                        borderRadius: BorderRadius.circular(10),
+                                      ),
+                                      child: IconButton(
+                                        icon: Icon(Icons.add, color: primaryColor, size: 20),
+                                        onPressed: () {
+                                          _addExerciseToSuperset(routineIndex, workout.id, workout['name']);
+                                          Navigator.pop(context);
+                                        },
+                                        iconSize: 20,
+                                      ),
+                                    ),
+                                    onTap: () {
+                                      _addExerciseToSuperset(routineIndex, workout.id, workout['name']);
+                                      Navigator.pop(context);
+                                    },
                                   ),
-                                  title: Text(
-                                    workout['name'],
-                                    style: const TextStyle(
-                                      color: Colors.white,
-                                      fontWeight: FontWeight.w600,
-                                      fontSize: 14,
-                                    ),
-                                  ),
-                                  trailing: Container(
-                                    decoration: BoxDecoration(
-                                      color: primaryColor.withValues(alpha: 0.2),
-                                      borderRadius: BorderRadius.circular(10),
-                                    ),
-                                    child: IconButton(
-                                      icon: Icon(Icons.add, color: primaryColor, size: 20),
-                                      onPressed: () {
-                                        _addExerciseToSuperset(routineIndex, workout.id, workout['name']);
-                                        Navigator.pop(context);
-                                      },
-                                      iconSize: 20,
-                                    ),
-                                  ),
-                                  onTap: () {
-                                    _addExerciseToSuperset(routineIndex, workout.id, workout['name']);
-                                    Navigator.pop(context);
-                                  },
                                 ),
                               );
                             },

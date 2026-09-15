@@ -1355,7 +1355,13 @@ class _WorkoutDetailSheetState extends State<WorkoutDetailSheet> {
   }
 
   Widget _buildExerciseInstructions(dynamic ex, Map<String, dynamic>? details) {
-    final String specificNote = (ex['description'] ?? '').toString().trim();
+    final String specificNote = (ex['description'] ??
+            (widget.exercises.length == 1
+                ? widget.workoutGroup['description']
+                : null) ??
+            '')
+        .toString()
+        .trim();
     final String globalDescription = (details?['description'] ?? '').toString().trim();
 
     if (specificNote.isEmpty && globalDescription.isEmpty) return const SizedBox.shrink();

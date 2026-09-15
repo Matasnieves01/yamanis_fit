@@ -644,7 +644,9 @@ class _ClientRoutinesPageState extends State<ClientRoutinesPage> {
                       : surfaceColor.withValues(alpha: 0.2),
             ),
           ),
-          child: ExpansionTile(
+          child: Material(
+            type: MaterialType.transparency,
+            child: ExpansionTile(
             iconColor: primaryColor,
             collapsedIconColor: Colors.white,
             title: Row(
@@ -734,7 +736,8 @@ class _ClientRoutinesPageState extends State<ClientRoutinesPage> {
                   ),
                 );
               }),
-            ],
+              ],
+            ),
           ),
         );
       },

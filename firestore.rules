@@ -57,12 +57,9 @@ service cloud.firestore {
 
     match /pdf_access/{accessId} {
        // Permitir lectura si el usuario es admin o si el documento pertenece al usuario actual
-       // Si el documento no existe, permitimos si el accessId pertenece al usuario
        allow read: if isSignedIn() && (
          isAdmin() ||
-         (exists(/databases/$(database)/documents/pdf_access/$(accessId)) &&
-          get(/databases/$(database)/documents/pdf_access/$(accessId)).data.userId == request.auth.uid) ||
-         accessId.startsWith(request.auth.uid + '_')
+         resource.data.userId == request.auth.uid
        );
 
        // Solo el usuario puede crear su solicitud, o el admin para gestionar
@@ -85,9 +82,7 @@ service cloud.firestore {
     match /routine_requests/{requestId} {
       allow read: if isSignedIn() && (
         isAdmin() ||
-        (exists(/databases/$(database)/documents/routine_requests/$(requestId)) &&
-         get(/databases/$(database)/documents/routine_requests/$(requestId)).data.userId == request.auth.uid) ||
-        requestId.startsWith(request.auth.uid + '_')
+        resource.data.userId == request.auth.uid
       );
       allow create: if isSignedIn() && (
         request.resource.data.userId == request.auth.uid ||

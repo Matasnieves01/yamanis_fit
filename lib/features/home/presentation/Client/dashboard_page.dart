@@ -923,7 +923,9 @@ class _DashboardPageState extends State<DashboardPage> {
           ),
            child: Theme(
              data: Theme.of(context).copyWith(dividerColor: Colors.transparent),
-             child: ExpansionTile(
+             child: Material(
+               type: MaterialType.transparency,
+               child: ExpansionTile(
                iconColor: primaryColor,
                collapsedIconColor: Colors.white,
                tilePadding: const EdgeInsets.all(16),
@@ -1189,8 +1191,9 @@ class _DashboardPageState extends State<DashboardPage> {
                      ],
                    ),
                  ),
-              ],
-            ),
+               ],
+             ),
+           ),
           ),
         ),
       ),

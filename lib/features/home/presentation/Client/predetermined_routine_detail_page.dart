@@ -385,7 +385,9 @@ class _PredeterminedRoutineDetailPageState
       ),
       child: Theme(
         data: Theme.of(context).copyWith(dividerColor: Colors.transparent),
-        child: ExpansionTile(
+        child: Material(
+          type: MaterialType.transparency,
+          child: ExpansionTile(
           collapsedIconColor: Colors.white54,
           iconColor: primaryColor,
           leading: Container(
@@ -457,6 +459,7 @@ class _PredeterminedRoutineDetailPageState
             ),
           ],
         ),
+       ),
       ),
     );
   }
