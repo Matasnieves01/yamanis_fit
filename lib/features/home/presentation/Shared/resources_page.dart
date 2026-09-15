@@ -41,6 +41,191 @@ class _ResourcesPageState extends State<ResourcesPage> {
     super.dispose();
   }
 
+  Future<void> _editPdf(PdfResource resource) async {
+    final nameController = TextEditingController(text: resource.name);
+    final urlController = TextEditingController(text: resource.url);
+    final coverController = TextEditingController(text: resource.thumbnailUrl ?? '');
+    final priceController = TextEditingController(
+      text: resource.price > 0 ? resource.price.toStringAsFixed(2) : '',
+    );
+    bool isFree = resource.isFree;
+
+    await showDialog<bool>(
+      context: context,
+      builder: (context) => StatefulBuilder(
+        builder: (context, setDialogState) => AlertDialog(
+          backgroundColor: backgroundColor,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(20),
+            side: BorderSide(color: primaryColor.withValues(alpha: 0.3)),
+          ),
+          title: Row(
+            children: [
+              Icon(Icons.edit_note_rounded, color: primaryColor, size: 24),
+              const SizedBox(width: 8),
+              const Text(
+                'Editar Guía / Recurso',
+                style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 17),
+              ),
+            ],
+          ),
+          content: SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                TextField(
+                  controller: nameController,
+                  style: const TextStyle(color: Colors.white),
+                  decoration: InputDecoration(
+                    labelText: 'Título del recurso',
+                    labelStyle: TextStyle(color: primaryColor),
+                    filled: true,
+                    fillColor: surfaceColor.withValues(alpha: 0.5),
+                    border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none),
+                  ),
+                ),
+                const SizedBox(height: 12),
+                TextField(
+                  controller: urlController,
+                  style: const TextStyle(color: Colors.white),
+                  decoration: InputDecoration(
+                    labelText: 'Enlace de Google Drive / PDF',
+                    labelStyle: TextStyle(color: primaryColor),
+                    filled: true,
+                    fillColor: surfaceColor.withValues(alpha: 0.5),
+                    border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none),
+                  ),
+                ),
+                const SizedBox(height: 12),
+                TextField(
+                  controller: coverController,
+                  style: const TextStyle(color: Colors.white),
+                  decoration: InputDecoration(
+                    labelText: 'URL de Portada (Opcional)',
+                    labelStyle: TextStyle(color: primaryColor),
+                    filled: true,
+                    fillColor: surfaceColor.withValues(alpha: 0.5),
+                    border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none),
+                  ),
+                ),
+                const SizedBox(height: 14),
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                  decoration: BoxDecoration(
+                    color: surfaceColor.withValues(alpha: 0.5),
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: Column(
+                    children: [
+                      Row(
+                        children: [
+                          const Text('Acceso Gratuito', style: TextStyle(color: Colors.white70, fontSize: 14)),
+                          const Spacer(),
+                          Switch(
+                            value: isFree,
+                            onChanged: (val) {
+                              setDialogState(() {
+                                isFree = val;
+                              });
+                            },
+                            activeThumbColor: primaryColor,
+                            activeTrackColor: primaryColor.withValues(alpha: 0.4),
+                          ),
+                        ],
+                      ),
+                      if (!isFree) ...[
+                        const Divider(color: Colors.white10, height: 16),
+                        TextField(
+                          controller: priceController,
+                          keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                          style: const TextStyle(color: Colors.white),
+                          decoration: InputDecoration(
+                            labelText: 'Precio (\$ USD)',
+                            hintText: 'Ej: 15.00',
+                            hintStyle: const TextStyle(color: Colors.white30),
+                            labelStyle: TextStyle(color: primaryColor),
+                            prefixIcon: Icon(Icons.attach_money_rounded, color: primaryColor),
+                            filled: true,
+                            fillColor: backgroundColor,
+                            border: OutlineInputBorder(borderRadius: BorderRadius.circular(10), borderSide: BorderSide.none),
+                          ),
+                        ),
+                      ],
+                    ],
+                  ),
+                ),
+              ],
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context, false),
+              child: const Text('Cancelar', style: TextStyle(color: Colors.white54)),
+            ),
+            ElevatedButton(
+              onPressed: () async {
+                final newName = nameController.text.trim();
+                final newLink = urlController.text.trim();
+                final newCover = coverController.text.trim();
+
+                if (newName.isEmpty || newLink.isEmpty) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(content: Text('Por favor, completa título y enlace')),
+                  );
+                  return;
+                }
+
+                double newPrice = 0.0;
+                if (!isFree) {
+                  final cleanStr = priceController.text.trim().replaceAll(',', '.');
+                  newPrice = double.tryParse(cleanStr) ?? 0.0;
+                  if (newPrice <= 0) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(content: Text('Ingresa un precio mayor a 0')),
+                    );
+                    return;
+                  }
+                }
+
+                Navigator.pop(context, true);
+
+                try {
+                  final finalUrl = PdfCacheService.normalizeDriveUrl(newLink);
+                  await FirebaseFirestore.instance.collection('resources').doc(resource.id).update({
+                    'name': newName,
+                    'url': finalUrl,
+                    if (newCover.isNotEmpty) 'thumbnailUrl': newCover else 'thumbnailUrl': FieldValue.delete(),
+                    'isFree': isFree,
+                    'price': isFree ? 0.0 : newPrice,
+                  });
+
+                  if (mounted) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(content: Text('Guía actualizada correctamente')),
+                    );
+                  }
+                } catch (e) {
+                  if (mounted) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(content: Text('Error al actualizar: $e')),
+                    );
+                  }
+                }
+              },
+              style: ElevatedButton.styleFrom(
+                backgroundColor: primaryColor,
+                foregroundColor: backgroundColor,
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+              ),
+              child: const Text('GUARDAR', style: TextStyle(fontWeight: FontWeight.bold)),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
   Future<void> _deletePdf(PdfResource resource) async {
     final confirm = await showDialog<bool>(
       context: context,
@@ -498,7 +683,16 @@ class _ResourcesPageState extends State<ResourcesPage> {
                             ),
                           ),
                           const Spacer(),
-                          if (widget.isAdmin)
+                          if (widget.isAdmin) ...[
+                            IconButton(
+                              visualDensity: VisualDensity.compact,
+                              padding: EdgeInsets.zero,
+                              constraints: const BoxConstraints(),
+                              icon: Icon(Icons.edit_outlined, color: primaryColor, size: 20),
+                              tooltip: 'Editar guía y precio',
+                              onPressed: () => _editPdf(resource),
+                            ),
+                            const SizedBox(width: 8),
                             IconButton(
                               visualDensity: VisualDensity.compact,
                               padding: EdgeInsets.zero,
@@ -507,6 +701,7 @@ class _ResourcesPageState extends State<ResourcesPage> {
                               tooltip: 'Eliminar guía',
                               onPressed: () => _deletePdf(resource),
                             ),
+                          ],
                         ],
                       ),
                       const SizedBox(height: 8),
@@ -762,6 +957,51 @@ class _ResourcesPageState extends State<ResourcesPage> {
   }
 
   Widget _buildPriceOrStatusTag(PdfResource resource, bool hasAccess, String status) {
+    if (widget.isAdmin) {
+      if (resource.isFree) {
+        return Row(
+          children: [
+            Icon(Icons.check_circle_rounded, size: 14, color: primaryColor),
+            const SizedBox(width: 4),
+            Text(
+              'Gratuito (Para todos)',
+              style: TextStyle(color: primaryColor, fontSize: 12, fontWeight: FontWeight.w600),
+            ),
+          ],
+        );
+      }
+      return Row(
+        children: [
+          Text(
+            '\$${resource.price.toStringAsFixed(2)}',
+            style: TextStyle(
+              color: primaryColor,
+              fontWeight: FontWeight.w900,
+              fontSize: 16,
+            ),
+          ),
+          const SizedBox(width: 4),
+          const Text(
+            'USD',
+            style: TextStyle(color: Colors.white38, fontSize: 11, fontWeight: FontWeight.bold),
+          ),
+          const SizedBox(width: 6),
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+            decoration: BoxDecoration(
+              color: Colors.amberAccent.withValues(alpha: 0.15),
+              borderRadius: BorderRadius.circular(4),
+              border: Border.all(color: Colors.amberAccent.withValues(alpha: 0.3)),
+            ),
+            child: const Text(
+              'PREMIUM',
+              style: TextStyle(color: Colors.amberAccent, fontSize: 9, fontWeight: FontWeight.w800),
+            ),
+          ),
+        ],
+      );
+    }
+
     if (resource.isFree) {
       return Row(
         children: [

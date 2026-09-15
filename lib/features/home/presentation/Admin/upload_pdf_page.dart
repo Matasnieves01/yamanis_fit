@@ -14,7 +14,7 @@ class _UploadPdfPageState extends State<UploadPdfPage> {
   final TextEditingController _nameController = TextEditingController();
   final TextEditingController _urlController = TextEditingController();
   final TextEditingController _coverController = TextEditingController();
-  final TextEditingController _priceController = TextEditingController(text: '0.0');
+  final TextEditingController _priceController = TextEditingController();
   bool _isUploading = false;
   bool _isFree = true;
 
@@ -70,7 +70,17 @@ class _UploadPdfPageState extends State<UploadPdfPage> {
 
     try {
       final finalUrl = PdfCacheService.normalizeDriveUrl(link);
-      final price = double.tryParse(_priceController.text) ?? 0.0;
+      double price = 0.0;
+      if (!_isFree) {
+        final cleanPrice = _priceController.text.trim().replaceAll(',', '.');
+        price = double.tryParse(cleanPrice) ?? 0.0;
+        if (price <= 0.0) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('Por favor, ingresa un precio válido mayor a 0 para el recurso')),
+          );
+          return;
+        }
+      }
 
       await FirebaseFirestore.instance.collection('resources').add({
         'name': name,
@@ -262,7 +272,10 @@ class _UploadPdfPageState extends State<UploadPdfPage> {
                       controller: _priceController,
                       keyboardType: const TextInputType.numberWithOptions(decimal: true),
                       style: const TextStyle(color: Colors.white),
-                      decoration: _inputDecoration('Precio (\$ USD)', Icons.attach_money_rounded),
+                      decoration: _inputDecoration('Precio (\$ USD)', Icons.attach_money_rounded).copyWith(
+                        hintText: 'Ej: 15.00',
+                        hintStyle: const TextStyle(color: Colors.white38),
+                      ),
                     ),
                   ],
                 ],
