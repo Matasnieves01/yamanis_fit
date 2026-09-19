@@ -22,8 +22,8 @@ class _CreateWorkoutPageState extends State<CreateWorkoutPage> {
   bool isLoading = false;
   bool isEditing = false;
 
-  final Color backgroundColor = const Color(0xFF11151C);
-  final Color surfaceColor = const Color(0xFF55768C);
+  final Color backgroundColor = const Color(0xFF11152C);
+  final Color surfaceColor = const Color(0xFF55769C);
   final Color secondaryColor = const Color(0xFF89AC76);
   final Color primaryColor = const Color(0xFFAEE084);
 
