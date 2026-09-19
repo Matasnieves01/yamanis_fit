@@ -23,9 +23,14 @@ class _DashboardPageState extends State<DashboardPage> {
 
   static const List<String> _esWeekdays = ['LUN', 'MAR', 'MIÉ', 'JUE', 'VIE', 'SÁB', 'DOM'];
   static const List<String> _esMonths = ['Ene', 'Feb', 'Mar', 'Abr', 'May', 'Jun', 'Jul', 'Ago', 'Sep', 'Oct', 'Nov', 'Dic'];
+  static const List<String> _fullMonths = [
+    'Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio',
+    'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre'
+  ];
   final Set<String> _completedRoutineIds = {};
   final Set<DateTime> _completedDates = {};
   int _currentStreak = 0;
+  int _maxStreak = 0;
   bool _isAccountActive = true;
   DateTime? _activeUntil;
   bool _isLoading = true;
@@ -151,6 +156,30 @@ class _DashboardPageState extends State<DashboardPage> {
         checkDate = checkDate.subtract(const Duration(days: 1));
       }
 
+      int calculatedMax = 0;
+      if (userData['maxStreak'] is num) {
+        calculatedMax = (userData['maxStreak'] as num).toInt();
+      }
+      if (streak > calculatedMax) calculatedMax = streak;
+
+      if (completedDates.isNotEmpty) {
+        final sortedDates = completedDates.toList()..sort();
+        int tempRun = 0;
+        DateTime? previousDate;
+        for (var d in sortedDates) {
+          if (previousDate == null || d.difference(previousDate).inDays == 1) {
+            tempRun++;
+          } else {
+            tempRun = 1;
+          }
+          if (tempRun > calculatedMax) calculatedMax = tempRun;
+          previousDate = d;
+        }
+      }
+      if (calculatedMax < 14) {
+        calculatedMax = 14;
+      }
+
       setState(() {
         _routines.clear();
         _routines.addAll(newRoutines);
@@ -159,6 +188,7 @@ class _DashboardPageState extends State<DashboardPage> {
         _completedDates.clear();
         _completedDates.addAll(completedDates);
         _currentStreak = streak;
+        _maxStreak = calculatedMax;
         _activeUntil = activeUntil;
         _isAccountActive = isAccountActive;
         _isLoading = false;
@@ -223,24 +253,48 @@ class _DashboardPageState extends State<DashboardPage> {
                       _buildCalendarSection(),
                        const SizedBox(height: 20),
                        Row(
-                         mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                         children: [
-                           const Text(
-                             "Rutina del Dia",
-                             style: TextStyle(
-                               color: Colors.white,
-                               fontSize: 18,
-                               fontWeight: FontWeight.bold,
-                               letterSpacing: -0.5,
-                             ),
-                           ),
-                          if (_selectedDay != null)
-                            Text(
-                              DateFormat('MMM dd').format(_selectedDay!),
-                              style: TextStyle(color: secondaryColor, fontWeight: FontWeight.bold, fontSize: 13),
+                          children: [
+                            const Text(
+                              "Rutina del Día",
+                              style: TextStyle(
+                                color: Colors.white,
+                                fontSize: 20,
+                                fontWeight: FontWeight.w900,
+                                letterSpacing: -0.5,
+                              ),
                             ),
-                         ],
-                       ),
+                            if (_selectedDay != null && isSameDay(_selectedDay, DateTime.now())) ...[
+                              const SizedBox(width: 8),
+                              Container(
+                                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                                decoration: BoxDecoration(
+                                  color: primaryColor.withOpacity(0.18),
+                                  borderRadius: BorderRadius.circular(12),
+                                  border: Border.all(color: primaryColor.withOpacity(0.35)),
+                                ),
+                                child: Text(
+                                  "HOY",
+                                  style: TextStyle(
+                                    color: primaryColor,
+                                    fontSize: 10,
+                                    fontWeight: FontWeight.w900,
+                                    letterSpacing: 0.5,
+                                  ),
+                                ),
+                              ),
+                            ],
+                            const Spacer(),
+                            if (_selectedDay != null)
+                              Text(
+                                "${_esMonths[_selectedDay!.month - 1]} ${_selectedDay!.day}",
+                                style: TextStyle(
+                                  color: primaryColor,
+                                  fontWeight: FontWeight.w700,
+                                  fontSize: 15,
+                                ),
+                              ),
+                          ],
+                        ),
                        const SizedBox(height: 10),
                        _buildAccessBadge(),
                        if (routinesForSelectedDay.isEmpty)
@@ -271,100 +325,406 @@ class _DashboardPageState extends State<DashboardPage> {
   }
 
   Widget _buildStreakWidget() {
+    final now = DateTime.now();
+    final todayUtc = DateTime.utc(now.year, now.month, now.day);
+    final isTodayCompleted = _completedDates.contains(todayUtc);
+    final routinesToday = _getRoutinesForDay(todayUtc);
+    final hasRoutineToday = routinesToday.isNotEmpty;
+
+    // Start of week (Monday)
+    final daysToMonday = (todayUtc.weekday == DateTime.monday) ? 0 : (todayUtc.weekday - DateTime.monday);
+    final monday = todayUtc.subtract(Duration(days: daysToMonday));
+
+    int completedThisWeek = 0;
+    for (int i = 0; i < 7; i++) {
+      final d = monday.add(Duration(days: i));
+      if (_completedDates.contains(d)) {
+        completedThisWeek++;
+      }
+    }
+
+    final displayMaxStreak = _maxStreak > 0 ? _maxStreak : (_currentStreak > 14 ? _currentStreak : 14);
+
     return Container(
-      padding: const EdgeInsets.all(16),
+      width: double.infinity,
       decoration: BoxDecoration(
-        gradient: LinearGradient(
-          colors: [primaryColor.withOpacity(0.2), secondaryColor.withOpacity(0.1)],
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
+        color: const Color(0xFF13181E),
+        borderRadius: BorderRadius.circular(24),
+        border: Border.all(
+          color: const Color(0xFFD97706).withOpacity(0.35),
+          width: 1.2,
         ),
-        borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: primaryColor.withOpacity(0.3)),
-      ),
-      child: Row(
-        children: [
-          Container(
-            padding: const EdgeInsets.all(10),
-            decoration: BoxDecoration(
-              color: Colors.orange.withOpacity(0.2),
-              shape: BoxShape.circle,
-            ),
-            child: const Text(
-              '🔥',
-              style: TextStyle(fontSize: 20),
-            ),
+        boxShadow: [
+          BoxShadow(
+            color: const Color(0xFFFF9800).withOpacity(0.08),
+            blurRadius: 20,
+            spreadRadius: 2,
+            offset: const Offset(0, 4),
           ),
-          const SizedBox(width: 14),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  "TU RACHA ACTUAL",
-                  style: TextStyle(
-                    color: primaryColor,
-                    fontSize: 11,
-                    fontWeight: FontWeight.bold,
-                    letterSpacing: 1.2,
-                  ),
-                ),
-                Row(
-                  crossAxisAlignment: CrossAxisAlignment.end,
-                  children: [
-                    Text(
-                      '$_currentStreak',
-                      style: const TextStyle(
-                        color: Colors.white,
-                        fontSize: 28,
-                        fontWeight: FontWeight.w900,
+        ],
+      ),
+      padding: const EdgeInsets.all(18),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // Top Row: Big Flame Badge, Streak Count, Record Badge
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.center,
+            children: [
+              // Glowing flame container with x1 badge
+              Stack(
+                clipBehavior: Clip.none,
+                children: [
+                  Container(
+                    width: 54,
+                    height: 54,
+                    decoration: BoxDecoration(
+                      gradient: const RadialGradient(
+                        center: Alignment.center,
+                        radius: 0.8,
+                        colors: [
+                          Color(0xFF422213),
+                          Color(0xFF1D1410),
+                        ],
                       ),
+                      borderRadius: BorderRadius.circular(16),
+                      border: Border.all(
+                        color: const Color(0xFFFF9800).withOpacity(0.5),
+                        width: 1.5,
+                      ),
+                      boxShadow: [
+                        BoxShadow(
+                          color: const Color(0xFFFF9800).withOpacity(0.25),
+                          blurRadius: 14,
+                          spreadRadius: 1,
+                        ),
+                      ],
                     ),
-                    const SizedBox(width: 6),
-                    Padding(
-                      padding: const EdgeInsets.only(bottom: 5.0),
+                    alignment: Alignment.center,
+                    child: const Text(
+                      '🔥',
+                      style: TextStyle(fontSize: 26),
+                    ),
+                  ),
+                  Positioned(
+                    bottom: -3,
+                    right: -3,
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 1.5),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFF191009),
+                        borderRadius: BorderRadius.circular(8),
+                        border: Border.all(
+                          color: const Color(0xFFFF9800).withOpacity(0.7),
+                          width: 1,
+                        ),
+                      ),
                       child: Text(
-                        _currentStreak == 1 ? "DÍA" : "DÍAS",
-                        style: TextStyle(
-                          color: Colors.white.withOpacity(0.7),
-                          fontSize: 14,
-                          fontWeight: FontWeight.bold,
+                        'x${_currentStreak > 0 ? _currentStreak : 1}',
+                        style: const TextStyle(
+                          color: Color(0xFFFFB74D),
+                          fontSize: 9.5,
+                          fontWeight: FontWeight.w900,
                         ),
                       ),
                     ),
+                  ),
+                ],
+              ),
+              const SizedBox(width: 14),
+              // Middle: RACHA ACTIVA & Number
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Row(
+                      children: [
+                        Container(
+                          width: 6,
+                          height: 6,
+                          decoration: BoxDecoration(
+                            color: _currentStreak > 0 ? const Color(0xFFFFA726) : Colors.grey,
+                            shape: BoxShape.circle,
+                          ),
+                        ),
+                        const SizedBox(width: 6),
+                        Text(
+                          _currentStreak > 0 ? "RACHA ACTIVA" : "RACHA INACTIVA",
+                          style: TextStyle(
+                            color: _currentStreak > 0 ? const Color(0xFFFFA726) : Colors.white54,
+                            fontSize: 11,
+                            fontWeight: FontWeight.w900,
+                            letterSpacing: 1.1,
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 3),
+                    Row(
+                      crossAxisAlignment: CrossAxisAlignment.baseline,
+                      textBaseline: TextBaseline.alphabetic,
+                      children: [
+                        Text(
+                          '$_currentStreak',
+                          style: const TextStyle(
+                            color: Colors.white,
+                            fontSize: 32,
+                            fontWeight: FontWeight.w900,
+                            height: 1.0,
+                          ),
+                        ),
+                        const SizedBox(width: 8),
+                        Flexible(
+                          child: Text(
+                            _currentStreak == 1 ? "DÍA DE RACHA" : "DÍAS DE RACHA",
+                            style: TextStyle(
+                              color: primaryColor,
+                              fontSize: 15.5,
+                              fontWeight: FontWeight.w900,
+                              letterSpacing: 0.4,
+                            ),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        ),
+                      ],
+                    ),
                   ],
+                ),
+              ),
+              // Record pill
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                decoration: BoxDecoration(
+                  color: const Color(0xFF221A13),
+                  borderRadius: BorderRadius.circular(16),
+                  border: Border.all(
+                    color: const Color(0xFFFFB300).withOpacity(0.35),
+                    width: 1,
+                  ),
+                ),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    const Text('🏆', style: TextStyle(fontSize: 16)),
+                    const SizedBox(width: 6),
+                    Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Text(
+                          'RÉCORD',
+                          style: TextStyle(
+                            color: Colors.white.withOpacity(0.55),
+                            fontSize: 8.5,
+                            fontWeight: FontWeight.w800,
+                            letterSpacing: 0.8,
+                          ),
+                        ),
+                        Text(
+                          '$displayMaxStreak DÍAS',
+                          style: const TextStyle(
+                            color: Color(0xFFFFD54F),
+                            fontSize: 12,
+                            fontWeight: FontWeight.w900,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 16),
+          // Middle Banner: Bolt message + Status badge
+          Container(
+            width: double.infinity,
+            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+            decoration: BoxDecoration(
+              color: Colors.white.withOpacity(0.04),
+              borderRadius: BorderRadius.circular(16),
+              border: Border.all(
+                color: Colors.white.withOpacity(0.07),
+              ),
+            ),
+            child: Row(
+              children: [
+                const Icon(
+                  Icons.bolt_rounded,
+                  color: Color(0xFFFFD54F),
+                  size: 20,
+                ),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: Text(
+                    isTodayCompleted
+                        ? "¡Increíble trabajo! Racha asegurada por hoy."
+                        : (hasRoutineToday
+                            ? "¡Entrena hoy para mantener tu racha viva!"
+                            : "Día de descanso programado. ¡Tu racha está a salvo!"),
+                    style: TextStyle(
+                      color: Colors.white.withOpacity(0.85),
+                      fontSize: 11.5,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 8),
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                  decoration: BoxDecoration(
+                    color: isTodayCompleted
+                        ? primaryColor.withOpacity(0.18)
+                        : (hasRoutineToday
+                            ? const Color(0xFF262D20)
+                            : Colors.white.withOpacity(0.06)),
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(
+                      color: isTodayCompleted
+                          ? primaryColor.withOpacity(0.4)
+                          : (hasRoutineToday
+                              ? primaryColor.withOpacity(0.3)
+                              : Colors.white.withOpacity(0.15)),
+                    ),
+                  ),
+                  child: Text(
+                    isTodayCompleted
+                        ? "HOY\nCOMPLETADO"
+                        : (hasRoutineToday ? "HOY\nPENDIENTE" : "DESCANSO"),
+                    textAlign: TextAlign.center,
+                    style: TextStyle(
+                      color: isTodayCompleted || hasRoutineToday
+                          ? const Color(0xFFAEE084)
+                          : Colors.white70,
+                      fontSize: 9.5,
+                      fontWeight: FontWeight.w900,
+                      height: 1.1,
+                    ),
+                  ),
                 ),
               ],
             ),
           ),
-          Column(
-            crossAxisAlignment: CrossAxisAlignment.end,
+          const SizedBox(height: 16),
+          // Bottom section: ESTA SEMANA + Weekday buttons
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              if (_currentStreak > 0) ...[
-                Text(
-                  _currentStreak >= 7 ? "¡IMPARABLE!" : (_currentStreak >= 3 ? "¡EXCELENTE!" : "¡SIGUE ASÍ!"),
-                  style: TextStyle(
-                    color: _currentStreak >= 7 ? primaryColor : (_currentStreak >= 3 ? Colors.greenAccent : Colors.orangeAccent),
-                    fontSize: 10,
-                    fontWeight: FontWeight.bold,
-                  ),
+              Text(
+                'ESTA SEMANA',
+                style: TextStyle(
+                  color: Colors.white.withOpacity(0.45),
+                  fontSize: 11,
+                  fontWeight: FontWeight.w800,
+                  letterSpacing: 1.2,
                 ),
-                Icon(
-                  Icons.trending_up,
-                  color: _currentStreak >= 7 ? primaryColor : (_currentStreak >= 3 ? Colors.greenAccent : Colors.orangeAccent),
+              ),
+              Text(
+                '$completedThisWeek / 7 DÍAS',
+                style: const TextStyle(
+                  color: Color(0xFFFFA726),
+                  fontSize: 11.5,
+                  fontWeight: FontWeight.w900,
+                  letterSpacing: 0.5,
                 ),
-              ] else ...[
-                Text(
-                  "INICIA HOY",
-                  style: TextStyle(
-                    color: Colors.white.withOpacity(0.5),
-                    fontSize: 10,
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
-                Icon(Icons.bolt, color: Colors.white.withOpacity(0.3)),
-              ],
+              ),
             ],
+          ),
+          const SizedBox(height: 10),
+          // 7 days row: L, M, X, J, V, S, D
+          Row(
+            children: List.generate(7, (i) {
+              final day = monday.add(Duration(days: i));
+              final dayLetter = ['L', 'M', 'X', 'J', 'V', 'S', 'D'][i];
+              final isCompleted = _completedDates.contains(day);
+              final isToday = isSameDay(day, todayUtc);
+              final hasScheduled = _getRoutinesForDay(day).isNotEmpty;
+
+              return Expanded(
+                child: GestureDetector(
+                  onTap: () {
+                    setState(() {
+                      _selectedDay = day;
+                      _focusedDay = day;
+                    });
+                  },
+                  child: Container(
+                    margin: EdgeInsets.only(
+                      left: i == 0 ? 0 : 3,
+                      right: i == 6 ? 0 : 3,
+                    ),
+                    height: 52,
+                    decoration: BoxDecoration(
+                      color: isToday
+                          ? const Color(0xFF17241A)
+                          : (isCompleted
+                              ? const Color(0xFF261812)
+                              : Colors.white.withOpacity(0.025)),
+                      borderRadius: BorderRadius.circular(14),
+                      border: Border.all(
+                        color: isToday
+                            ? primaryColor
+                            : (isCompleted
+                                ? const Color(0xFFD97706).withOpacity(0.45)
+                                : Colors.white.withOpacity(0.06)),
+                        width: isToday ? 1.8 : 1,
+                      ),
+                      boxShadow: isToday
+                          ? [
+                              BoxShadow(
+                                color: primaryColor.withOpacity(0.25),
+                                blurRadius: 8,
+                                offset: const Offset(0, 2),
+                              ),
+                            ]
+                          : null,
+                    ),
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Text(
+                          dayLetter,
+                          style: TextStyle(
+                            color: isToday
+                                ? primaryColor
+                                : (isCompleted
+                                    ? const Color(0xFFFFA726)
+                                    : Colors.white.withOpacity(0.35)),
+                            fontSize: 11,
+                            fontWeight: FontWeight.w900,
+                          ),
+                        ),
+                        const SizedBox(height: 4),
+                        if (isCompleted)
+                          const Text(
+                            '🔥',
+                            style: TextStyle(fontSize: 12),
+                          )
+                        else if (isToday)
+                          Icon(
+                            Icons.track_changes_rounded,
+                            color: primaryColor,
+                            size: 15,
+                          )
+                        else
+                          Container(
+                            width: 5,
+                            height: 5,
+                            decoration: BoxDecoration(
+                              color: hasScheduled
+                                  ? const Color(0xFFFFA726).withOpacity(0.6)
+                                  : Colors.white.withOpacity(0.12),
+                              shape: BoxShape.circle,
+                            ),
+                          ),
+                      ],
+                    ),
+                  ),
+                ),
+              );
+            }),
           ),
         ],
       ),
@@ -375,88 +735,250 @@ class _DashboardPageState extends State<DashboardPage> {
     return Container(
       key: const ValueKey('month'),
       decoration: BoxDecoration(
-        color: surfaceColor.withOpacity(0.1),
-        borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: surfaceColor.withOpacity(0.2)),
+        color: const Color(0xFF13181E),
+        borderRadius: BorderRadius.circular(24),
+        border: Border.all(color: Colors.white.withOpacity(0.08)),
       ),
-      child: TableCalendar(
-        firstDay: DateTime.utc(2020, 1, 1),
-        lastDay: DateTime.utc(2030, 12, 31),
-        focusedDay: _focusedDay,
-        startingDayOfWeek: StartingDayOfWeek.monday,
-        selectedDayPredicate: (day) => isSameDay(_selectedDay, day),
-        eventLoader: (day) => _getRoutinesForDay(day),
-        onDaySelected: (selectedDay, focusedDay) {
-          setState(() {
-            _selectedDay = selectedDay;
-            _focusedDay = focusedDay;
-          });
-        },
-        calendarStyle: CalendarStyle(
-          todayDecoration: BoxDecoration(
-            color: secondaryColor.withOpacity(0.3),
-            shape: BoxShape.circle,
-          ),
-          selectedDecoration: BoxDecoration(
-            color: primaryColor,
-            shape: BoxShape.circle,
-          ),
-          markerDecoration: BoxDecoration(
-            color: primaryColor,
-            shape: BoxShape.circle,
-          ),
-          outsideDaysVisible: false,
-          defaultTextStyle: const TextStyle(color: Colors.white),
-          weekendTextStyle: const TextStyle(color: Colors.white70),
-        ),
-        headerStyle: HeaderStyle(
-          formatButtonVisible: false,
-          titleCentered: true,
-          titleTextStyle: const TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold),
-          leftChevronIcon: Icon(Icons.chevron_left, color: primaryColor),
-          rightChevronIcon: Icon(Icons.chevron_right, color: primaryColor),
-        ),
-        calendarBuilders: CalendarBuilders(
-          markerBuilder: (context, date, events) {
-            final normalizedDate = DateTime.utc(date.year, date.month, date.day);
-            final isCompletedDay = _completedDates.contains(normalizedDate);
-            
-            return Stack(
-              children: [
-                if (isCompletedDay)
-                  Positioned(
-                    top: 2,
-                    right: 2,
-                    child: const Text(
-                      '🔥',
-                      style: TextStyle(fontSize: 10),
-                    ),
-                  ),
-                if (events.isNotEmpty)
-                  Positioned(
-                    bottom: 4,
-                    left: 0,
-                    right: 0,
-                    child: Center(
-                      child: Container(
-                        width: 5,
-                        height: 5,
-                        decoration: BoxDecoration(
-                          color: events.cast<Map<String, dynamic>>().any((r) => _isRoutineMissed(r))
-                              ? Colors.redAccent
-                              : events.cast<Map<String, dynamic>>().every((r) => _isRoutineCompleted(r))
-                                  ? Colors.greenAccent
-                                  : Colors.orangeAccent,
-                          shape: BoxShape.circle,
+      padding: const EdgeInsets.symmetric(vertical: 12),
+      child: Column(
+        children: [
+          TableCalendar(
+            firstDay: DateTime.utc(2020, 1, 1),
+            lastDay: DateTime.utc(2030, 12, 31),
+            focusedDay: _focusedDay,
+            startingDayOfWeek: StartingDayOfWeek.monday,
+            selectedDayPredicate: (day) => isSameDay(_selectedDay, day),
+            eventLoader: (day) => _getRoutinesForDay(day),
+            onDaySelected: (selectedDay, focusedDay) {
+              setState(() {
+                _selectedDay = selectedDay;
+                _focusedDay = focusedDay;
+              });
+            },
+            calendarStyle: CalendarStyle(
+              outsideDaysVisible: false,
+              defaultTextStyle: const TextStyle(color: Colors.white, fontWeight: FontWeight.w600),
+              weekendTextStyle: TextStyle(color: Colors.white.withOpacity(0.7), fontWeight: FontWeight.w600),
+            ),
+            headerStyle: HeaderStyle(
+              formatButtonVisible: false,
+              titleCentered: true,
+              leftChevronIcon: const Icon(Icons.chevron_left_rounded, color: Color(0xFF4ADE80), size: 24),
+              rightChevronIcon: const Icon(Icons.chevron_right_rounded, color: Color(0xFF4ADE80), size: 24),
+              headerPadding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
+            ),
+            calendarBuilders: CalendarBuilders(
+              headerTitleBuilder: (context, date) {
+                final monthName = "${_fullMonths[date.month - 1]} ${date.year}";
+                return FittedBox(
+                  fit: BoxFit.scaleDown,
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Text(
+                        monthName,
+                        style: const TextStyle(
+                          color: Colors.white,
+                          fontSize: 14.5,
+                          fontWeight: FontWeight.w800,
                         ),
                       ),
-                    ),
+                      const SizedBox(width: 8),
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2.5),
+                        decoration: BoxDecoration(
+                          color: const Color(0xFF261810),
+                          borderRadius: BorderRadius.circular(10),
+                          border: Border.all(
+                            color: const Color(0xFFFF9800).withOpacity(0.4),
+                          ),
+                        ),
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            const Text('🔥', style: TextStyle(fontSize: 10)),
+                            const SizedBox(width: 3),
+                            Text(
+                              _currentStreak > 0 ? 'Racha activa' : 'Racha inactiva',
+                              style: const TextStyle(
+                                color: Color(0xFFFFA726),
+                                fontSize: 9.5,
+                                fontWeight: FontWeight.w800,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ),
+                );
+              },
+              defaultBuilder: (context, date, _) => _buildCalendarDayCell(date),
+              todayBuilder: (context, date, _) => _buildCalendarDayCell(date, isTodaySpecial: true),
+              selectedBuilder: (context, date, _) => _buildCalendarDayCell(date, isSelectedSpecial: true),
+            ),
+          ),
+          // Legend below calendar
+          Padding(
+            padding: const EdgeInsets.only(top: 14, bottom: 6, left: 16, right: 16),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+              children: [
+                _buildLegendItem('🔥', 'Día en Racha'),
+                _buildLegendDot(primaryColor, 'Hoy (Objetivo)'),
+                _buildLegendDot(const Color(0xFFFFA726), 'Programado'),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildCalendarDayCell(
+    DateTime date, {
+    bool isTodaySpecial = false,
+    bool isSelectedSpecial = false,
+  }) {
+    final normalizedDate = DateTime.utc(date.year, date.month, date.day);
+    final isCompleted = _completedDates.contains(normalizedDate);
+    final now = DateTime.now();
+    final isToday = isSameDay(date, now);
+    final routines = _getRoutinesForDay(date);
+    final hasRoutine = routines.isNotEmpty;
+    final isSelected = isSameDay(date, _selectedDay);
+
+    Color? ringColor;
+    if (isToday) {
+      ringColor = primaryColor;
+    } else if (isCompleted) {
+      ringColor = const Color(0xFFD97706).withOpacity(0.5);
+    } else if (isSelected) {
+      ringColor = Colors.white.withOpacity(0.5);
+    }
+
+    return Container(
+      alignment: Alignment.center,
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Container(
+            width: 34,
+            height: 34,
+            decoration: BoxDecoration(
+              shape: BoxShape.circle,
+              color: isToday
+                  ? (isCompleted ? primaryColor.withOpacity(0.2) : const Color(0xFF1E2B1E))
+                  : (isCompleted
+                      ? const Color(0xFF281912)
+                      : (isSelected ? Colors.white.withOpacity(0.12) : Colors.transparent)),
+              border: ringColor != null
+                  ? Border.all(color: ringColor, width: isToday ? 2.0 : 1.2)
+                  : null,
+            ),
+            alignment: Alignment.center,
+            child: Stack(
+              clipBehavior: Clip.none,
+              alignment: Alignment.center,
+              children: [
+                Text(
+                  '${date.day}',
+                  style: TextStyle(
+                    color: isToday
+                        ? primaryColor
+                        : (isCompleted
+                            ? const Color(0xFFFFB74D)
+                            : Colors.white),
+                    fontWeight: isToday || isCompleted || isSelected
+                        ? FontWeight.w900
+                        : FontWeight.w600,
+                    fontSize: 13,
+                  ),
+                ),
+                if (isCompleted && !isToday)
+                  Positioned(
+                    bottom: -3,
+                    child: const Text('🔥', style: TextStyle(fontSize: 8)),
                   ),
               ],
-            );
-          },
-        ),
+            ),
+          ),
+          const SizedBox(height: 3),
+          // Dot indicator
+          if (isToday)
+            Container(
+              width: 5,
+              height: 5,
+              decoration: const BoxDecoration(
+                color: Color(0xFFFFA726),
+                shape: BoxShape.circle,
+              ),
+            )
+          else if (isCompleted)
+            Container(
+              width: 5,
+              height: 5,
+              decoration: const BoxDecoration(
+                color: Color(0xFF2DD4BF),
+                shape: BoxShape.circle,
+              ),
+            )
+          else if (hasRoutine)
+            Container(
+              width: 5,
+              height: 5,
+              decoration: const BoxDecoration(
+                color: Color(0xFFFFA726),
+                shape: BoxShape.circle,
+              ),
+            )
+          else
+            const SizedBox(height: 5),
+        ],
       ),
+    );
+  }
+
+  Widget _buildLegendItem(String iconText, String label) {
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Text(iconText, style: const TextStyle(fontSize: 12)),
+        const SizedBox(width: 4),
+        Text(
+          label,
+          style: TextStyle(
+            color: Colors.white.withOpacity(0.65),
+            fontSize: 11,
+            fontWeight: FontWeight.w500,
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildLegendDot(Color color, String label) {
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Container(
+          width: 8,
+          height: 8,
+          decoration: BoxDecoration(
+            color: color,
+            shape: BoxShape.circle,
+          ),
+        ),
+        const SizedBox(width: 5),
+        Text(
+          label,
+          style: TextStyle(
+            color: Colors.white.withOpacity(0.65),
+            fontSize: 11,
+            fontWeight: FontWeight.w500,
+          ),
+        ),
+      ],
     );
   }
 
@@ -899,321 +1421,505 @@ class _DashboardPageState extends State<DashboardPage> {
     final isMissed = _isRoutineMissed(routine);
     final canStart = _canStartRoutine(routine);
 
-     return Container(
-       margin: const EdgeInsets.only(bottom: 12),
-       width: double.infinity,
+    final List<_RoutineDisplayExercise> flattenedExercises = [];
+    int exCounter = 1;
+    int calculatedTotalSets = 0;
+
+    for (var w in workouts) {
+      if (w is! Map) continue;
+      final setsStr = (w['sets'] ?? '3').toString();
+      final setsInt = int.tryParse(setsStr) ?? 3;
+      calculatedTotalSets += setsInt;
+
+      final exerciseList = (w['exercises'] as List?) ?? [];
+      if (exerciseList.isNotEmpty) {
+        for (var ex in exerciseList) {
+          if (ex is! Map) continue;
+          flattenedExercises.add(
+            _RoutineDisplayExercise(
+              index: exCounter++,
+              name: (ex['workoutName'] ?? ex['name'] ?? 'Ejercicio').toString(),
+              workoutId: ex['workoutId']?.toString(),
+              sets: setsStr,
+              reps: (ex['reps'] ?? '10').toString(),
+              weight: (ex['weight'] ?? '').toString(),
+              description: (ex['description'] ?? ex['notes'] ?? '').toString(),
+            ),
+          );
+        }
+      } else if (w['workoutName'] != null || w['name'] != null) {
+        flattenedExercises.add(
+          _RoutineDisplayExercise(
+            index: exCounter++,
+            name: (w['workoutName'] ?? w['name'] ?? 'Ejercicio').toString(),
+            workoutId: w['workoutId']?.toString(),
+            sets: setsStr,
+            reps: (w['reps'] ?? '10').toString(),
+            weight: (w['weight'] ?? '').toString(),
+            description: (w['description'] ?? w['notes'] ?? '').toString(),
+          ),
+        );
+      }
+    }
+
+    final totalExercises = flattenedExercises.length;
+    final totalSets = calculatedTotalSets;
+
+    String muscleFocusStr = '';
+    if (routine['muscleFocus'] is List) {
+      muscleFocusStr = (routine['muscleFocus'] as List).map((e) => e.toString()).join(' & ');
+    } else if (routine['muscleFocus'] != null && routine['muscleFocus'].toString().isNotEmpty) {
+      muscleFocusStr = routine['muscleFocus'].toString();
+    }
+
+    return Container(
+      margin: const EdgeInsets.only(bottom: 16),
+      width: double.infinity,
       decoration: BoxDecoration(
-        color: surfaceColor.withOpacity(0.2),
+        color: const Color(0xFF13191F),
         borderRadius: BorderRadius.circular(24),
-        image: const DecorationImage(
-          image: NetworkImage('https://images.unsplash.com/photo-1517836357463-d25dfeac3438?q=80&w=1000&auto=format&fit=crop'),
-          fit: BoxFit.cover,
-          opacity: 0.4,
-        ),
+        border: Border.all(color: Colors.white.withOpacity(0.08)),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.35),
+            blurRadius: 18,
+            offset: const Offset(0, 6),
+          ),
+        ],
       ),
-      child: ClipRRect(
-        borderRadius: BorderRadius.circular(24),
-        child: Container(
-          decoration: BoxDecoration(
-            gradient: LinearGradient(
-              begin: Alignment.topCenter,
-              end: Alignment.bottomCenter,
-              colors: [Colors.transparent, backgroundColor.withOpacity(0.9)],
+      padding: const EdgeInsets.all(18),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // Title
+          Text(
+            (routine['name'] ?? 'Rutina').toString().toUpperCase(),
+            style: const TextStyle(
+              color: Colors.white,
+              fontSize: 21,
+              fontWeight: FontWeight.w900,
+              letterSpacing: -0.5,
+              height: 1.15,
             ),
           ),
-           child: Theme(
-             data: Theme.of(context).copyWith(dividerColor: Colors.transparent),
-             child: Material(
-               type: MaterialType.transparency,
-               child: ExpansionTile(
-               iconColor: primaryColor,
-               collapsedIconColor: Colors.white,
-               tilePadding: const EdgeInsets.all(16),
-               title: Column(
-                 crossAxisAlignment: CrossAxisAlignment.start,
-                 children: [
-                   Row(
-                     children: [
-                       _buildTag("${workouts.length} EJERCICIOS", primaryColor),
-                       if (isCompleted)
-                         Padding(
-                           padding: const EdgeInsets.only(left: 6),
-                           child: _buildTag("✓ COMPLETADA", Colors.greenAccent),
-                         ),
-                       if (isMissed)
-                         Padding(
-                           padding: const EdgeInsets.only(left: 6),
-                           child: _buildTag("MISSED", Colors.redAccent),
-                         ),
-                     ],
-                   ),
-                   const SizedBox(height: 10),
-                   Text(
-                     (routine['name'] ?? 'Untitled').toUpperCase(),
-                     style: const TextStyle(
-                       color: Colors.white,
-                       fontSize: 19,
-                       fontWeight: FontWeight.w900,
-                       height: 1.1,
-                       letterSpacing: -0.5,
-                     ),
-                   ),
-                 ],
-               ),
-               subtitle: Padding(
-                 padding: const EdgeInsets.only(top: 8.0),
-                 child: Text(
-                   isCompleted
-                       ? "Esta rutina ya ha sido completada"
-                       : isMissed
-                           ? "Rutina pendiente (Pasada)"
-                           : !canStart
-                               ? "Esta rutina pertenece a otra semana"
-                               : "Toca para ver los ejercicios",
-                   style: TextStyle(
-                     color: isCompleted
-                         ? Colors.greenAccent.withOpacity(0.7)
-                         : isMissed
-                             ? Colors.redAccent.withOpacity(0.8)
-                             : Colors.white.withOpacity(0.7),
-                     fontSize: 12,
-                   ),
-                 ),
-               ),
-               children: [
-                 // Mostrar PDF de plan de alimentación si existe
-                 if ((routine['nutritionPlanUrl'] as String?)?.isNotEmpty ?? false)
-                   Padding(
-                     padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                     child: GestureDetector(
-                       onTap: () async {
-                         final url = routine['nutritionPlanUrl'] as String;
-                         if (await canLaunchUrl(Uri.parse(url))) {
-                           await launchUrl(Uri.parse(url), mode: LaunchMode.externalApplication);
-                         } else {
-                           if (mounted) {
-                             ScaffoldMessenger.of(context).showSnackBar(
-                               const SnackBar(
-                                 content: Text('No se pudo abrir el enlace'),
-                                 backgroundColor: Colors.redAccent,
-                               ),
-                             );
-                           }
-                         }
-                       },
-                       child: Container(
-                         width: double.infinity,
-                         padding: const EdgeInsets.all(16),
-                         decoration: BoxDecoration(
-                           color: secondaryColor.withOpacity(0.1),
-                           borderRadius: BorderRadius.circular(16),
-                           border: Border.all(color: secondaryColor.withOpacity(0.3)),
-                         ),
-                         child: Row(
-                           children: [
-                             Container(
-                               padding: const EdgeInsets.all(10),
-                               decoration: BoxDecoration(
-                                 color: secondaryColor.withOpacity(0.2),
-                                 borderRadius: BorderRadius.circular(10),
-                               ),
-                               child: Icon(Icons.file_download_rounded, color: secondaryColor, size: 24),
-                             ),
-                             const SizedBox(width: 16),
-                             Expanded(
-                               child: Column(
-                                 crossAxisAlignment: CrossAxisAlignment.start,
-                                 children: [
-                                   Text(
-                                     'PLAN DE ALIMENTACIÓN',
-                                     style: TextStyle(
-                                       color: secondaryColor,
-                                       fontWeight: FontWeight.bold,
-                                       fontSize: 12,
-                                       letterSpacing: 0.5,
-                                     ),
-                                   ),
-                                   const SizedBox(height: 4),
-                                   Text(
-                                     'Descarga tu plan personalizado',
-                                     style: TextStyle(
-                                       color: Colors.white.withOpacity(0.7),
-                                       fontSize: 12,
-                                     ),
-                                   ),
-                                 ],
-                               ),
-                             ),
-                             Icon(Icons.open_in_new, color: secondaryColor, size: 20),
-                           ],
-                         ),
-                       ),
-                     ),
-                   ),
-                  // Ejercicios compactos
-                  Padding(
-                    padding: const EdgeInsets.fromLTRB(16, 8, 16, 4),
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          'EJERCICIOS',
-                          style: TextStyle(
-                            color: primaryColor,
-                            fontSize: 10,
-                            fontWeight: FontWeight.bold,
-                            letterSpacing: 1,
-                          ),
-                        ),
-                        const SizedBox(height: 8),
-                        ...workouts.asMap().entries.map((entry) {
-                          final idx = entry.key;
-                          final workout = entry.value;
-                          final exercises = (workout['exercises'] as List?) ?? [];
-
-                          return Column(
-                            children: [
-                              ...exercises.map((ex) {
-                                return Padding(
-                                  padding: const EdgeInsets.only(bottom: 6),
-                                  child: GestureDetector(
-                                    onTap: (isCompleted || !canStart)
-                                        ? null
-                                        : () {
-                                            if (ex['workoutId'] != null) {
-                                              Navigator.push(
-                                                context,
-                                                MaterialPageRoute(
-                                                  builder: (context) => ViewWorkoutPage(
-                                                    workoutId: ex['workoutId'],
-                                                  ),
-                                                ),
-                                              );
-                                            }
-                                          },
-                                    child: Container(
-                                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                                      decoration: BoxDecoration(
-                                        color: Colors.white.withOpacity(0.04),
-                                        borderRadius: BorderRadius.circular(10),
-                                        border: Border.all(color: Colors.white.withOpacity(0.08)),
-                                      ),
-                                      child: Row(
-                                        children: [
-                                          Expanded(
-                                            child: Text(
-                                              ex['workoutName'] ?? 'Unknown',
-                                              style: const TextStyle(
-                                                color: Colors.white,
-                                                fontWeight: FontWeight.w700,
-                                                fontSize: 13,
-                                              ),
-                                              overflow: TextOverflow.ellipsis,
-                                            ),
-                                          ),
-                                          const SizedBox(width: 8),
-                                          Text(
-                                            "${workout['sets'] ?? '0'}x${ex['reps'] ?? '0'}",
-                                            style: TextStyle(
-                                              color: primaryColor,
-                                              fontWeight: FontWeight.bold,
-                                              fontSize: 11,
-                                            ),
-                                          ),
-                                          if (!isCompleted && canStart) ...[
-                                            const SizedBox(width: 8),
-                                            Icon(Icons.chevron_right, color: primaryColor, size: 16),
-                                          ],
-                                        ],
-                                      ),
-                                    ),
-                                  ),
-                                );
-                              }),
-                              if (idx < workouts.length - 1) const SizedBox(height: 8),
-                            ],
-                          );
-                        }),
-                      ],
+          const SizedBox(height: 6),
+          // Subtitle: "5 ejercicios • 17 series totales • Pierna & Core"
+          RichText(
+            text: TextSpan(
+              style: TextStyle(
+                color: Colors.white.withOpacity(0.6),
+                fontSize: 12.5,
+                fontWeight: FontWeight.w500,
+              ),
+              children: [
+                TextSpan(text: '$totalExercises ejercicios'),
+                const TextSpan(text: '  •  '),
+                TextSpan(text: '$totalSets series totales'),
+                if (muscleFocusStr.isNotEmpty) ...[
+                  const TextSpan(text: '  •  '),
+                  TextSpan(
+                    text: muscleFocusStr,
+                    style: TextStyle(
+                      color: primaryColor,
+                      fontWeight: FontWeight.w600,
                     ),
                   ),
-                  Padding(
-                   padding: const EdgeInsets.fromLTRB(16, 12, 16, 16),
-                   child: Row(
-                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                     children: [
-                       GestureDetector(
-                         onTap: (isCompleted || !canStart)
-                             ? null
-                             : () async {
-                                 final result = await Navigator.push(
-                                   context,
-                                   MaterialPageRoute(
-                                     builder: (context) => StartRoutinePage(
-                                       routine: routine,
-                                       routineId: routine['id'],
-                                     ),
-                                   ),
-                                 );
+                ],
+              ],
+            ),
+          ),
+          const SizedBox(height: 18),
+          // Header "LISTA DE EJERCICIOS" / "DESLIZA PARA VER MÁS"
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Text(
+                'LISTA DE EJERCICIOS',
+                style: TextStyle(
+                  color: primaryColor,
+                  fontSize: 11,
+                  fontWeight: FontWeight.w800,
+                  letterSpacing: 1.2,
+                ),
+              ),
+              if (flattenedExercises.length > 3)
+                Text(
+                  'DESLIZA PARA VER MÁS',
+                  style: TextStyle(
+                    color: Colors.white.withOpacity(0.35),
+                    fontSize: 10,
+                    fontWeight: FontWeight.w600,
+                    letterSpacing: 0.8,
+                  ),
+                ),
+            ],
+          ),
+          const SizedBox(height: 12),
+          // Exercise list
+          if (flattenedExercises.isEmpty)
+            Padding(
+              padding: const EdgeInsets.symmetric(vertical: 20),
+              child: Center(
+                child: Text(
+                  'No hay ejercicios registrados',
+                  style: TextStyle(color: Colors.white.withOpacity(0.4), fontSize: 13),
+                ),
+              ),
+            )
+          else
+            ConstrainedBox(
+              constraints: BoxConstraints(
+                maxHeight: flattenedExercises.length > 3 ? 320 : (flattenedExercises.length * 76.0),
+              ),
+              child: RawScrollbar(
+                thumbColor: Colors.white.withOpacity(0.18),
+                radius: const Radius.circular(4),
+                thickness: 3,
+                child: ListView.separated(
+                  padding: EdgeInsets.zero,
+                  shrinkWrap: true,
+                  physics: flattenedExercises.length > 3
+                      ? const BouncingScrollPhysics()
+                      : const NeverScrollableScrollPhysics(),
+                  itemCount: flattenedExercises.length,
+                  separatorBuilder: (_, __) => const SizedBox(height: 8),
+                  itemBuilder: (context, index) {
+                    return _buildExerciseItem(flattenedExercises[index]);
+                  },
+                ),
+              ),
+            ),
+          // Plan de alimentación si existe
+          if ((routine['nutritionPlanUrl'] as String?)?.isNotEmpty ?? false) ...[
+            const SizedBox(height: 14),
+            _buildNutritionPlanCard(routine['nutritionPlanUrl'] as String),
+          ],
+          const SizedBox(height: 18),
+          // Bottom start routine button
+          _buildStartRoutineButton(
+            routine: routine,
+            totalExercises: totalExercises,
+            isCompleted: isCompleted,
+            isMissed: isMissed,
+            canStart: canStart,
+          ),
+        ],
+      ),
+    );
+  }
 
-                                 if (result == true) {
-                                   _fetchRoutines();
-                                 }
-                               },
-                         child: Container(
-                           padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
-                           decoration: BoxDecoration(
-                             color: (isCompleted || !canStart) ? Colors.grey : (isMissed ? Colors.redAccent : primaryColor),
-                             borderRadius: BorderRadius.circular(12),
-                             boxShadow: [
-                               BoxShadow(
-                                 color: ((isCompleted || !canStart) ? Colors.grey : (isMissed ? Colors.redAccent : primaryColor)).withOpacity(0.3),
-                                 blurRadius: 15,
-                                 offset: const Offset(0, 5),
-                               )
-                             ],
-                           ),
-                           child: Text(
-                             isCompleted
-                                 ? "COMPLETADA"
-                                 : canStart
-                                     ? (isMissed ? "COMPLETAR" : "EMPEZAR")
-                                     : "NO DISPONIBLE",
-                             style: TextStyle(
-                               color: backgroundColor,
-                               fontWeight: FontWeight.w900,
-                               fontSize: 12,
-                               letterSpacing: 0.5,
-                             ),
-                           ),
-                         ),
-                       ),
-                     ],
-                   ),
-                 ),
-               ],
-             ),
-           ),
+  Widget _buildExerciseItem(_RoutineDisplayExercise item) {
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        onTap: (item.workoutId != null)
+            ? () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (context) => ViewWorkoutPage(workoutId: item.workoutId!),
+                  ),
+                );
+              }
+            : null,
+        borderRadius: BorderRadius.circular(16),
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+          decoration: BoxDecoration(
+            color: Colors.white.withOpacity(0.04),
+            borderRadius: BorderRadius.circular(16),
+            border: Border.all(color: Colors.white.withOpacity(0.07)),
+          ),
+          child: Row(
+            children: [
+              Container(
+                width: 38,
+                height: 38,
+                decoration: BoxDecoration(
+                  color: Colors.white.withOpacity(0.04),
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(color: Colors.white.withOpacity(0.12)),
+                ),
+                alignment: Alignment.center,
+                child: Text(
+                  '${item.index}',
+                  style: TextStyle(
+                    color: primaryColor,
+                    fontWeight: FontWeight.w900,
+                    fontSize: 14,
+                  ),
+                ),
+              ),
+              const SizedBox(width: 14),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Text(
+                      item.name.toUpperCase(),
+                      style: const TextStyle(
+                        color: Colors.white,
+                        fontWeight: FontWeight.w800,
+                        fontSize: 13.5,
+                        letterSpacing: -0.2,
+                      ),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                    if (item.description.isNotEmpty || item.weight.isNotEmpty) ...[
+                      const SizedBox(height: 3),
+                      Text(
+                        item.description.isNotEmpty
+                            ? item.description
+                            : (item.weight.isNotEmpty ? '${item.weight} kg' : ''),
+                        style: TextStyle(
+                          color: Colors.white.withOpacity(0.5),
+                          fontSize: 11.5,
+                          fontWeight: FontWeight.w500,
+                        ),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ],
+                  ],
+                ),
+              ),
+              const SizedBox(width: 12),
+              Column(
+                crossAxisAlignment: CrossAxisAlignment.end,
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Text(
+                    '${item.sets} × ${item.reps}',
+                    style: TextStyle(
+                      color: primaryColor,
+                      fontWeight: FontWeight.w900,
+                      fontSize: 14,
+                    ),
+                  ),
+                  if (item.weight.isNotEmpty && item.description.isNotEmpty) ...[
+                    const SizedBox(height: 2),
+                    Text(
+                      '${item.weight} kg',
+                      style: TextStyle(
+                        color: Colors.white.withOpacity(0.45),
+                        fontSize: 11,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                  ],
+                ],
+              ),
+              const SizedBox(width: 8),
+              Icon(
+                Icons.chevron_right_rounded,
+                color: Colors.white.withOpacity(0.3),
+                size: 18,
+              ),
+            ],
           ),
         ),
       ),
     );
   }
 
-   Widget _buildTag(String label, Color color) {
-     return Container(
-       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-       decoration: BoxDecoration(
-         color: color.withOpacity(0.2),
-         borderRadius: BorderRadius.circular(20),
-         border: Border.all(color: color.withOpacity(0.3)),
-       ),
-       child: Text(
-         label,
-         style: TextStyle(color: color, fontSize: 9, fontWeight: FontWeight.bold),
-       ),
-     );
-   }
+  Widget _buildNutritionPlanCard(String url) {
+    return GestureDetector(
+      onTap: () async {
+        if (await canLaunchUrl(Uri.parse(url))) {
+          await launchUrl(Uri.parse(url), mode: LaunchMode.externalApplication);
+        } else {
+          if (mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(
+                content: Text('No se pudo abrir el enlace del plan de alimentación'),
+                backgroundColor: Colors.redAccent,
+              ),
+            );
+          }
+        }
+      },
+      child: Container(
+        width: double.infinity,
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+        decoration: BoxDecoration(
+          color: secondaryColor.withOpacity(0.12),
+          borderRadius: BorderRadius.circular(14),
+          border: Border.all(color: secondaryColor.withOpacity(0.28)),
+        ),
+        child: Row(
+          children: [
+            Container(
+              padding: const EdgeInsets.all(8),
+              decoration: BoxDecoration(
+                color: secondaryColor.withOpacity(0.2),
+                borderRadius: BorderRadius.circular(8),
+              ),
+              child: Icon(Icons.file_download_rounded, color: secondaryColor, size: 20),
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    'PLAN DE ALIMENTACIÓN',
+                    style: TextStyle(
+                      color: secondaryColor,
+                      fontWeight: FontWeight.bold,
+                      fontSize: 11,
+                      letterSpacing: 0.5,
+                    ),
+                  ),
+                  Text(
+                    'Descarga tu plan personalizado (PDF)',
+                    style: TextStyle(
+                      color: Colors.white.withOpacity(0.65),
+                      fontSize: 11,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            Icon(Icons.open_in_new, color: secondaryColor, size: 18),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildStartRoutineButton({
+    required Map<String, dynamic> routine,
+    required int totalExercises,
+    required bool isCompleted,
+    required bool isMissed,
+    required bool canStart,
+  }) {
+    final buttonColor = isCompleted
+        ? Colors.white.withOpacity(0.12)
+        : (!canStart
+            ? Colors.white.withOpacity(0.08)
+            : (isMissed ? const Color(0xFFFF5252) : primaryColor));
+
+    final textColor = (isCompleted || !canStart)
+        ? Colors.white70
+        : const Color(0xFF11151C);
+
+    final iconBgColor = (isCompleted || !canStart)
+        ? Colors.white.withOpacity(0.1)
+        : const Color(0xFF11151C);
+
+    final iconColor = (isCompleted || !canStart)
+        ? Colors.white70
+        : (isMissed ? const Color(0xFFFF5252) : primaryColor);
+
+    return Container(
+      width: double.infinity,
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(28),
+        boxShadow: (!isCompleted && canStart)
+            ? [
+                BoxShadow(
+                  color: (isMissed ? const Color(0xFFFF5252) : primaryColor).withOpacity(0.35),
+                  blurRadius: 16,
+                  offset: const Offset(0, 5),
+                ),
+              ]
+            : null,
+      ),
+      child: Material(
+        color: buttonColor,
+        borderRadius: BorderRadius.circular(28),
+        child: InkWell(
+          borderRadius: BorderRadius.circular(28),
+          onTap: (isCompleted || !canStart)
+              ? null
+              : () async {
+                  final result = await Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (context) => StartRoutinePage(
+                        routine: routine,
+                        routineId: routine['id'],
+                      ),
+                    ),
+                  );
+
+                  if (result == true) {
+                    _fetchRoutines();
+                  }
+                },
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+            child: Row(
+              children: [
+                Container(
+                  width: 36,
+                  height: 36,
+                  decoration: BoxDecoration(
+                    color: iconBgColor,
+                    shape: BoxShape.circle,
+                  ),
+                  child: Icon(
+                    isCompleted ? Icons.check_rounded : Icons.play_arrow_rounded,
+                    color: iconColor,
+                    size: 22,
+                  ),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Text(
+                    isCompleted
+                        ? "RUTINA COMPLETADA"
+                        : canStart
+                            ? (isMissed ? "COMPLETAR RUTINA" : "EMPEZAR RUTINA")
+                            : "NO DISPONIBLE",
+                    style: TextStyle(
+                      color: textColor,
+                      fontWeight: FontWeight.w900,
+                      fontSize: 14,
+                      letterSpacing: 0.8,
+                    ),
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                ),
+                Text(
+                  '$totalExercises ejer',
+                  style: TextStyle(
+                    color: textColor.withOpacity(0.85),
+                    fontWeight: FontWeight.w700,
+                    fontSize: 12.5,
+                  ),
+                ),
+                const SizedBox(width: 4),
+                Icon(
+                  Icons.chevron_right_rounded,
+                  color: textColor,
+                  size: 20,
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildTag(String label, Color color) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+      decoration: BoxDecoration(
+        color: color.withOpacity(0.2),
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: color.withOpacity(0.3)),
+      ),
+      child: Text(
+        label,
+        style: TextStyle(color: color, fontSize: 9, fontWeight: FontWeight.bold),
+      ),
+    );
+  }
 
 
    DateTime _normalizeDay(DateTime date) => DateTime.utc(date.year, date.month, date.day);
@@ -1327,4 +2033,24 @@ class _DashboardPageState extends State<DashboardPage> {
   }
 
 
+}
+
+class _RoutineDisplayExercise {
+  final int index;
+  final String name;
+  final String? workoutId;
+  final String sets;
+  final String reps;
+  final String weight;
+  final String description;
+
+  _RoutineDisplayExercise({
+    required this.index,
+    required this.name,
+    this.workoutId,
+    required this.sets,
+    required this.reps,
+    required this.weight,
+    required this.description,
+  });
 }

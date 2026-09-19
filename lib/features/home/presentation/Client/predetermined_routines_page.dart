@@ -234,7 +234,6 @@ class _PredeterminedRoutinesPageState extends State<PredeterminedRoutinesPage> {
       stream: FirebaseFirestore.instance
           .collection('predetermined_routines')
           .where('isActive', isEqualTo: true)
-          .orderBy('createdAt', descending: true)
           .snapshots(),
       builder: (context, snapshot) {
         if (snapshot.connectionState == ConnectionState.waiting) {
@@ -263,7 +262,8 @@ class _PredeterminedRoutinesPageState extends State<PredeterminedRoutinesPage> {
               if (_selectedLevel == 'all') return true;
               return r.level.toLowerCase() == _selectedLevel.toLowerCase();
             })
-            .toList();
+            .toList()
+          ..sort((a, b) => b.createdAt.compareTo(a.createdAt));
 
         if (routines.isEmpty) {
           return SliverFillRemaining(
