@@ -4,6 +4,7 @@ import 'package:youtube_player_flutter/youtube_player_flutter.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:yamanis_fit/core/widgets/app_back_button.dart';
 import '../../../../core/widgets/branded_loading_screen.dart';
+import '../Admin/create_workout_page.dart';
 
 class ViewWorkoutPage extends StatefulWidget {
   final String workoutId;
@@ -92,87 +93,18 @@ class _ViewWorkoutPageState extends State<ViewWorkoutPage> {
   }
 
   Future<void> _editWorkout() async {
-    final nameController = TextEditingController(text: workoutData?['name'] ?? "");
-    final descController = TextEditingController(text: workoutData?['description'] ?? "");
-    final videoController = TextEditingController(text: workoutData?['videoUrl'] ?? "");
-
-    final confirmed = await showDialog<bool>(
-      context: context,
-      builder: (context) => AlertDialog(
-        backgroundColor: backgroundColor,
-        title: const Text('Editar Ejercicio', style: TextStyle(color: Colors.white)),
-        content: SingleChildScrollView(
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              TextField(
-                controller: nameController,
-                style: const TextStyle(color: Colors.white),
-                decoration: const InputDecoration(
-                  labelText: 'Nombre',
-                  labelStyle: TextStyle(color: Colors.white70),
-                  enabledBorder: UnderlineInputBorder(borderSide: BorderSide(color: Colors.white24)),
-                ),
-              ),
-              const SizedBox(height: 16),
-              TextField(
-                controller: descController,
-                maxLines: 4,
-                style: const TextStyle(color: Colors.white),
-                decoration: const InputDecoration(
-                  labelText: 'Descripción',
-                  labelStyle: TextStyle(color: Colors.white70),
-                  enabledBorder: UnderlineInputBorder(borderSide: BorderSide(color: Colors.white24)),
-                ),
-              ),
-              const SizedBox(height: 16),
-              TextField(
-                controller: videoController,
-                style: const TextStyle(color: Colors.white),
-                decoration: const InputDecoration(
-                  labelText: 'URL de Video (YouTube)',
-                  labelStyle: TextStyle(color: Colors.white70),
-                  enabledBorder: UnderlineInputBorder(borderSide: BorderSide(color: Colors.white24)),
-                ),
-              ),
-            ],
-          ),
+    final updated = await Navigator.push<bool>(
+      context,
+      MaterialPageRoute(
+        builder: (_) => CreateWorkoutPage(
+          workoutId: widget.workoutId,
+          initialData: workoutData,
         ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context, false),
-            child: const Text('CANCELAR', style: TextStyle(color: Colors.white60)),
-          ),
-          TextButton(
-            onPressed: () => Navigator.pop(context, true),
-            child: Text('GUARDAR', style: TextStyle(color: primaryColor)),
-          ),
-        ],
       ),
     );
 
-    if (confirmed == true) {
-      try {
-        await FirebaseFirestore.instance.collection('workouts').doc(widget.workoutId).update({
-          'name': nameController.text.trim(),
-          'description': descController.text.trim(),
-          'videoUrl': videoController.text.trim(),
-        });
-
-        await loadWorkout();
-
-        if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('Ejercicio actualizado')),
-          );
-        }
-      } catch (e) {
-        if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text('Error al actualizar: $e')),
-          );
-        }
-      }
+    if (updated == true) {
+      await loadWorkout();
     }
   }
 
@@ -356,6 +288,97 @@ class _ViewWorkoutPageState extends State<ViewWorkoutPage> {
                       ),
                     ),
                   ),
+                  () {
+                    final generalMuscles = (workoutData?['generalMuscles'] as List?)?.map((e) => e.toString()).toList() ??
+                        ((workoutData?['muscleFocus'] as List?)?.map((e) => e.toString()).toList() ?? []);
+                    final specificMuscles = (workoutData?['specificMuscles'] as List?)?.map((e) => e.toString()).toList() ?? [];
+
+                    if (generalMuscles.isEmpty && specificMuscles.isEmpty) {
+                      return const SizedBox.shrink();
+                    }
+
+                    return Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        const SizedBox(height: 24),
+                        Row(
+                          children: [
+                            Icon(Icons.fitness_center_rounded, color: primaryColor, size: 16),
+                            const SizedBox(width: 8),
+                            Text(
+                              "MÚSCULOS TRABAJADOS",
+                              style: TextStyle(
+                                color: primaryColor,
+                                fontWeight: FontWeight.bold,
+                                fontSize: 10,
+                                letterSpacing: 2,
+                              ),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 12),
+                        if (generalMuscles.isNotEmpty) ...[
+                          Text(
+                            "GRUPOS GENERALES",
+                            style: TextStyle(color: Colors.white.withValues(alpha: 0.4), fontSize: 11, fontWeight: FontWeight.bold),
+                          ),
+                          const SizedBox(height: 8),
+                          Wrap(
+                            spacing: 8,
+                            runSpacing: 8,
+                            children: generalMuscles.map((g) {
+                              return Container(
+                                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                                decoration: BoxDecoration(
+                                  color: primaryColor.withValues(alpha: 0.15),
+                                  borderRadius: BorderRadius.circular(10),
+                                  border: Border.all(color: primaryColor.withValues(alpha: 0.35)),
+                                ),
+                                child: Text(
+                                  g,
+                                  style: TextStyle(
+                                    color: primaryColor,
+                                    fontWeight: FontWeight.bold,
+                                    fontSize: 12,
+                                  ),
+                                ),
+                              );
+                            }).toList(),
+                          ),
+                          const SizedBox(height: 16),
+                        ],
+                        if (specificMuscles.isNotEmpty) ...[
+                          Text(
+                            "MÚSCULOS ESPECÍFICOS",
+                            style: TextStyle(color: Colors.white.withValues(alpha: 0.4), fontSize: 11, fontWeight: FontWeight.bold),
+                          ),
+                          const SizedBox(height: 8),
+                          Wrap(
+                            spacing: 6,
+                            runSpacing: 6,
+                            children: specificMuscles.map((s) {
+                              return Container(
+                                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                                decoration: BoxDecoration(
+                                  color: Colors.white.withValues(alpha: 0.05),
+                                  borderRadius: BorderRadius.circular(10),
+                                  border: Border.all(color: Colors.white.withValues(alpha: 0.12)),
+                                ),
+                                child: Text(
+                                  s,
+                                  style: const TextStyle(
+                                    color: Colors.white70,
+                                    fontSize: 12,
+                                    fontWeight: FontWeight.w500,
+                                  ),
+                                ),
+                              );
+                            }).toList(),
+                          ),
+                        ],
+                      ],
+                    );
+                  }(),
                   const SizedBox(height: 24),
                 ],
               ),

@@ -105,7 +105,7 @@ class _WorkoutsPageState extends State<WorkoutsPage> {
               onChanged: (value) => setState(() => _searchQuery = value.toLowerCase()),
               style: const TextStyle(color: Colors.white, fontSize: 14),
               decoration: InputDecoration(
-                hintText: "Buscar ejercicios por nombre...",
+                hintText: "Buscar por nombre o músculo...",
                 hintStyle: TextStyle(color: Colors.white.withValues(alpha: 0.3)),
                 prefixIcon: Icon(Icons.search, color: primaryColor),
                 filled: true,
@@ -132,8 +132,16 @@ class _WorkoutsPageState extends State<WorkoutsPage> {
 
                 final allWorkouts = snapshot.data?.docs ?? [];
                 final filteredWorkouts = allWorkouts.where((doc) {
-                  final name = (doc.data()['name'] as String? ?? '').toLowerCase();
-                  return name.contains(_searchQuery);
+                  if (_searchQuery.isEmpty) return true;
+                  final data = doc.data();
+                  final name = (data['name'] as String? ?? '').toLowerCase();
+                  final general = (data['generalMuscles'] as List?)?.map((e) => e.toString().toLowerCase()).toList() ??
+                      ((data['muscleFocus'] as List?)?.map((e) => e.toString().toLowerCase()).toList() ?? []);
+                  final specific = (data['specificMuscles'] as List?)?.map((e) => e.toString().toLowerCase()).toList() ?? [];
+
+                  return name.contains(_searchQuery) ||
+                      general.any((m) => m.contains(_searchQuery)) ||
+                      specific.any((m) => m.contains(_searchQuery));
                 }).toList();
 
                 if (filteredWorkouts.isEmpty) {
@@ -231,18 +239,76 @@ class _WorkoutsPageState extends State<WorkoutsPage> {
                                     ),
                                   ],
                                 ),
-                                const SizedBox(height: 44),
+                                const SizedBox(height: 36),
                                 Text(
                                   name.toUpperCase(),
                                   style: const TextStyle(
                                     color: Colors.white,
-                                    fontSize: 20,
+                                    fontSize: 19,
                                     fontWeight: FontWeight.w900,
                                     height: 1.1,
                                     letterSpacing: -0.5,
                                   ),
                                 ),
-                                const SizedBox(height: 10),
+                                const SizedBox(height: 8),
+                                () {
+                                  final general = (workout['generalMuscles'] as List?)?.map((e) => e.toString()).toList() ??
+                                      ((workout['muscleFocus'] as List?)?.map((e) => e.toString()).toList() ?? []);
+                                  final specific = (workout['specificMuscles'] as List?)?.map((e) => e.toString()).toList() ?? [];
+                                  final tags = [...general, ...specific];
+                                  if (tags.isEmpty) return const SizedBox.shrink();
+
+                                  return Padding(
+                                    padding: const EdgeInsets.only(bottom: 8),
+                                    child: Wrap(
+                                      spacing: 6,
+                                      runSpacing: 4,
+                                      children: [
+                                        ...tags.take(3).map((tag) {
+                                          final isGeneral = general.contains(tag);
+                                          return Container(
+                                            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                                            decoration: BoxDecoration(
+                                              color: isGeneral
+                                                  ? primaryColor.withValues(alpha: 0.18)
+                                                  : Colors.white.withValues(alpha: 0.08),
+                                              borderRadius: BorderRadius.circular(8),
+                                              border: Border.all(
+                                                color: isGeneral
+                                                    ? primaryColor.withValues(alpha: 0.35)
+                                                    : Colors.white.withValues(alpha: 0.15),
+                                              ),
+                                            ),
+                                            child: Text(
+                                              tag,
+                                              style: TextStyle(
+                                                color: isGeneral ? primaryColor : Colors.white70,
+                                                fontSize: 10,
+                                                fontWeight: FontWeight.bold,
+                                              ),
+                                            ),
+                                          );
+                                        }),
+                                        if (tags.length > 3)
+                                          Container(
+                                            padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 3),
+                                            decoration: BoxDecoration(
+                                              color: Colors.white.withValues(alpha: 0.05),
+                                              borderRadius: BorderRadius.circular(8),
+                                            ),
+                                            child: Text(
+                                              '+${tags.length - 3}',
+                                              style: const TextStyle(
+                                                color: Colors.white54,
+                                                fontSize: 10,
+                                                fontWeight: FontWeight.bold,
+                                              ),
+                                            ),
+                                          ),
+                                      ],
+                                    ),
+                                  );
+                                }(),
                                 Row(
                                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                                   children: [
@@ -250,7 +316,7 @@ class _WorkoutsPageState extends State<WorkoutsPage> {
                                       "Toca para ver detalles",
                                       style: TextStyle(color: Colors.white60, fontSize: 12),
                                     ),
-                                    Icon(Icons.play_circle_fill, color: primaryColor, size: 32),
+                                    Icon(Icons.play_circle_fill, color: primaryColor, size: 28),
                                   ],
                                 ),
                               ],

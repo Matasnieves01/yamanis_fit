@@ -811,10 +811,17 @@ class _CreateRoutinePageState extends State<CreateRoutinePage> {
       filteredWorkouts = availableWorkouts;
     } else {
       final query = _workoutSearchQuery.toLowerCase();
-      filteredWorkouts = availableWorkouts
-          .where((workout) =>
-              (workout['name'] as String).toLowerCase().contains(query))
-          .toList();
+      filteredWorkouts = availableWorkouts.where((workout) {
+        final data = workout.data() as Map<String, dynamic>? ?? {};
+        final name = (data['name'] as String? ?? '').toLowerCase();
+        final general = (data['generalMuscles'] as List?)?.map((e) => e.toString().toLowerCase()).toList() ??
+            ((data['muscleFocus'] as List?)?.map((e) => e.toString().toLowerCase()).toList() ?? []);
+        final specific = (data['specificMuscles'] as List?)?.map((e) => e.toString().toLowerCase()).toList() ?? [];
+
+        return name.contains(query) ||
+            general.any((m) => m.contains(query)) ||
+            specific.any((m) => m.contains(query));
+      }).toList();
     }
   }
 
@@ -1504,7 +1511,7 @@ class _CreateRoutinePageState extends State<CreateRoutinePage> {
                      },
                      style: const TextStyle(color: Colors.white),
                      decoration: InputDecoration(
-                       hintText: 'Buscar ejercicios...',
+                       hintText: 'Buscar por nombre o músculo...',
                        hintStyle: TextStyle(color: Colors.white.withValues(alpha: 0.5)),
                        prefixIcon: Icon(Icons.search, color: primaryColor),
                        suffixIcon: _workoutSearchQuery.isNotEmpty
@@ -1777,10 +1784,15 @@ class _CreateRoutinePageState extends State<CreateRoutinePage> {
           builder: (context, setModalState) {
             final filteredList = searchQuery.isEmpty
                 ? availableWorkouts
-                : availableWorkouts
-                    .where((w) =>
-                        (w['name'] as String).toLowerCase().contains(searchQuery.toLowerCase()))
-                    .toList();
+                : availableWorkouts.where((w) {
+                    final data = w.data() as Map<String, dynamic>? ?? {};
+                    final name = (data['name'] as String? ?? '').toLowerCase();
+                    final general = (data['generalMuscles'] as List?)?.map((e) => e.toString().toLowerCase()).toList() ??
+                        ((data['muscleFocus'] as List?)?.map((e) => e.toString().toLowerCase()).toList() ?? []);
+                    final specific = (data['specificMuscles'] as List?)?.map((e) => e.toString().toLowerCase()).toList() ?? [];
+                    final q = searchQuery.toLowerCase();
+                    return name.contains(q) || general.any((m) => m.contains(q)) || specific.any((m) => m.contains(q));
+                  }).toList();
 
             return Container(
               decoration: BoxDecoration(

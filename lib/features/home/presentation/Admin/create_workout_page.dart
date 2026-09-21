@@ -2,6 +2,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import 'package:youtube_player_flutter/youtube_player_flutter.dart';
 import 'package:yamanis_fit/core/widgets/app_back_button.dart';
+import 'package:yamanis_fit/core/constants/muscle_constants.dart';
 
 class CreateWorkoutPage extends StatefulWidget {
   final String? workoutId;
@@ -19,6 +20,9 @@ class _CreateWorkoutPageState extends State<CreateWorkoutPage> {
   final TextEditingController _videoUrlController = TextEditingController();
   YoutubePlayerController? _youtubeController;
 
+  List<String> _selectedGeneralMuscles = [];
+  List<String> _selectedSpecificMuscles = [];
+
   bool isLoading = false;
   bool isEditing = false;
 
@@ -31,13 +35,42 @@ class _CreateWorkoutPageState extends State<CreateWorkoutPage> {
   void initState() {
     super.initState();
     isEditing = widget.workoutId != null;
-    if (isEditing && widget.initialData != null) {
-      _nameController.text = widget.initialData!['name'] ?? '';
-      _descController.text = widget.initialData!['description'] ?? '';
-      _videoUrlController.text = widget.initialData!['videoUrl'] ?? '';
-      _onUrlChanged();
+    if (isEditing) {
+      if (widget.initialData != null) {
+        _populateFields(widget.initialData!);
+      } else {
+        _fetchInitialData();
+      }
     }
     _videoUrlController.addListener(_onUrlChanged);
+  }
+
+  void _populateFields(Map<String, dynamic> data) {
+    _nameController.text = data['name'] ?? '';
+    _descController.text = data['description'] ?? '';
+    _videoUrlController.text = data['videoUrl'] ?? '';
+    if (data['generalMuscles'] is List) {
+      _selectedGeneralMuscles = List<String>.from(data['generalMuscles']);
+    } else if (data['muscleFocus'] is List) {
+      _selectedGeneralMuscles = List<String>.from(data['muscleFocus']);
+    }
+    if (data['specificMuscles'] is List) {
+      _selectedSpecificMuscles = List<String>.from(data['specificMuscles']);
+    }
+    _onUrlChanged();
+  }
+
+  Future<void> _fetchInitialData() async {
+    try {
+      final doc = await FirebaseFirestore.instance.collection('workouts').doc(widget.workoutId).get();
+      if (doc.exists && mounted) {
+        setState(() {
+          _populateFields(doc.data()!);
+        });
+      }
+    } catch (e) {
+      debugPrint('Error loading workout: $e');
+    }
   }
 
   void _onUrlChanged() {
@@ -88,7 +121,7 @@ class _CreateWorkoutPageState extends State<CreateWorkoutPage> {
         _descController.text.trim().isEmpty ||
         _videoUrlController.text.trim().isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Por favor, completa todos los campos')),
+        const SnackBar(content: Text('Por favor, completa todos los campos principales')),
       );
       return;
     }
@@ -100,6 +133,10 @@ class _CreateWorkoutPageState extends State<CreateWorkoutPage> {
         'name': _nameController.text.trim(),
         'description': _descController.text.trim(),
         'videoUrl': _videoUrlController.text.trim(),
+        'generalMuscles': _selectedGeneralMuscles,
+        'specificMuscles': _selectedSpecificMuscles,
+        'muscleFocus': _selectedGeneralMuscles,
+        'muscles': {..._selectedGeneralMuscles, ..._selectedSpecificMuscles}.toList(),
         'updatedAt': FieldValue.serverTimestamp(),
       };
 
@@ -115,7 +152,7 @@ class _CreateWorkoutPageState extends State<CreateWorkoutPage> {
         SnackBar(content: Text(isEditing ? 'Ejercicio actualizado!' : 'Ejercicio guardado!')),
       );
 
-      Navigator.pop(context);
+      Navigator.pop(context, true);
     } catch (e) {
       if (!mounted) return;
       setState(() => isLoading = false);
@@ -151,6 +188,169 @@ class _CreateWorkoutPageState extends State<CreateWorkoutPage> {
       ),
       labelStyle: TextStyle(color: primaryColor),
       hintStyle: TextStyle(color: Colors.white.withValues(alpha: 0.3)),
+    );
+  }
+
+  Widget _buildMuscleSelectionSection() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          children: [
+            Icon(Icons.fitness_center_rounded, color: primaryColor, size: 20),
+            const SizedBox(width: 8),
+            const Text(
+              "MÚSCULOS GENERALES",
+              style: TextStyle(
+                color: Colors.white,
+                fontWeight: FontWeight.w900,
+                fontSize: 14,
+                letterSpacing: 1.1,
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(height: 6),
+        Text(
+          "Selecciona los grupos musculares principales trabajados",
+          style: TextStyle(color: Colors.white.withValues(alpha: 0.5), fontSize: 12),
+        ),
+        const SizedBox(height: 12),
+        Wrap(
+          spacing: 8,
+          runSpacing: 8,
+          children: MuscleConstants.generalMuscles.map((general) {
+            final isSelected = _selectedGeneralMuscles.contains(general);
+            return FilterChip(
+              label: Text(general),
+              selected: isSelected,
+              onSelected: (selected) {
+                setState(() {
+                  if (selected) {
+                    _selectedGeneralMuscles.add(general);
+                  } else {
+                    _selectedGeneralMuscles.remove(general);
+                  }
+                });
+              },
+              backgroundColor: surfaceColor.withValues(alpha: 0.15),
+              selectedColor: primaryColor,
+              labelStyle: TextStyle(
+                color: isSelected ? backgroundColor : Colors.white,
+                fontWeight: isSelected ? FontWeight.bold : FontWeight.w500,
+                fontSize: 13,
+              ),
+              side: BorderSide(
+                color: isSelected ? primaryColor : Colors.white.withValues(alpha: 0.1),
+              ),
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+              showCheckmark: false,
+            );
+          }).toList(),
+        ),
+        const SizedBox(height: 26),
+        Row(
+          children: [
+            Icon(Icons.scatter_plot_rounded, color: primaryColor, size: 20),
+            const SizedBox(width: 8),
+            const Text(
+              "MÚSCULOS ESPECÍFICOS",
+              style: TextStyle(
+                color: Colors.white,
+                fontWeight: FontWeight.w900,
+                fontSize: 14,
+                letterSpacing: 1.1,
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(height: 6),
+        Text(
+          "Etiqueta con precisión la musculatura que se activa",
+          style: TextStyle(color: Colors.white.withValues(alpha: 0.5), fontSize: 12),
+        ),
+        const SizedBox(height: 14),
+        ...MuscleConstants.musclesByCategory.entries.map((entry) {
+          final category = entry.key;
+          final muscles = entry.value;
+          final isParentSelected = _selectedGeneralMuscles.contains(category);
+
+          return Padding(
+            padding: const EdgeInsets.only(bottom: 12),
+            child: Container(
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: Colors.white.withValues(alpha: 0.03),
+                borderRadius: BorderRadius.circular(16),
+                border: Border.all(
+                  color: isParentSelected
+                      ? primaryColor.withValues(alpha: 0.3)
+                      : Colors.white.withValues(alpha: 0.07),
+                ),
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    children: [
+                      Text(
+                        category.toUpperCase(),
+                        style: TextStyle(
+                          color: isParentSelected ? primaryColor : Colors.white60,
+                          fontWeight: FontWeight.w800,
+                          fontSize: 11,
+                          letterSpacing: 1.2,
+                        ),
+                      ),
+                      const SizedBox(width: 6),
+                      if (isParentSelected)
+                        Icon(Icons.check_circle_rounded, color: primaryColor, size: 13),
+                    ],
+                  ),
+                  const SizedBox(height: 8),
+                  Wrap(
+                    spacing: 6,
+                    runSpacing: 6,
+                    children: muscles.map((muscle) {
+                      final isSelected = _selectedSpecificMuscles.contains(muscle);
+                      return FilterChip(
+                        label: Text(muscle),
+                        selected: isSelected,
+                        onSelected: (selected) {
+                          setState(() {
+                            if (selected) {
+                              _selectedSpecificMuscles.add(muscle);
+                              // Auto-seleccionar el grupo general si no está activo
+                              final general = MuscleConstants.getGeneralForSpecific(muscle);
+                              if (general != null && !_selectedGeneralMuscles.contains(general)) {
+                                _selectedGeneralMuscles.add(general);
+                              }
+                            } else {
+                              _selectedSpecificMuscles.remove(muscle);
+                            }
+                          });
+                        },
+                        backgroundColor: surfaceColor.withValues(alpha: 0.1),
+                        selectedColor: primaryColor.withValues(alpha: 0.85),
+                        labelStyle: TextStyle(
+                          color: isSelected ? backgroundColor : Colors.white70,
+                          fontWeight: isSelected ? FontWeight.bold : FontWeight.w500,
+                          fontSize: 12,
+                        ),
+                        side: BorderSide(
+                          color: isSelected ? primaryColor : Colors.white.withValues(alpha: 0.08),
+                        ),
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                        showCheckmark: false,
+                      );
+                    }).toList(),
+                  ),
+                ],
+              ),
+            ),
+          );
+        }),
+      ],
     );
   }
 
@@ -207,7 +407,7 @@ class _CreateWorkoutPageState extends State<CreateWorkoutPage> {
               ),
             ),
             const SizedBox(height: 24),
-            if (_youtubeController != null)
+            if (_youtubeController != null) ...[
               ClipRRect(
                 borderRadius: BorderRadius.circular(20),
                 child: YoutubePlayer(
@@ -216,7 +416,10 @@ class _CreateWorkoutPageState extends State<CreateWorkoutPage> {
                   progressIndicatorColor: primaryColor,
                 ),
               ),
-            const SizedBox(height: 24),
+              const SizedBox(height: 24),
+            ],
+            _buildMuscleSelectionSection(),
+            const SizedBox(height: 28),
             SizedBox(
               width: double.infinity,
               height: 52,
