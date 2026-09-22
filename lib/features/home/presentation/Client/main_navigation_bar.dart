@@ -12,6 +12,9 @@ import 'predetermined_routines_page.dart' as client_predetermined;
 import '../Shared/resources_page.dart';
 import 'profile_page.dart';
 import 'notifications_page.dart';
+import 'data_sheet_page.dart';
+import 'widgets/data_sheet_required_dialog.dart';
+import 'package:yamanis_fit/core/services/biometrics_service.dart';
 
 class MainNavigationBar extends StatefulWidget {
   const MainNavigationBar({super.key, required this.role});
@@ -26,6 +29,7 @@ class _MainNavigationBarState extends State<MainNavigationBar> {
   int _currentIndex = 0;
   bool _isAccessExpired = false;
   final AuthService _authService = AuthService();
+  static String? _promptedUidThisSession;
 
   final Color primaryColor = const Color(0xFFAEE084);
 
@@ -33,6 +37,34 @@ class _MainNavigationBarState extends State<MainNavigationBar> {
   void initState() {
     super.initState();
     _checkAccessStatus();
+    _checkDataSheetStatus();
+  }
+
+  Future<void> _checkDataSheetStatus() async {
+    if (widget.role != UserRole.user) return;
+    final uid = FirebaseAuth.instance.currentUser?.uid;
+    if (uid == null) return;
+    if (_promptedUidThisSession == uid) return;
+
+    final hasCompleted = await BiometricsService.hasCompletedDataSheet(uid);
+    if (!hasCompleted && mounted) {
+      _promptedUidThisSession = uid;
+      await Future.delayed(const Duration(milliseconds: 600));
+      if (!mounted) return;
+
+      final shouldFill = await showDialog<bool>(
+        context: context,
+        barrierDismissible: false,
+        builder: (context) => const DataSheetRequiredDialog(),
+      );
+
+      if (shouldFill == true && mounted) {
+        await Navigator.push(
+          context,
+          MaterialPageRoute(builder: (_) => const DataSheetPage()),
+        );
+      }
+    }
   }
 
   Future<void> _checkAccessStatus() async {

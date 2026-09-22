@@ -2,6 +2,9 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:table_calendar/table_calendar.dart';
+import 'package:yamanis_fit/core/services/biometrics_service.dart';
+import 'package:yamanis_fit/models/user_data_sheet.dart';
+import 'client_info_page.dart';
 import 'create_routine_page.dart';
 import 'package:yamanis_fit/core/widgets/app_back_button.dart';
 
@@ -34,6 +37,7 @@ class _ClientRoutinesPageState extends State<ClientRoutinesPage> {
 
   bool _accountEnabled = false;
   DateTime? _activeUntil;
+  bool _hasCompletedDataSheet = true;
 
   final Color backgroundColor = const Color(0xFF11151C);
   final Color surfaceColor = const Color(0xFF55768C);
@@ -102,6 +106,7 @@ class _ClientRoutinesPageState extends State<ClientRoutinesPage> {
 
       final userData = userSnapshot.data() ?? {};
       final activeUntilTs = userData['activeUntil'] as Timestamp?;
+      final hasCompletedSheet = await BiometricsService.hasCompletedDataSheet(widget.clientId);
 
       if (!mounted) return;
       setState(() {
@@ -113,6 +118,7 @@ class _ClientRoutinesPageState extends State<ClientRoutinesPage> {
           ..addAll(completedIds);
         _accountEnabled = userData['isActive'] == true;
         _activeUntil = activeUntilTs?.toDate();
+        _hasCompletedDataSheet = hasCompletedSheet;
         _isLoading = false;
       });
     } catch (e) {
@@ -312,6 +318,12 @@ class _ClientRoutinesPageState extends State<ClientRoutinesPage> {
     );
 
     if (choice == 'same') {
+      final hasDataSheet = await BiometricsService.hasCompletedDataSheet(widget.clientId);
+      if (!hasDataSheet) {
+        if (!mounted) return;
+        _showIncompleteDataSheetWarning(widget.clientName);
+        return;
+      }
       if (!mounted) return;
       Navigator.push(
         context,
@@ -337,11 +349,20 @@ class _ClientRoutinesPageState extends State<ClientRoutinesPage> {
       );
 
       if (selectedClient != null && mounted) {
+        final targetClientId = selectedClient['id'] as String;
+        final targetClientName = (selectedClient['name'] ?? selectedClient['email'] ?? 'el cliente') as String;
+        final hasDataSheet = await BiometricsService.hasCompletedDataSheet(targetClientId);
+        if (!hasDataSheet) {
+          if (!mounted) return;
+          _showIncompleteDataSheetWarning(targetClientName);
+          return;
+        }
+
         Navigator.push(
           context,
           MaterialPageRoute(
             builder: (_) => CreateRoutinePage(
-              clientId: selectedClient['id'],
+              clientId: targetClientId,
               clientEmail: selectedClient['email'],
               initialRoutineData: routine,
             ),
@@ -349,6 +370,46 @@ class _ClientRoutinesPageState extends State<ClientRoutinesPage> {
         ).then((_) => _loadClientData());
       }
     }
+  }
+
+  void _showIncompleteDataSheetWarning(String clientName) {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        backgroundColor: backgroundColor,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(20),
+          side: BorderSide(color: Colors.amber.withValues(alpha: 0.4)),
+        ),
+        title: const Row(
+          children: [
+            Icon(Icons.warning_amber_rounded, color: Colors.amber, size: 24),
+            SizedBox(width: 8),
+            Expanded(
+              child: Text(
+                'Planilla Pendiente',
+                style: TextStyle(color: Colors.amber, fontWeight: FontWeight.bold, fontSize: 16),
+              ),
+            ),
+          ],
+        ),
+        content: Text(
+          '$clientName aún no ha completado su planilla de medidas corporales y antecedentes de salud obligatorios.\n\nPor seguridad del usuario y lineamientos de entrenamiento, no es posible asignarle o crearle una rutina hasta que complete sus datos.',
+          style: const TextStyle(color: Colors.white70, fontSize: 14),
+        ),
+        actions: [
+          ElevatedButton(
+            onPressed: () => Navigator.pop(context),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: primaryColor,
+              foregroundColor: backgroundColor,
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+            ),
+            child: const Text('ENTENDIDO', style: TextStyle(fontWeight: FontWeight.bold)),
+          ),
+        ],
+      ),
+    );
   }
 
   void _showAdjustProgressDialog(Map<String, dynamic> routine, String routineId) {
@@ -527,6 +588,19 @@ class _ClientRoutinesPageState extends State<ClientRoutinesPage> {
     );
   }
 
+  void _showClientDataSheetDialog() {
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (_) => ClientInfoPage(
+          clientId: widget.clientId,
+          clientName: widget.clientName,
+          clientEmail: widget.clientEmail,
+        ),
+      ),
+    ).then((_) => _loadClientData());
+  }
+
   Widget _buildAccountCard() {
     final now = DateTime.now();
     final isActive = _isAccountActiveNow;
@@ -591,6 +665,39 @@ class _ClientRoutinesPageState extends State<ClientRoutinesPage> {
               ),
             ),
           ),
+          if (!_hasCompletedDataSheet) ...[
+            const SizedBox(height: 12),
+            Container(
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: Colors.amber.withValues(alpha: 0.12),
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(color: Colors.amber.withValues(alpha: 0.35)),
+              ),
+              child: const Row(
+                children: [
+                  Icon(Icons.assignment_late_outlined, color: Colors.amber, size: 20),
+                  SizedBox(width: 10),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          'Planilla y medidas pendientes',
+                          style: TextStyle(color: Colors.amber, fontWeight: FontWeight.bold, fontSize: 13),
+                        ),
+                        SizedBox(height: 2),
+                        Text(
+                          'El cliente no ha llenado sus medidas ni encuesta de salud. No se le pueden asignar rutinas.',
+                          style: TextStyle(color: Colors.white70, fontSize: 11),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
         ],
       ),
     );
@@ -754,6 +861,13 @@ class _ClientRoutinesPageState extends State<ClientRoutinesPage> {
         backgroundColor: Colors.transparent,
         elevation: 0,
         leading: const AppBackButton(),
+        actions: [
+          IconButton(
+            icon: Icon(Icons.assignment_ind_outlined, color: primaryColor),
+            tooltip: 'Ficha del Cliente',
+            onPressed: _showClientDataSheetDialog,
+          ),
+        ],
       ),
       body: _isLoading
           ? Center(child: CircularProgressIndicator(color: primaryColor))
@@ -763,12 +877,42 @@ class _ClientRoutinesPageState extends State<ClientRoutinesPage> {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   _buildAccountCard(),
+                  const SizedBox(height: 10),
+                  SizedBox(
+                    width: double.infinity,
+                    height: 48,
+                    child: OutlinedButton.icon(
+                      onPressed: _showClientDataSheetDialog,
+                      icon: Icon(Icons.accessibility_new_rounded, color: primaryColor, size: 20),
+                      label: Text(
+                        'VER ESQUELETO DE MEDIDAS & ENCUESTAS',
+                        style: TextStyle(
+                          color: primaryColor,
+                          fontWeight: FontWeight.w800,
+                          fontSize: 12,
+                          letterSpacing: 0.8,
+                        ),
+                      ),
+                      style: OutlinedButton.styleFrom(
+                        side: BorderSide(color: primaryColor.withValues(alpha: 0.4)),
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                        backgroundColor: primaryColor.withValues(alpha: 0.06),
+                      ),
+                    ),
+                  ),
                   const SizedBox(height: 12),
                   SizedBox(
                     width: double.infinity,
                     height: 52,
                     child: ElevatedButton.icon(
-                      onPressed: () {
+                      onPressed: () async {
+                        final hasDataSheet = await BiometricsService.hasCompletedDataSheet(widget.clientId);
+                        if (!hasDataSheet) {
+                          if (!mounted) return;
+                          _showIncompleteDataSheetWarning(widget.clientName);
+                          return;
+                        }
+                        if (!mounted) return;
                         Navigator.push(
                           context,
                           MaterialPageRoute(

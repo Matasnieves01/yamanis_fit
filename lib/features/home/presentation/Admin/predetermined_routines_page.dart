@@ -1,5 +1,6 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
+import 'package:yamanis_fit/core/services/biometrics_service.dart';
 import 'package:yamanis_fit/core/services/predetermined_routine_service.dart';
 import 'package:yamanis_fit/models/predetermined_routine.dart';
 import 'package:yamanis_fit/models/routine_request.dart';
@@ -100,7 +101,61 @@ class _PredeterminedRoutinesPageState extends State<PredeterminedRoutinesPage>
 
     final routine = PredeterminedRoutine.fromFirestore(routineDoc);
 
-    // 2. VALIDACIÓN ESTRICTA: ¿El usuario ya tiene una rutina asignada?
+    // 2. VALIDACIÓN ESTRICTA: ¿El usuario tiene su planilla completa?
+    final hasCompletedSheet = await BiometricsService.hasCompletedDataSheet(request.userId);
+    if (!hasCompletedSheet) {
+      if (!mounted) return;
+      showDialog(
+        context: context,
+        builder: (context) => AlertDialog(
+          backgroundColor: backgroundColor,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(20),
+            side: BorderSide(color: Colors.amber.withValues(alpha: 0.5), width: 1.5),
+          ),
+          title: const Row(
+            children: [
+              Icon(Icons.warning_amber_rounded, color: Colors.amber, size: 24),
+              SizedBox(width: 8),
+              Expanded(
+                child: Text(
+                  'PLANILLA INCOMPLETA',
+                  style: TextStyle(color: Colors.amber, fontWeight: FontWeight.w900, fontSize: 16),
+                ),
+              ),
+            ],
+          ),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                'El cliente ${request.userName} (${request.userEmail}) aún no ha completado su planilla de medidas y antecedentes de salud obligatorios.',
+                style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w600, fontSize: 14),
+              ),
+              const SizedBox(height: 12),
+              const Text(
+                'Por políticas de seguridad y prescripción de ejercicio, no es posible asignarle un plan hasta que el cliente ingrese sus medidas y antecedentes clínicos.',
+                style: TextStyle(color: Colors.white70, fontSize: 13, height: 1.3),
+              ),
+            ],
+          ),
+          actions: [
+            ElevatedButton(
+              onPressed: () => Navigator.pop(context),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: surfaceColor,
+                foregroundColor: Colors.white,
+              ),
+              child: const Text('ENTENDIDO'),
+            ),
+          ],
+        ),
+      );
+      return;
+    }
+
+    // 3. VALIDACIÓN ESTRICTA: ¿El usuario ya tiene una rutina asignada?
     final hasActive = await PredeterminedRoutineService.userHasActiveRoutine(request.userId);
 
     if (hasActive) {

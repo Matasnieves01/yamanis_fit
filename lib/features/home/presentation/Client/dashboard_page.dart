@@ -7,6 +7,8 @@ import 'view_workout_page.dart';
 import 'package:yamanis_fit/features/home/presentation/Client/start_routine_page.dart';
 import 'package:intl/intl.dart';
 import 'package:yamanis_fit/core/widgets/branded_loading_screen.dart';
+import 'data_sheet_page.dart';
+import 'package:yamanis_fit/core/services/biometrics_service.dart';
 
 class DashboardPage extends StatefulWidget {
   const DashboardPage({super.key});
@@ -35,6 +37,7 @@ class _DashboardPageState extends State<DashboardPage> {
   DateTime? _activeUntil;
   bool _isLoading = true;
   String _userRole = 'user';
+  bool _hasCompletedDataSheet = true;
 
   final Color backgroundColor = const Color(0xFF11151C);
   final Color surfaceColor = const Color(0xFF55768C);
@@ -180,6 +183,11 @@ class _DashboardPageState extends State<DashboardPage> {
         calculatedMax = 14;
       }
 
+      bool isSheetComplete = true;
+      if (_userRole == 'user') {
+        isSheetComplete = await BiometricsService.hasCompletedDataSheet(user.uid);
+      }
+
       setState(() {
         _routines.clear();
         _routines.addAll(newRoutines);
@@ -191,6 +199,7 @@ class _DashboardPageState extends State<DashboardPage> {
         _maxStreak = calculatedMax;
         _activeUntil = activeUntil;
         _isAccountActive = isAccountActive;
+        _hasCompletedDataSheet = isSheetComplete;
         _isLoading = false;
       });
     } catch (e) {
@@ -202,6 +211,107 @@ class _DashboardPageState extends State<DashboardPage> {
 
   List<Map<String, dynamic>> _getRoutinesForDay(DateTime day) {
     return _routines[DateTime.utc(day.year, day.month, day.day)] ?? [];
+  }
+
+  Widget _buildDataSheetPendingBanner() {
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        gradient: const LinearGradient(
+          colors: [
+            Color(0xFF2E2214),
+            Color(0xFF181B22),
+          ],
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+        ),
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(
+          color: Colors.orangeAccent.withValues(alpha: 0.4),
+          width: 1.2,
+        ),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.orangeAccent.withValues(alpha: 0.1),
+            blurRadius: 16,
+            offset: const Offset(0, 4),
+          ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.all(8),
+                decoration: BoxDecoration(
+                  color: Colors.orangeAccent.withValues(alpha: 0.15),
+                  shape: BoxShape.circle,
+                ),
+                child: const Icon(
+                  Icons.assignment_late_rounded,
+                  color: Colors.orangeAccent,
+                  size: 20,
+                ),
+              ),
+              const SizedBox(width: 10),
+              const Expanded(
+                child: Text(
+                  "Planilla y Medidas pendientes",
+                  style: TextStyle(
+                    color: Colors.orangeAccent,
+                    fontWeight: FontWeight.bold,
+                    fontSize: 14,
+                  ),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 8),
+          Text(
+            "Debes completar tus medidas corporales y la encuesta de salud para que tu entrenadora pueda diseñar y asignarte tu plan de entrenamiento.",
+            style: TextStyle(
+              color: Colors.white.withValues(alpha: 0.75),
+              fontSize: 12,
+              height: 1.35,
+            ),
+          ),
+          const SizedBox(height: 12),
+          SizedBox(
+            width: double.infinity,
+            height: 40,
+            child: ElevatedButton(
+              onPressed: () async {
+                final completed = await Navigator.push(
+                  context,
+                  MaterialPageRoute(builder: (_) => const DataSheetPage()),
+                );
+                if (completed == true) {
+                  _fetchRoutines();
+                }
+              },
+              style: ElevatedButton.styleFrom(
+                backgroundColor: primaryColor,
+                foregroundColor: Colors.black,
+                elevation: 0,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(12),
+                ),
+              ),
+              child: const Text(
+                "COMPLETAR PLANILLA AHORA",
+                style: TextStyle(
+                  fontWeight: FontWeight.w900,
+                  fontSize: 12,
+                  letterSpacing: 0.5,
+                ),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
   }
 
   @override
@@ -248,6 +358,10 @@ class _DashboardPageState extends State<DashboardPage> {
                         ],
                       ),
                       const SizedBox(height: 20),
+                      if (_userRole == 'user' && !_hasCompletedDataSheet) ...[
+                        _buildDataSheetPendingBanner(),
+                        const SizedBox(height: 16),
+                      ],
                       _buildStreakWidget(),
                       const SizedBox(height: 16),
                       _buildCalendarSection(),
