@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:table_calendar/table_calendar.dart';
+import 'package:yamanis_fit/core/services/biometrics_service.dart';
 import 'create_workout_page.dart';
 import 'package:yamanis_fit/core/widgets/app_back_button.dart';
 
@@ -136,6 +137,7 @@ class _CreateRoutinePageState extends State<CreateRoutinePage> {
   int? _activeWeekday;
   bool isLoading = false;
   bool _isLoadingWorkouts = false;
+  bool? _clientHasCompletedDataSheet;
 
   int _durationWeeks = 4;
   static const List<int> _durationOptions = [1, 2, 4, 8, 12];
@@ -730,6 +732,14 @@ class _CreateRoutinePageState extends State<CreateRoutinePage> {
     _prefillForEdit();
     loadWorkouts();
     _fetchClientRoutines();
+    _checkClientDataSheet();
+  }
+
+  Future<void> _checkClientDataSheet() async {
+    final hasSheet = await BiometricsService.hasCompletedDataSheet(widget.clientId);
+    if (mounted) {
+      setState(() => _clientHasCompletedDataSheet = hasSheet);
+    }
   }
 
    void _prefillForEdit() {
@@ -874,6 +884,50 @@ class _CreateRoutinePageState extends State<CreateRoutinePage> {
   Future<void> _saveRoutine() async {
     final user = FirebaseAuth.instance.currentUser;
     if (user == null) return;
+
+    // Validación obligatoria: El cliente debe tener su planilla de medidas y salud completas
+    final hasCompletedSheet = await BiometricsService.hasCompletedDataSheet(widget.clientId);
+    if (!hasCompletedSheet) {
+      if (!mounted) return;
+      showDialog(
+        context: context,
+        builder: (context) => AlertDialog(
+          backgroundColor: backgroundColor,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(20),
+            side: BorderSide(color: Colors.amber.withValues(alpha: 0.5)),
+          ),
+          title: const Row(
+            children: [
+              Icon(Icons.warning_amber_rounded, color: Colors.amber, size: 24),
+              SizedBox(width: 8),
+              Expanded(
+                child: Text(
+                  'Cliente sin planilla/medidas',
+                  style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 16),
+                ),
+              ),
+            ],
+          ),
+          content: const Text(
+            'Este cliente aún no ha completado su planilla de medidas corporales y encuesta médica obligatorias.\n\nPor seguridad del usuario y lineamientos de entrenamiento, no es posible crear o guardar rutinas hasta que complete su ficha.',
+            style: TextStyle(color: Colors.white70, fontSize: 14),
+          ),
+          actions: [
+            ElevatedButton(
+              onPressed: () => Navigator.pop(context),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: primaryColor,
+                foregroundColor: backgroundColor,
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+              ),
+              child: const Text('ENTENDIDO', style: TextStyle(fontWeight: FontWeight.bold)),
+            ),
+          ],
+        ),
+      );
+      return;
+    }
 
     if (_isCreateMode && _selectedWeekdays.isEmpty) {
       _showErrorSnackBar('Selecciona al menos un dia de la semana');
@@ -1091,6 +1145,39 @@ class _CreateRoutinePageState extends State<CreateRoutinePage> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
+            if (_clientHasCompletedDataSheet == false) ...[
+              Container(
+                margin: const EdgeInsets.only(bottom: 16),
+                padding: const EdgeInsets.all(14),
+                decoration: BoxDecoration(
+                  color: Colors.amber.withValues(alpha: 0.12),
+                  borderRadius: BorderRadius.circular(16),
+                  border: Border.all(color: Colors.amber.withValues(alpha: 0.35)),
+                ),
+                child: Row(
+                  children: [
+                    const Icon(Icons.warning_amber_rounded, color: Colors.amber, size: 24),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: const [
+                          Text(
+                            'Planilla de datos pendiente',
+                            style: TextStyle(color: Colors.amber, fontWeight: FontWeight.bold, fontSize: 13),
+                          ),
+                          SizedBox(height: 2),
+                          Text(
+                            'Este cliente aún no ha completado sus medidas corporales y encuesta de salud obligatorias. No podrás guardar rutinas para él.',
+                            style: TextStyle(color: Colors.white70, fontSize: 11),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
             _buildSectionTitle('Rutina para ${widget.clientEmail}'),
             const SizedBox(height: 24),
             if (widget.initialRoutineId != null)

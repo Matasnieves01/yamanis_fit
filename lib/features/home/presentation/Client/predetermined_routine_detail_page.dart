@@ -1,7 +1,10 @@
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
+import 'package:yamanis_fit/core/services/biometrics_service.dart';
 import 'package:yamanis_fit/core/services/predetermined_routine_service.dart';
 import 'package:yamanis_fit/core/widgets/app_back_button.dart';
+import 'package:yamanis_fit/features/home/presentation/Client/data_sheet_page.dart';
+import 'package:yamanis_fit/features/home/presentation/Client/widgets/data_sheet_required_dialog.dart';
 import 'package:yamanis_fit/models/predetermined_routine.dart';
 import 'package:yamanis_fit/models/routine_request.dart';
 
@@ -64,6 +67,33 @@ class _PredeterminedRoutineDetailPageState
   Future<void> _handleRequest() async {
     final user = FirebaseAuth.instance.currentUser;
     if (user == null) return;
+
+    // Validación obligatoria: El usuario debe tener la planilla de datos completa
+    final hasCompleted = await BiometricsService.hasCompletedDataSheet(user.uid);
+    if (!hasCompleted) {
+      if (!mounted) return;
+      final fillNow = await showDialog<bool>(
+        context: context,
+        barrierDismissible: false,
+        builder: (context) => const DataSheetRequiredDialog(
+          isForRoutineRequest: true,
+        ),
+      );
+
+      if (fillNow == true && mounted) {
+        final completed = await Navigator.push<bool>(
+          context,
+          MaterialPageRoute(
+            builder: (_) => const DataSheetPage(isRequiredForRoutine: true),
+          ),
+        );
+        if (completed != true) return;
+      } else {
+        return;
+      }
+    }
+
+    if (!mounted) return;
 
     final confirm = await showDialog<bool>(
       context: context,

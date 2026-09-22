@@ -1,5 +1,6 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/foundation.dart';
+import 'package:yamanis_fit/core/services/biometrics_service.dart';
 import 'package:yamanis_fit/models/predetermined_routine.dart';
 import 'package:yamanis_fit/models/routine_request.dart';
 
@@ -13,34 +14,46 @@ class PredeterminedRoutineService {
   }
 
   /// Verifica de forma estricta si un usuario ya tiene una rutina activa asignada en su calendario.
-  /// Se considera activa cualquier sesión con fecha igual o posterior al día de hoy.
   static Future<bool> userHasActiveRoutine(String userId) async {
+    final startOfToday = _startOfToday();
+
     try {
-      final startToday = _startOfToday();
-      final snapshot = await _firestore
+      // 1. Obtener todas las rutinas del usuario con fecha >= hoy
+      final querySnapshot = await _firestore
           .collection('routines')
           .where('clientId', isEqualTo: userId)
-          .where('date', isGreaterThanOrEqualTo: Timestamp.fromDate(startToday))
-          .limit(1)
+          .where('date', isGreaterThanOrEqualTo: Timestamp.fromDate(startOfToday))
           .get();
 
-      return snapshot.docs.isNotEmpty;
+      if (querySnapshot.docs.isEmpty) {
+        return false;
+      }
+
+      // 2. Obtener IDs de las rutinas que el usuario ya completó
+      final logsSnapshot = await _firestore
+          .collection('routine_logs')
+          .where('userId', isEqualTo: userId)
+          .get();
+
+      final completedRoutineIds = logsSnapshot.docs
+          .map((doc) => doc.data()['routineId'] as String?)
+          .where((id) => id != null && id.isNotEmpty)
+          .cast<String>()
+          .toSet();
+
+      // 3. Si hay al menos una rutina futura o de hoy que NO esté completada, tiene rutina activa
+      for (final doc in querySnapshot.docs) {
+        final routineId = doc.id;
+        if (!completedRoutineIds.contains(routineId)) {
+          return true; // Encontró una rutina pendiente/activa
+        }
+      }
+
+      return false; // Todas las rutinas encontradas ya fueron completadas
     } catch (e) {
       debugPrint('[PredeterminedRoutineService] Error checking active routine: $e');
-      // En caso de error de red, realizar consulta sin filtro compuesto
-      final snapshot = await _firestore
-          .collection('routines')
-          .where('clientId', isEqualTo: userId)
-          .get();
-
-      final now = DateTime.now();
-      final today = DateTime(now.year, now.month, now.day);
-      return snapshot.docs.any((doc) {
-        final ts = doc.data()['date'] as Timestamp?;
-        if (ts == null) return false;
-        final date = ts.toDate();
-        return !date.isBefore(today);
-      });
+      // En caso de error de red o índice, asumimos false para no bloquear injustamente al usuario
+      return false;
     }
   }
 
@@ -59,7 +72,7 @@ class PredeterminedRoutineService {
     }
   }
 
-  /// Obtiene la solicitud activa pendiente de un usuario si existe
+  /// Verifica si el usuario tiene una solicitud pendiente
   static Future<RoutineRequest?> getPendingRequestForUser(String userId) async {
     try {
       final snapshot = await _firestore
@@ -70,15 +83,19 @@ class PredeterminedRoutineService {
           .get();
 
       if (snapshot.docs.isEmpty) return null;
-      return RoutineRequest.fromFirestore(snapshot.docs.first);
+      final doc = snapshot.docs.first;
+      return RoutineRequest.fromMap(doc.data(), doc.id);
     } catch (e) {
-      debugPrint('[PredeterminedRoutineService] Error fetching pending request: $e');
+      debugPrint('[PredeterminedRoutineService] Error checking pending request: $e');
       return null;
     }
   }
 
-  /// El cliente solicita una rutina predeterminada.
-  /// REGLA: Falla de inmediato si el usuario ya tiene una rutina asignada o una solicitud pendiente.
+  /// Solicitar la asignación de una rutina predeterminada.
+  /// REGLA ESTRICTA: Solo puede solicitar si:
+  /// 1. NO tiene una rutina activa en su calendario.
+  /// 2. Ha completado su Planilla de Datos obligatoria (medidas y encuesta).
+  /// 3. NO tiene ya una solicitud pendiente.
   static Future<void> requestRoutine({
     required String userId,
     required String userEmail,
@@ -93,7 +110,15 @@ class PredeterminedRoutineService {
       );
     }
 
-    // 2. Validar si ya tiene una solicitud pendiente
+    // 2. Validar si el usuario ha completado obligatoriamente su planilla de datos
+    final hasCompletedSheet = await BiometricsService.hasCompletedDataSheet(userId);
+    if (!hasCompletedSheet) {
+      throw Exception(
+        'Es obligatorio completar la Planilla de Datos (medidas y antecedentes de salud) antes de solicitar un plan de entrenamiento.',
+      );
+    }
+
+    // 3. Validar si ya tiene una solicitud pendiente
     final pending = await getPendingRequestForUser(userId);
     if (pending != null) {
       throw Exception(
@@ -103,7 +128,7 @@ class PredeterminedRoutineService {
 
     final docId = '${userId}_${routine.id}';
 
-    // 3. Crear el documento de solicitud
+    // 4. Crear el documento de solicitud
     await _firestore.collection('routine_requests').doc(docId).set({
       'userId': userId,
       'userEmail': userEmail,
@@ -114,7 +139,7 @@ class PredeterminedRoutineService {
       'requestedAt': FieldValue.serverTimestamp(),
     });
 
-    // 4. Notificar a la entrenadora (admin)
+    // 5. Notificar a la entrenadora (admin)
     await _firestore.collection('notifications').add({
       'title': '📋 Nueva Solicitud de Rutina',
       'message': '$userName ($userEmail) solicita el programa: ${routine.name}',
@@ -129,7 +154,9 @@ class PredeterminedRoutineService {
   }
 
   /// La entrenadora aprueba y asigna la rutina al usuario.
-  /// REGLA ESTRICTA: Solo se puede aprobar y asignar si el usuario NO tiene una rutina ya asignada.
+  /// REGLAS ESTRICTAS:
+  /// - Solo se puede aprobar y asignar si el usuario tiene su planilla de medidas y salud completada.
+  /// - Solo se puede aprobar y asignar si el usuario NO tiene una rutina ya asignada.
   static Future<int> approveAndAssignRoutine({
     required String requestId,
     required PredeterminedRoutine routine,
@@ -137,7 +164,15 @@ class PredeterminedRoutineService {
     String? targetUserName,
     DateTime? startDate,
   }) async {
-    // 1. REGLA ESTRICTA: Verificar que el usuario NO tenga una rutina activa
+    // 1. REGLA ESTRICTA: Validar que el usuario tenga completada su planilla de medidas y salud
+    final hasCompletedDataSheet = await BiometricsService.hasCompletedDataSheet(targetUserId);
+    if (!hasCompletedDataSheet) {
+      throw Exception(
+        'No se puede asignar: El usuario aún no ha completado su planilla de medidas corporales y antecedentes de salud obligatorios.',
+      );
+    }
+
+    // 2. REGLA ESTRICTA: Verificar que el usuario NO tenga una rutina activa
     final hasActive = await userHasActiveRoutine(targetUserId);
     if (hasActive) {
       throw Exception(
@@ -145,7 +180,7 @@ class PredeterminedRoutineService {
       );
     }
 
-    // 2. Determinar fecha de inicio (por defecto hoy o próximo lunes si es fin de semana)
+    // 3. Determinar fecha de inicio (por defecto hoy o próximo lunes si es fin de semana)
     final baseDate = startDate ?? DateTime.now();
     final cleanStart = DateTime(baseDate.year, baseDate.month, baseDate.day);
 

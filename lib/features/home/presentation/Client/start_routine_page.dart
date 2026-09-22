@@ -149,64 +149,22 @@ class _StartRoutinePageState extends State<StartRoutinePage> {
     }
   }
 
-  void _showFinalCommentDialog() {
-    final commentController = TextEditingController();
+  void _showFinalCommentDialog({String initialComment = ""}) {
     showDialog(
       context: context,
-      barrierDismissible: false,
-      builder: (context) => AlertDialog(
-        backgroundColor: const Color(0xFF1A1A1A),
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
-        title: const Text(
-          "¡Rutina Terminada!",
-          style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
-        ),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              "¿Quieres dejar algún comentario sobre el entrenamiento?",
-              style: TextStyle(
-                color: Colors.white.withValues(alpha: 0.7),
-                fontSize: 14,
-              ),
-            ),
-            const SizedBox(height: 16),
-            TextField(
-              controller: commentController,
-              maxLines: 3,
-              style: const TextStyle(color: Colors.white),
-              decoration: InputDecoration(
-                hintText: "Escribe aquí (opcional)...",
-                hintStyle: TextStyle(
-                  color: Colors.white.withValues(alpha: 0.3),
-                ),
-                fillColor: Colors.white.withValues(alpha: 0.05),
-                filled: true,
-                border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(12),
-                  borderSide: BorderSide.none,
-                ),
-              ),
-            ),
-          ],
-        ),
-        actions: [
-          TextButton(
-            onPressed: () {
-              Navigator.pop(context); // Close dialog
-              _finalizeRoutine(commentController.text.trim());
-            },
-            child: Text(
-              "ENVIAR",
-              style: TextStyle(
-                color: primaryColor,
-                fontWeight: FontWeight.bold,
-              ),
-            ),
-          ),
-        ],
+      barrierDismissible: true,
+      builder: (dialogContext) => RoutineFeedbackDialog(
+        routineName: (widget.routine['name'] ?? 'Rutina').toString(),
+        totalExercises: workouts.length,
+        primaryColor: primaryColor,
+        backgroundColor: backgroundColor,
+        initialComment: initialComment,
+        onSend: (comment) {
+          _finalizeRoutine(comment);
+        },
+        onSkip: () {
+          _finalizeRoutine("");
+        },
       ),
     );
   }
@@ -265,83 +223,22 @@ class _StartRoutinePageState extends State<StartRoutinePage> {
       debugPrint("Error finishing routine: $e");
       if (!mounted) return;
       setState(() => isLoading = false);
-      _showErrorDialog(e.toString());
+      _showErrorDialog(e.toString(), lastComment: comment);
     }
   }
 
-  void _showErrorDialog(String errorMessage) {
+  void _showErrorDialog(String errorMessage, {String lastComment = ""}) {
     showDialog(
       context: context,
       barrierDismissible: false,
-      builder: (context) => AlertDialog(
-        backgroundColor: const Color(0xFF1A1A1A),
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
-        title: const Text(
-          "Error al guardar",
-          style: TextStyle(
-            color: Colors.redAccent,
-            fontWeight: FontWeight.bold,
-          ),
-        ),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              "No pudimos guardar tu progreso. Por favor verifica tu conexión a internet e intenta de nuevo.",
-              style: TextStyle(
-                color: Colors.white.withValues(alpha: 0.7),
-                fontSize: 14,
-              ),
-            ),
-            const SizedBox(height: 16),
-            Container(
-              padding: const EdgeInsets.all(12),
-              decoration: BoxDecoration(
-                color: Colors.redAccent.withValues(alpha: 0.1),
-                borderRadius: BorderRadius.circular(8),
-                border: Border.all(
-                  color: Colors.redAccent.withValues(alpha: 0.3),
-                ),
-              ),
-              child: Text(
-                errorMessage.length > 100
-                    ? "${errorMessage.substring(0, 100)}..."
-                    : errorMessage,
-                style: TextStyle(
-                  color: Colors.redAccent.withValues(alpha: 0.8),
-                  fontSize: 11,
-                  fontFamily: 'monospace',
-                ),
-              ),
-            ),
-          ],
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: Text(
-              "CERRAR",
-              style: TextStyle(
-                color: primaryColor,
-                fontWeight: FontWeight.bold,
-              ),
-            ),
-          ),
-          TextButton(
-            onPressed: () {
-              Navigator.pop(context);
-              _showFinalCommentDialog();
-            },
-            child: Text(
-              "REINTENTAR",
-              style: TextStyle(
-                color: Colors.orangeAccent,
-                fontWeight: FontWeight.bold,
-              ),
-            ),
-          ),
-        ],
+      builder: (dialogContext) => RoutineErrorDialog(
+        errorMessage: errorMessage,
+        primaryColor: primaryColor,
+        onClose: () => Navigator.pop(dialogContext),
+        onRetry: () {
+          Navigator.pop(dialogContext);
+          _showFinalCommentDialog(initialComment: lastComment);
+        },
       ),
     );
   }
@@ -350,32 +247,15 @@ class _StartRoutinePageState extends State<StartRoutinePage> {
     showDialog(
       context: context,
       barrierDismissible: false,
-      builder: (context) => AlertDialog(
-        backgroundColor: const Color(0xFF1A1A1A),
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
-        title: const Text("¡Éxito!", style: TextStyle(color: Colors.white)),
-        content: Text(
-          "Tu progreso ha sido enviado correctamente.",
-          style: TextStyle(color: Colors.white.withValues(alpha: 0.7)),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () {
-              Navigator.pop(context); // Close success dialog
-              Navigator.pop(
-                context,
-                true,
-              ); // Go back to dashboard with success indicator
-            },
-            child: Text(
-              "LISTO",
-              style: TextStyle(
-                color: primaryColor,
-                fontWeight: FontWeight.bold,
-              ),
-            ),
-          ),
-        ],
+      builder: (dialogContext) => RoutineSuccessDialog(
+        primaryColor: primaryColor,
+        onContinue: () {
+          Navigator.pop(dialogContext); // Close success dialog
+          Navigator.pop(
+            context,
+            true,
+          ); // Go back to dashboard with success indicator
+        },
       ),
     );
   }
@@ -428,6 +308,10 @@ class _StartRoutinePageState extends State<StartRoutinePage> {
                     workouts[index]['exercises'] ?? [workouts[index]],
                     workouts[index],
                   ),
+                if (workouts.isNotEmpty && completionStatus.every((status) => status)) ...[
+                  const SizedBox(height: 18),
+                  _buildFinishRoutineBanner(),
+                ],
                 const SizedBox(height: 20),
                 _buildToolkitSection(),
               ],
@@ -841,6 +725,108 @@ class _StartRoutinePageState extends State<StartRoutinePage> {
           color: isCompleted ? backgroundColor : primaryColor,
           size: 24,
         ),
+      ),
+    );
+  }
+
+  Widget _buildFinishRoutineBanner() {
+    return Container(
+      padding: const EdgeInsets.all(18),
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          colors: [
+            primaryColor.withValues(alpha: 0.18),
+            const Color(0xFF1E2838),
+          ],
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+        ),
+        borderRadius: BorderRadius.circular(22),
+        border: Border.all(
+          color: primaryColor.withValues(alpha: 0.35),
+          width: 1.5,
+        ),
+        boxShadow: [
+          BoxShadow(
+            color: primaryColor.withValues(alpha: 0.15),
+            blurRadius: 18,
+            offset: const Offset(0, 4),
+          ),
+        ],
+      ),
+      child: Column(
+        children: [
+          Row(
+            children: [
+              Container(
+                width: 44,
+                height: 44,
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  color: primaryColor.withValues(alpha: 0.15),
+                  border: Border.all(
+                    color: primaryColor.withValues(alpha: 0.4),
+                  ),
+                ),
+                child: Icon(
+                  Icons.emoji_events_rounded,
+                  color: primaryColor,
+                  size: 24,
+                ),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Text(
+                      "¡RUTINA 100% COMPLETADA!",
+                      style: TextStyle(
+                        color: Colors.white,
+                        fontSize: 13.5,
+                        fontWeight: FontWeight.w900,
+                        letterSpacing: 0.5,
+                      ),
+                    ),
+                    const SizedBox(height: 2),
+                    Text(
+                      "Envía tus notas y sensaciones a tu entrenadora.",
+                      style: TextStyle(
+                        color: Colors.white.withValues(alpha: 0.7),
+                        fontSize: 11.5,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 14),
+          SizedBox(
+            width: double.infinity,
+            height: 44,
+            child: ElevatedButton.icon(
+              onPressed: () => _showFinalCommentDialog(),
+              icon: const Icon(Icons.send_rounded, size: 16, color: Colors.black),
+              label: const Text(
+                "ENVIAR REPORTE A LA ENTRENADORA",
+                style: TextStyle(
+                  fontSize: 12,
+                  fontWeight: FontWeight.w900,
+                  letterSpacing: 0.5,
+                ),
+              ),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: primaryColor,
+                foregroundColor: Colors.black,
+                elevation: 3,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(14),
+                ),
+              ),
+            ),
+          ),
+        ],
       ),
     );
   }
@@ -2312,6 +2298,805 @@ class _RestTimerWidgetState extends State<RestTimerWidget> {
             ],
           ),
         ],
+      ),
+    );
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Redesigned Popups for Routine Completion & Trainer Feedback
+// ---------------------------------------------------------------------------
+
+class RoutineFeedbackDialog extends StatefulWidget {
+  final String routineName;
+  final int totalExercises;
+  final Color primaryColor;
+  final Color backgroundColor;
+  final String initialComment;
+  final ValueChanged<String> onSend;
+  final VoidCallback onSkip;
+
+  const RoutineFeedbackDialog({
+    super.key,
+    required this.routineName,
+    required this.totalExercises,
+    required this.primaryColor,
+    required this.backgroundColor,
+    this.initialComment = '',
+    required this.onSend,
+    required this.onSkip,
+  });
+
+  @override
+  State<RoutineFeedbackDialog> createState() => _RoutineFeedbackDialogState();
+}
+
+class _RoutineFeedbackDialogState extends State<RoutineFeedbackDialog> {
+  late TextEditingController _controller;
+  final Set<String> _selectedChips = {};
+
+  final List<Map<String, String>> _quickChips = const [
+    {'emoji': '💪', 'label': 'Me sentí fuerte'},
+    {'emoji': '🔥', 'label': 'Muy intenso'},
+    {'emoji': '⚖️', 'label': 'Subir pesos prox.'},
+    {'emoji': '🥵', 'label': 'Agotador'},
+    {'emoji': '🩹', 'label': 'Sentí molestia'},
+    {'emoji': '⚡', 'label': 'Con energía'},
+  ];
+
+  @override
+  void initState() {
+    super.initState();
+    _controller = TextEditingController(text: widget.initialComment);
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  void _toggleChip(String chipText) {
+    setState(() {
+      if (_selectedChips.contains(chipText)) {
+        _selectedChips.remove(chipText);
+        String current = _controller.text;
+        current = current.replaceAll(chipText, '').trim();
+        current = current
+            .replaceAll(RegExp(r'\s{2,}'), ' ')
+            .replaceAll(RegExp(r',\s*,'), ',')
+            .trim();
+        _controller.text = current;
+      } else {
+        _selectedChips.add(chipText);
+        final current = _controller.text.trim();
+        if (current.isEmpty) {
+          _controller.text = chipText;
+        } else {
+          _controller.text = '$current • $chipText';
+        }
+      }
+      _controller.selection = TextSelection.fromPosition(
+        TextPosition(offset: _controller.text.length),
+      );
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Dialog(
+      backgroundColor: Colors.transparent,
+      insetPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 24),
+      child: Container(
+        constraints: const BoxConstraints(maxWidth: 420),
+        decoration: BoxDecoration(
+          color: const Color(0xFF151A24),
+          borderRadius: BorderRadius.circular(28),
+          border: Border.all(
+            color: widget.primaryColor.withValues(alpha: 0.25),
+            width: 1.5,
+          ),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withValues(alpha: 0.6),
+              blurRadius: 30,
+              offset: const Offset(0, 10),
+            ),
+            BoxShadow(
+              color: widget.primaryColor.withValues(alpha: 0.08),
+              blurRadius: 40,
+              spreadRadius: 2,
+            ),
+          ],
+        ),
+        child: SingleChildScrollView(
+          child: Padding(
+            padding: const EdgeInsets.fromLTRB(22, 18, 22, 20),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                // Top close button
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.end,
+                  children: [
+                    InkWell(
+                      onTap: () => Navigator.pop(context),
+                      borderRadius: BorderRadius.circular(20),
+                      child: Container(
+                        padding: const EdgeInsets.all(6),
+                        decoration: BoxDecoration(
+                          color: Colors.white.withValues(alpha: 0.06),
+                          shape: BoxShape.circle,
+                        ),
+                        child: Icon(
+                          Icons.close_rounded,
+                          size: 18,
+                          color: Colors.white.withValues(alpha: 0.6),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+
+                // Radiant Trophy Badge
+                Center(
+                  child: Stack(
+                    alignment: Alignment.center,
+                    children: [
+                      Container(
+                        width: 74,
+                        height: 74,
+                        decoration: BoxDecoration(
+                          shape: BoxShape.circle,
+                          color: widget.primaryColor.withValues(alpha: 0.12),
+                          boxShadow: [
+                            BoxShadow(
+                              color: widget.primaryColor.withValues(alpha: 0.30),
+                              blurRadius: 24,
+                              spreadRadius: 2,
+                            ),
+                          ],
+                        ),
+                      ),
+                      Container(
+                        width: 58,
+                        height: 58,
+                        decoration: BoxDecoration(
+                          shape: BoxShape.circle,
+                          color: const Color(0xFF1E2838),
+                          border: Border.all(
+                            color: widget.primaryColor.withValues(alpha: 0.6),
+                            width: 2,
+                          ),
+                        ),
+                        child: Icon(
+                          Icons.emoji_events_rounded,
+                          color: widget.primaryColor,
+                          size: 30,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                const SizedBox(height: 12),
+
+                // Status Tag
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+                  decoration: BoxDecoration(
+                    color: widget.primaryColor.withValues(alpha: 0.15),
+                    borderRadius: BorderRadius.circular(20),
+                    border: Border.all(
+                      color: widget.primaryColor.withValues(alpha: 0.35),
+                      width: 1,
+                    ),
+                  ),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Icon(
+                        Icons.check_circle_rounded,
+                        size: 13,
+                        color: widget.primaryColor,
+                      ),
+                      const SizedBox(width: 6),
+                      Text(
+                        "RUTINA COMPLETADA",
+                        style: TextStyle(
+                          color: widget.primaryColor,
+                          fontSize: 10.5,
+                          fontWeight: FontWeight.w900,
+                          letterSpacing: 1.2,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                const SizedBox(height: 10),
+
+                // Title
+                const Text(
+                  "¡Gran entrenamiento!",
+                  style: TextStyle(
+                    color: Colors.white,
+                    fontSize: 22,
+                    fontWeight: FontWeight.w900,
+                    letterSpacing: -0.5,
+                  ),
+                  textAlign: TextAlign.center,
+                ),
+                const SizedBox(height: 4),
+
+                // Routine name & exercise count badge
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                  decoration: BoxDecoration(
+                    color: Colors.white.withValues(alpha: 0.04),
+                    borderRadius: BorderRadius.circular(10),
+                    border: Border.all(color: Colors.white.withValues(alpha: 0.08)),
+                  ),
+                  child: Text(
+                    "${widget.routineName} • ${widget.totalExercises} ${widget.totalExercises == 1 ? 'ejercicio' : 'ejercicios'}",
+                    style: TextStyle(
+                      color: Colors.white.withValues(alpha: 0.75),
+                      fontSize: 12,
+                      fontWeight: FontWeight.w600,
+                    ),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                ),
+                const SizedBox(height: 16),
+
+                // Feedback prompt
+                Align(
+                  alignment: Alignment.centerLeft,
+                  child: Text(
+                    "¿Cómo te sentiste hoy con tu rutina?",
+                    style: TextStyle(
+                      color: Colors.white.withValues(alpha: 0.9),
+                      fontSize: 13,
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 3),
+                Align(
+                  alignment: Alignment.centerLeft,
+                  child: Text(
+                    "Toca las etiquetas rápidas o escribe notas para tu entrenadora:",
+                    style: TextStyle(
+                      color: Colors.white.withValues(alpha: 0.5),
+                      fontSize: 11.5,
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 12),
+
+                // Quick Chips Wrap
+                Wrap(
+                  spacing: 7,
+                  runSpacing: 7,
+                  children: _quickChips.map((chip) {
+                    final chipString = "${chip['emoji']} ${chip['label']}";
+                    final isSelected = _selectedChips.contains(chipString);
+                    return InkWell(
+                      onTap: () => _toggleChip(chipString),
+                      borderRadius: BorderRadius.circular(20),
+                      child: AnimatedContainer(
+                        duration: const Duration(milliseconds: 180),
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 11,
+                          vertical: 6,
+                        ),
+                        decoration: BoxDecoration(
+                          color: isSelected
+                              ? widget.primaryColor
+                              : Colors.white.withValues(alpha: 0.06),
+                          borderRadius: BorderRadius.circular(20),
+                          border: Border.all(
+                            color: isSelected
+                                ? widget.primaryColor
+                                : Colors.white.withValues(alpha: 0.12),
+                            width: 1.2,
+                          ),
+                        ),
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Text(
+                              chip['emoji']!,
+                              style: const TextStyle(fontSize: 12),
+                            ),
+                            const SizedBox(width: 5),
+                            Text(
+                              chip['label']!,
+                              style: TextStyle(
+                                color: isSelected
+                                    ? Colors.black
+                                    : Colors.white.withValues(alpha: 0.85),
+                                fontSize: 11.5,
+                                fontWeight: isSelected
+                                    ? FontWeight.w800
+                                    : FontWeight.w500,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    );
+                  }).toList(),
+                ),
+                const SizedBox(height: 14),
+
+                // Multiline textfield with dark styling
+                Container(
+                  decoration: BoxDecoration(
+                    color: const Color(0xFF0F131B),
+                    borderRadius: BorderRadius.circular(16),
+                    border: Border.all(
+                      color: widget.primaryColor.withValues(alpha: 0.2),
+                      width: 1,
+                    ),
+                  ),
+                  child: TextField(
+                    controller: _controller,
+                    maxLines: 3,
+                    style: const TextStyle(
+                      color: Colors.white,
+                      fontSize: 13,
+                      height: 1.35,
+                    ),
+                    decoration: InputDecoration(
+                      hintText:
+                          "Cuéntale si te costó alguna carga, si quieres variar un ejercicio o cualquier molestia física...",
+                      hintStyle: TextStyle(
+                        color: Colors.white.withValues(alpha: 0.32),
+                        fontSize: 12,
+                      ),
+                      contentPadding: const EdgeInsets.all(14),
+                      border: InputBorder.none,
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 18),
+
+                // Primary Send Button
+                SizedBox(
+                  width: double.infinity,
+                  height: 48,
+                  child: ElevatedButton(
+                    onPressed: () {
+                      Navigator.pop(context);
+                      widget.onSend(_controller.text.trim());
+                    },
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: widget.primaryColor,
+                      foregroundColor: Colors.black,
+                      elevation: 4,
+                      shadowColor: widget.primaryColor.withValues(alpha: 0.4),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(16),
+                      ),
+                    ),
+                    child: const Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Icon(Icons.send_rounded, size: 18, color: Colors.black),
+                        SizedBox(width: 8),
+                        Text(
+                          "ENVIAR A LA ENTRENADORA",
+                          style: TextStyle(
+                            fontSize: 13,
+                            fontWeight: FontWeight.w900,
+                            letterSpacing: 0.6,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 8),
+
+                // Skip option
+                SizedBox(
+                  width: double.infinity,
+                  height: 38,
+                  child: TextButton(
+                    onPressed: () {
+                      Navigator.pop(context);
+                      widget.onSkip();
+                    },
+                    child: Text(
+                      "Omitir y finalizar rutina",
+                      style: TextStyle(
+                        color: Colors.white.withValues(alpha: 0.55),
+                        fontSize: 12.5,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class RoutineSuccessDialog extends StatelessWidget {
+  final Color primaryColor;
+  final VoidCallback onContinue;
+
+  const RoutineSuccessDialog({
+    super.key,
+    required this.primaryColor,
+    required this.onContinue,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Dialog(
+      backgroundColor: Colors.transparent,
+      insetPadding: const EdgeInsets.symmetric(horizontal: 22, vertical: 24),
+      child: Container(
+        constraints: const BoxConstraints(maxWidth: 400),
+        decoration: BoxDecoration(
+          color: const Color(0xFF151A24),
+          borderRadius: BorderRadius.circular(28),
+          border: Border.all(
+            color: primaryColor.withValues(alpha: 0.3),
+            width: 1.5,
+          ),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withValues(alpha: 0.6),
+              blurRadius: 32,
+              offset: const Offset(0, 12),
+            ),
+            BoxShadow(
+              color: primaryColor.withValues(alpha: 0.12),
+              blurRadius: 40,
+              spreadRadius: 2,
+            ),
+          ],
+        ),
+        padding: const EdgeInsets.fromLTRB(24, 28, 24, 22),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            // Radiant Checkmark
+            Stack(
+              alignment: Alignment.center,
+              children: [
+                Container(
+                  width: 86,
+                  height: 86,
+                  decoration: BoxDecoration(
+                    shape: BoxShape.circle,
+                    color: primaryColor.withValues(alpha: 0.12),
+                    boxShadow: [
+                      BoxShadow(
+                        color: primaryColor.withValues(alpha: 0.35),
+                        blurRadius: 30,
+                        spreadRadius: 4,
+                      ),
+                    ],
+                  ),
+                ),
+                Container(
+                  width: 68,
+                  height: 68,
+                  decoration: BoxDecoration(
+                    shape: BoxShape.circle,
+                    color: const Color(0xFF1E2838),
+                    border: Border.all(
+                      color: primaryColor.withValues(alpha: 0.7),
+                      width: 2.5,
+                    ),
+                  ),
+                  child: Icon(
+                    Icons.check_rounded,
+                    color: primaryColor,
+                    size: 38,
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 18),
+
+            // Title
+            const Text(
+              "¡Rutina Registrada!",
+              style: TextStyle(
+                color: Colors.white,
+                fontSize: 23,
+                fontWeight: FontWeight.w900,
+                letterSpacing: -0.5,
+              ),
+              textAlign: TextAlign.center,
+            ),
+            const SizedBox(height: 6),
+
+            // Description
+            Text(
+              "Tu reporte y notas han sido enviados directamente a tu entrenadora.",
+              style: TextStyle(
+                color: Colors.white.withValues(alpha: 0.7),
+                fontSize: 13,
+                height: 1.35,
+              ),
+              textAlign: TextAlign.center,
+            ),
+            const SizedBox(height: 18),
+
+            // Motivational Streak Card
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+              decoration: BoxDecoration(
+                gradient: const LinearGradient(
+                  colors: [
+                    Color(0xFF261D12),
+                    Color(0xFF181B22),
+                  ],
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
+                ),
+                borderRadius: BorderRadius.circular(16),
+                border: Border.all(
+                  color: Colors.orangeAccent.withValues(alpha: 0.35),
+                  width: 1,
+                ),
+              ),
+              child: Row(
+                children: [
+                  Container(
+                    width: 38,
+                    height: 38,
+                    decoration: BoxDecoration(
+                      color: Colors.orangeAccent.withValues(alpha: 0.15),
+                      shape: BoxShape.circle,
+                    ),
+                    child: const Center(
+                      child: Text("🔥", style: TextStyle(fontSize: 19)),
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        const Text(
+                          "¡Día sumado a tu racha!",
+                          style: TextStyle(
+                            color: Colors.orangeAccent,
+                            fontSize: 12.5,
+                            fontWeight: FontWeight.w800,
+                          ),
+                        ),
+                        const SizedBox(height: 2),
+                        Text(
+                          "La constancia es la clave de tu transformación.",
+                          style: TextStyle(
+                            color: Colors.white.withValues(alpha: 0.65),
+                            fontSize: 11,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(height: 22),
+
+            // Continue CTA button
+            SizedBox(
+              width: double.infinity,
+              height: 48,
+              child: ElevatedButton(
+                onPressed: onContinue,
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: primaryColor,
+                  foregroundColor: Colors.black,
+                  elevation: 4,
+                  shadowColor: primaryColor.withValues(alpha: 0.4),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(16),
+                  ),
+                ),
+                child: const Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Text(
+                      "VOLVER AL INICIO",
+                      style: TextStyle(
+                        fontSize: 13.5,
+                        fontWeight: FontWeight.w900,
+                        letterSpacing: 0.8,
+                      ),
+                    ),
+                    SizedBox(width: 8),
+                    Icon(
+                      Icons.arrow_forward_rounded,
+                      size: 18,
+                      color: Colors.black,
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class RoutineErrorDialog extends StatelessWidget {
+  final String errorMessage;
+  final Color primaryColor;
+  final VoidCallback onRetry;
+  final VoidCallback onClose;
+
+  const RoutineErrorDialog({
+    super.key,
+    required this.errorMessage,
+    required this.primaryColor,
+    required this.onRetry,
+    required this.onClose,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Dialog(
+      backgroundColor: Colors.transparent,
+      insetPadding: const EdgeInsets.symmetric(horizontal: 22, vertical: 24),
+      child: Container(
+        constraints: const BoxConstraints(maxWidth: 400),
+        decoration: BoxDecoration(
+          color: const Color(0xFF151A24),
+          borderRadius: BorderRadius.circular(28),
+          border: Border.all(
+            color: Colors.redAccent.withValues(alpha: 0.35),
+            width: 1.5,
+          ),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withValues(alpha: 0.6),
+              blurRadius: 30,
+              offset: const Offset(0, 10),
+            ),
+          ],
+        ),
+        padding: const EdgeInsets.fromLTRB(22, 26, 22, 20),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            // Error icon
+            Container(
+              width: 64,
+              height: 64,
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                color: Colors.redAccent.withValues(alpha: 0.12),
+                border: Border.all(
+                  color: Colors.redAccent.withValues(alpha: 0.5),
+                  width: 2,
+                ),
+              ),
+              child: const Icon(
+                Icons.cloud_off_rounded,
+                color: Colors.redAccent,
+                size: 30,
+              ),
+            ),
+            const SizedBox(height: 16),
+
+            const Text(
+              "Error al Sincronizar",
+              style: TextStyle(
+                color: Colors.white,
+                fontSize: 20,
+                fontWeight: FontWeight.w900,
+              ),
+            ),
+            const SizedBox(height: 6),
+
+            Text(
+              "No pudimos registrar tu rutina en la nube. Revisa tu conexión a internet e inténtalo nuevamente.",
+              style: TextStyle(
+                color: Colors.white.withValues(alpha: 0.7),
+                fontSize: 12.5,
+                height: 1.35,
+              ),
+              textAlign: TextAlign.center,
+            ),
+            const SizedBox(height: 14),
+
+            // Detailed message
+            Container(
+              width: double.infinity,
+              padding: const EdgeInsets.all(10),
+              decoration: BoxDecoration(
+                color: Colors.redAccent.withValues(alpha: 0.08),
+                borderRadius: BorderRadius.circular(10),
+                border: Border.all(
+                  color: Colors.redAccent.withValues(alpha: 0.25),
+                ),
+              ),
+              child: Text(
+                errorMessage.length > 90
+                    ? "${errorMessage.substring(0, 90)}..."
+                    : errorMessage,
+                style: TextStyle(
+                  color: Colors.redAccent.withValues(alpha: 0.85),
+                  fontSize: 11,
+                  fontFamily: 'monospace',
+                ),
+              ),
+            ),
+            const SizedBox(height: 18),
+
+            // Buttons
+            Row(
+              children: [
+                Expanded(
+                  child: OutlinedButton(
+                    onPressed: onClose,
+                    style: OutlinedButton.styleFrom(
+                      side: BorderSide(
+                        color: Colors.white.withValues(alpha: 0.15),
+                      ),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(14),
+                      ),
+                      padding: const EdgeInsets.symmetric(vertical: 12),
+                    ),
+                    child: Text(
+                      "CERRAR",
+                      style: TextStyle(
+                        color: Colors.white.withValues(alpha: 0.7),
+                        fontWeight: FontWeight.bold,
+                        fontSize: 12,
+                      ),
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: ElevatedButton(
+                    onPressed: onRetry,
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: Colors.orangeAccent,
+                      foregroundColor: Colors.black,
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(14),
+                      ),
+                      padding: const EdgeInsets.symmetric(vertical: 12),
+                    ),
+                    child: const Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Icon(Icons.refresh_rounded, size: 16, color: Colors.black),
+                        SizedBox(width: 6),
+                        Text(
+                          "REINTENTAR",
+                          style: TextStyle(
+                            fontWeight: FontWeight.w900,
+                            fontSize: 12,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ],
+        ),
       ),
     );
   }
