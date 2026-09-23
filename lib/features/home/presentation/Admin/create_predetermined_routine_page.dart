@@ -98,11 +98,13 @@ class CreatePredeterminedRoutinePage extends StatefulWidget {
 
 class _CreatePredeterminedRoutinePageState
     extends State<CreatePredeterminedRoutinePage> {
-  // Campos promocionales extras
+  // Campos de la rutina
   final TextEditingController _promoTitleController = TextEditingController();
   final TextEditingController _promoDescController = TextEditingController();
   final TextEditingController _coverImageUrlController = TextEditingController();
   final TextEditingController _promoTagController = TextEditingController();
+  final TextEditingController _priceController = TextEditingController();
+  bool _isFree = true;
 
   // Campos del constructor de rutina (idénticos a CreateRoutinePage)
   final TextEditingController _dayNameController = TextEditingController();
@@ -182,6 +184,8 @@ class _CreatePredeterminedRoutinePageState
     _coverImageUrlController.text = routine.coverImageUrl;
     _promoTagController.text = routine.promoTag;
     _durationWeeks = routine.durationWeeks;
+    _isFree = routine.isFree;
+    _priceController.text = routine.price > 0 ? routine.price.toStringAsFixed(2) : '';
 
     for (final dayPlan in routine.days) {
       final weekday = dayPlan.targetWeekday;
@@ -235,6 +239,7 @@ class _CreatePredeterminedRoutinePageState
     _promoDescController.dispose();
     _coverImageUrlController.dispose();
     _promoTagController.dispose();
+    _priceController.dispose();
 
     _dayNameController.dispose();
     _nutritionPlanUrlController.dispose();
@@ -435,8 +440,18 @@ class _CreatePredeterminedRoutinePageState
 
     final promoTitle = _promoTitleController.text.trim();
     if (promoTitle.isEmpty) {
-      _showErrorSnackBar('Ingresa un título para la promoción');
+      _showErrorSnackBar('Ingresa un título para la rutina');
       return;
+    }
+
+    double routinePrice = 0.0;
+    if (!_isFree) {
+      final cleanStr = _priceController.text.trim().replaceAll(',', '.');
+      routinePrice = double.tryParse(cleanStr) ?? 0.0;
+      if (routinePrice <= 0) {
+        _showErrorSnackBar('Ingresa un precio mayor a 0 para la rutina');
+        return;
+      }
     }
 
     if (_selectedWeekdays.isEmpty) {
@@ -504,6 +519,8 @@ class _CreatePredeterminedRoutinePageState
         'muscleFocus': allMuscles.toList(),
         'days': daysList.map((d) => d.toMap()).toList(),
         'isActive': true,
+        'price': _isFree ? 0.0 : routinePrice,
+        'isFree': _isFree,
         'updatedAt': FieldValue.serverTimestamp(),
       };
 
@@ -524,7 +541,7 @@ class _CreatePredeterminedRoutinePageState
 
       if (!mounted) return;
       _showSuccessSnackBar(
-        _isEditMode ? 'Promoción actualizada con éxito' : 'Promoción creada con éxito',
+        _isEditMode ? 'Rutina actualizada con éxito' : 'Rutina creada con éxito',
       );
       Navigator.pop(context, true);
     } catch (e) {
@@ -1193,17 +1210,16 @@ class _CreatePredeterminedRoutinePageState
                             itemCount: filteredList.length,
                             itemBuilder: (context, index) {
                               final workout = filteredList[index];
-                              return Container(
-                                margin: const EdgeInsets.only(bottom: 12),
-                                decoration: BoxDecoration(
-                                  color: surfaceColor.withValues(alpha: 0.1),
-                                  borderRadius: BorderRadius.circular(16),
-                                  border: Border.all(
-                                      color: surfaceColor.withValues(alpha: 0.2)),
-                                ),
+                              return Padding(
+                                padding: const EdgeInsets.only(bottom: 12),
                                 child: Material(
-                                  type: MaterialType.transparency,
-                                  borderRadius: BorderRadius.circular(16),
+                                  color: surfaceColor.withValues(alpha: 0.1),
+                                  shape: RoundedRectangleBorder(
+                                    borderRadius: BorderRadius.circular(16),
+                                    side: BorderSide(
+                                        color: surfaceColor.withValues(alpha: 0.2)),
+                                  ),
+                                  clipBehavior: Clip.antiAlias,
                                   child: ListTile(
                                     contentPadding: const EdgeInsets.symmetric(
                                         horizontal: 16, vertical: 12),
@@ -1272,10 +1288,10 @@ class _CreatePredeterminedRoutinePageState
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: backgroundColor,
+      backgroundColor: Colors.transparent,
       appBar: AppBar(
         title: Text(
-          _isEditMode ? 'EDITAR PROMOCIÓN' : 'NUEVA PROMOCIÓN',
+          _isEditMode ? 'EDITAR RUTINA' : 'NUEVA RUTINA',
           style: const TextStyle(fontWeight: FontWeight.w900, letterSpacing: 1.5),
         ),
         centerTitle: true,
@@ -1289,19 +1305,19 @@ class _CreatePredeterminedRoutinePageState
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             // ==========================================
-            // SECCIÓN 1: DATOS EXTRAS DE LA PROMOCIÓN
+            // SECCIÓN 1: DATOS GENERALES DE LA RUTINA
             // ==========================================
             _buildSectionTitle(
-              'Información de la Promoción',
-              subtitle: 'Nombre comercial, descripción y portada que verán los clientes',
-              icon: Icons.local_offer_rounded,
+              'Información de la Rutina',
+              subtitle: 'Nombre comercial, descripción, precio y portada para tus clientes',
+              icon: Icons.fitness_center_rounded,
             ),
             const SizedBox(height: 14),
             TextField(
               controller: _promoTitleController,
               style: const TextStyle(color: Colors.white),
               decoration: _buildInputDecoration(
-                label: 'Título de la Promoción',
+                label: 'Título de la Rutina',
                 hint: 'Ej: Rutina Glúteos y Piernas 4 Semanas',
                 icon: Icons.title_rounded,
               ),
@@ -1313,7 +1329,7 @@ class _CreatePredeterminedRoutinePageState
               maxLines: 3,
               minLines: 2,
               decoration: _buildInputDecoration(
-                label: 'Descripción de la Promoción',
+                label: 'Descripción de la Rutina',
                 hint: 'Explica el objetivo, a quién va dirigida y beneficios del programa...',
                 icon: Icons.description_rounded,
               ),
@@ -1341,13 +1357,76 @@ class _CreatePredeterminedRoutinePageState
                     style: const TextStyle(color: Colors.white),
                     decoration: _buildInputDecoration(
                       label: 'Etiqueta / Badge',
-                      hint: 'Ej: 50% OFF',
+                      hint: 'Ej: POPULAR',
                       icon: Icons.label_rounded,
                     ),
                   ),
                 ),
               ],
             ),
+            const SizedBox(height: 16),
+
+            // ==========================================
+            // CONFIGURACIÓN DE PRECIO Y ACCESO
+            // ==========================================
+            Material(
+              color: surfaceColor.withValues(alpha: 0.1),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(16),
+                side: BorderSide(color: surfaceColor.withValues(alpha: 0.2)),
+              ),
+              clipBehavior: Clip.antiAlias,
+              child: Padding(
+                padding: const EdgeInsets.all(16),
+                child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    children: [
+                      Icon(Icons.monetization_on_rounded, color: primaryColor, size: 20),
+                      const SizedBox(width: 8),
+                      const Text(
+                        'Tipo de Acceso y Precio',
+                        style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 14),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 10),
+                  SwitchListTile(
+                    contentPadding: EdgeInsets.zero,
+                    title: const Text('¿Es una rutina gratuita?', style: TextStyle(color: Colors.white, fontSize: 14)),
+                    subtitle: Text(
+                      _isFree
+                          ? 'Cualquier cliente puede solicitarla sin costo'
+                          : 'El cliente debe abonar el precio y enviar el comprobante de pago por WhatsApp',
+                      style: const TextStyle(color: Colors.white60, fontSize: 12),
+                    ),
+                    activeThumbColor: primaryColor,
+                    value: _isFree,
+                    onChanged: (val) {
+                      setState(() {
+                        _isFree = val;
+                        if (val) _priceController.clear();
+                      });
+                    },
+                  ),
+                  if (!_isFree) ...[
+                    const SizedBox(height: 10),
+                    TextField(
+                      controller: _priceController,
+                      keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                      style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
+                      decoration: _buildInputDecoration(
+                        label: 'Precio de la Rutina (\$ USD)',
+                        hint: 'Ej: 19.99',
+                        icon: Icons.attach_money_rounded,
+                      ),
+                    ),
+                  ],
+                ],
+              ),
+            ),
+          ),
 
             const SizedBox(height: 28),
 
@@ -1980,7 +2059,7 @@ class _CreatePredeterminedRoutinePageState
                         ),
                       )
                     : Text(
-                        _isEditMode ? 'GUARDAR CAMBIOS' : 'GUARDAR PROMOCIÓN',
+                        _isEditMode ? 'GUARDAR CAMBIOS' : 'GUARDAR RUTINA',
                         style: const TextStyle(
                           fontSize: 16,
                           fontWeight: FontWeight.bold,

@@ -52,7 +52,7 @@ class _PromotionDetailPageState extends State<PromotionDetailPage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: backgroundColor,
+      backgroundColor: Colors.transparent,
       appBar: AppBar(
         title: const Text('PROMOCIÓN', style: TextStyle(fontWeight: FontWeight.w900)),
         centerTitle: true,

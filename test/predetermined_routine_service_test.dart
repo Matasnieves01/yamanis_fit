@@ -76,6 +76,8 @@ void main() {
       expect(map['muscleFocus'], ['Fuerza', 'Hipertrofia']);
       expect((map['days'] as List).length, 2);
       expect(map['isActive'], true);
+      expect(map['price'], 0.0);
+      expect(map['isFree'], true);
 
       final restored = PredeterminedRoutine.fromMap(map, 'routine-123');
       expect(restored.id, 'routine-123');
@@ -88,8 +90,29 @@ void main() {
       expect(restored.days.first.name, 'Empuje');
       expect(restored.days.last.name, 'Tracción');
       expect(restored.isActive, true);
+      expect(restored.price, 0.0);
+      expect(restored.isFree, true);
       expect(restored.daysPerWeek, 2);
       expect(restored.totalWorkoutsCount, 2);
+    });
+
+    test('PredeterminedRoutine with price and paid access', () {
+      final routine = PredeterminedRoutine(
+        id: 'routine-pro',
+        name: 'Booty Pro 8 Semanas',
+        description: 'Programa premium para glúteos.',
+        price: 24.99,
+        isFree: false,
+        createdAt: DateTime.now(),
+      );
+
+      final map = routine.toMap();
+      expect(map['price'], 24.99);
+      expect(map['isFree'], false);
+
+      final restored = PredeterminedRoutine.fromMap(map, 'routine-pro');
+      expect(restored.price, 24.99);
+      expect(restored.isFree, false);
     });
 
     test('RoutineRequest serialization and deserialization', () {
@@ -101,6 +124,8 @@ void main() {
         userName: 'Cliente Prueba',
         predeterminedRoutineId: 'routine-123',
         routineName: 'Hipertrofia 4 Semanas',
+        price: 19.99,
+        isFree: false,
         status: 'pending',
         requestedAt: now,
       );
@@ -112,6 +137,8 @@ void main() {
       expect(map['predeterminedRoutineId'], 'routine-123');
       expect(map['routineName'], 'Hipertrofia 4 Semanas');
       expect(map['status'], 'pending');
+      expect(map['price'], 19.99);
+      expect(map['isFree'], false);
 
       final restored = RoutineRequest.fromMap(map, 'req-456');
       expect(restored.id, 'req-456');
@@ -121,6 +148,8 @@ void main() {
       expect(restored.predeterminedRoutineId, 'routine-123');
       expect(restored.routineName, 'Hipertrofia 4 Semanas');
       expect(restored.status, 'pending');
+      expect(restored.price, 19.99);
+      expect(restored.isFree, false);
       expect(restored.isPending, true);
       expect(restored.isApproved, false);
       expect(restored.isRejected, false);
@@ -140,6 +169,8 @@ void main() {
       expect(restored.userEmail, '');
       expect(restored.userName, 'Usuario');
       expect(restored.status, 'approved');
+      expect(restored.price, 0.0);
+      expect(restored.isFree, true);
       expect(restored.isApproved, true);
       expect(restored.isPending, false);
       expect(restored.resolvedAt, isNull);

@@ -135,14 +135,17 @@ class PredeterminedRoutineService {
       'userName': userName,
       'predeterminedRoutineId': routine.id,
       'routineName': routine.name,
+      'price': routine.price,
+      'isFree': routine.isFree,
       'status': 'pending',
       'requestedAt': FieldValue.serverTimestamp(),
     });
 
     // 5. Notificar a la entrenadora (admin)
+    final priceLabel = routine.isFree ? 'Gratis' : '\$${routine.price.toStringAsFixed(2)} USD';
     await _firestore.collection('notifications').add({
       'title': '📋 Nueva Solicitud de Rutina',
-      'message': '$userName ($userEmail) solicita el programa: ${routine.name}',
+      'message': '$userName ($userEmail) solicita el programa: ${routine.name} ($priceLabel)',
       'type': 'routine_request',
       'targetRole': 'admin',
       'userId': userId,

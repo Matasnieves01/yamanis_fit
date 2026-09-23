@@ -193,7 +193,7 @@ class _PromotionsPageState extends State<PromotionsPage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: backgroundColor,
+      backgroundColor: Colors.transparent,
       appBar: AppBar(
         title: const Text('PROMOCIONES', style: TextStyle(fontWeight: FontWeight.w900, letterSpacing: 1.3)),
         centerTitle: true,

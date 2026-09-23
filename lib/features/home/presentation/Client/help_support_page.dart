@@ -36,7 +36,7 @@ class HelpSupportPage extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: backgroundColor,
+      backgroundColor: Colors.transparent,
       appBar: AppBar(
         title: const Text('AYUDA Y SOPORTE', style: TextStyle(fontWeight: FontWeight.w900, letterSpacing: 1.5)),
         centerTitle: true,
@@ -92,23 +92,20 @@ class HelpSupportPage extends StatelessWidget {
   }
 
   Widget _buildContactCard({required IconData icon, required String title, required String subtitle, required VoidCallback onTap}) {
-    return Container(
-      decoration: BoxDecoration(
-        color: surfaceColor.withValues(alpha: 0.1),
+    return Material(
+      color: surfaceColor.withValues(alpha: 0.1),
+      shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: surfaceColor.withValues(alpha: 0.2)),
+        side: BorderSide(color: surfaceColor.withValues(alpha: 0.2)),
       ),
-      child: Material(
-        type: MaterialType.transparency,
-        borderRadius: BorderRadius.circular(16),
-        child: ListTile(
-          dense: true,
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-          leading: Icon(icon, color: primaryColor, size: 22),
-          title: Text(title, style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 14)),
-          subtitle: Text(subtitle, style: TextStyle(color: Colors.white.withValues(alpha: 0.5), fontSize: 13)),
-          onTap: onTap,
-        ),
+      clipBehavior: Clip.antiAlias,
+      child: ListTile(
+        dense: true,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        leading: Icon(icon, color: primaryColor, size: 22),
+        title: Text(title, style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 14)),
+        subtitle: Text(subtitle, style: TextStyle(color: Colors.white.withValues(alpha: 0.5), fontSize: 13)),
+        onTap: onTap,
       ),
     );
   }

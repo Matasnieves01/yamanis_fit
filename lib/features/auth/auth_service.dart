@@ -53,8 +53,25 @@ class AuthService {
       if (role == 'admin') return true;
 
       final isActive = data['isActive'] == true;
+      if (!isActive) return false;
+
+      final now = DateTime.now();
       final activeUntil = (data['activeUntil'] as Timestamp?)?.toDate();
-      return isActive && activeUntil != null && activeUntil.isAfter(DateTime.now());
+      if (activeUntil != null && activeUntil.isAfter(now)) {
+        return true;
+      }
+
+      // Semana adicional de gracia ligada al plan del usuario
+      final planStart = (data['planStartDate'] as Timestamp?)?.toDate();
+      final planWeeks = (data['planDurationWeeks'] as num?)?.toInt();
+      if (planStart != null && planWeeks != null && planWeeks > 0) {
+        final graceEnd = planStart.add(Duration(days: (planWeeks + 1) * 7));
+        if (now.isBefore(graceEnd)) {
+          return true;
+        }
+      }
+
+      return false;
     } catch (e) {
       if (kDebugMode) {
         print('Error checking access: $e');

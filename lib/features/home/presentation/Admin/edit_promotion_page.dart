@@ -168,7 +168,7 @@ class _EditPromotionPageState extends State<EditPromotionPage> {
     final imagePreview = _imageUrlController.text.trim();
 
     return Scaffold(
-      backgroundColor: backgroundColor,
+      backgroundColor: Colors.transparent,
       appBar: AppBar(
         title: const Text('EDITAR PROMOCIÓN', style: TextStyle(fontWeight: FontWeight.w900)),
         centerTitle: true,

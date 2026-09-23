@@ -146,7 +146,7 @@ class _ProfilePageState extends State<ProfilePage> {
     final weightDelta = b?.weightDelta;
 
     return Scaffold(
-      backgroundColor: backgroundColor,
+      backgroundColor: Colors.transparent,
       appBar: AppBar(
         backgroundColor: Colors.transparent,
         elevation: 0,
@@ -568,16 +568,15 @@ class _ProfilePageState extends State<ProfilePage> {
   }
 
   Widget _buildProfileOption({required IconData icon, required String title, VoidCallback? onTap}) {
-    return Container(
-      margin: const EdgeInsets.only(bottom: 10),
-      decoration: BoxDecoration(
-        color: surfaceColor.withValues(alpha: 0.5),
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: Colors.white.withValues(alpha: 0.05)),
-      ),
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 10),
       child: Material(
-        type: MaterialType.transparency,
-        borderRadius: BorderRadius.circular(16),
+        color: surfaceColor.withValues(alpha: 0.5),
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(16),
+          side: BorderSide(color: Colors.white.withValues(alpha: 0.05)),
+        ),
+        clipBehavior: Clip.antiAlias,
         child: ListTile(
           dense: true,
           contentPadding: const EdgeInsets.symmetric(horizontal: 18, vertical: 0),

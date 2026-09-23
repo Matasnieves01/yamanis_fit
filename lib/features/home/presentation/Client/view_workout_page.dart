@@ -162,7 +162,7 @@ class _ViewWorkoutPageState extends State<ViewWorkoutPage> {
 
     if (workoutData == null) {
       return Scaffold(
-        backgroundColor: backgroundColor,
+        backgroundColor: Colors.transparent,
         appBar: AppBar(
           backgroundColor: Colors.transparent,
           elevation: 0,
@@ -173,7 +173,7 @@ class _ViewWorkoutPageState extends State<ViewWorkoutPage> {
     }
 
     return Scaffold(
-      backgroundColor: backgroundColor,
+      backgroundColor: Colors.transparent,
       appBar: AppBar(
         title: Text(
           (workoutData?['name'] ?? "EJERCICIO").toString().toUpperCase(),

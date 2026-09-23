@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'core/widgets/app_background.dart';
 import 'features/auth/auth_gate.dart';
 import 'features/home/presentation/Client/login_page.dart';
 import 'features/home/presentation/Client/register_page.dart';
@@ -17,7 +18,8 @@ class App extends StatelessWidget {
       theme: ThemeData(
         useMaterial3: true,
         brightness: Brightness.dark,
-        scaffoldBackgroundColor: brandBackground,
+        scaffoldBackgroundColor: Colors.transparent,
+        canvasColor: brandBackground,
         colorScheme: ColorScheme.dark(
           primary: brandPrimary,
           onPrimary: brandBackground,
@@ -27,6 +29,11 @@ class App extends StatelessWidget {
           color: brandPrimary,
         ),
       ),
+      builder: (context, child) {
+        return AppBackground(
+          child: child ?? const SizedBox.shrink(),
+        );
+      },
       initialRoute: '/',
       routes: {
         '/': (context) => const AuthGate(),

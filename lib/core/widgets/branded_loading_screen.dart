@@ -9,7 +9,7 @@ class BrandedLoadingScreen extends StatelessWidget {
     const Color brandPrimary = Color(0xFFAEE084);
 
     return Scaffold(
-      backgroundColor: brandBackground,
+      backgroundColor: Colors.transparent,
       body: SizedBox(
         width: double.infinity,
         height: double.infinity,

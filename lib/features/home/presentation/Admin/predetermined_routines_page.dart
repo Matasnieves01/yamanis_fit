@@ -41,9 +41,9 @@ class _PredeterminedRoutinesPageState extends State<PredeterminedRoutinesPage>
       builder: (context) => AlertDialog(
         backgroundColor: backgroundColor,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(18)),
-        title: const Text('Eliminar Programa', style: TextStyle(color: Colors.redAccent, fontWeight: FontWeight.bold)),
+        title: const Text('Eliminar Rutina', style: TextStyle(color: Colors.redAccent, fontWeight: FontWeight.bold)),
         content: Text(
-          '¿Estás segura de eliminar "${routine.name}"? Los usuarios que ya lo tengan asignado no se verán afectados.',
+          '¿Estás segura de eliminar "${routine.name}"? Los usuarios que ya la tengan asignada no se verán afectados.',
           style: const TextStyle(color: Colors.white70),
         ),
         actions: [
@@ -70,7 +70,7 @@ class _PredeterminedRoutinesPageState extends State<PredeterminedRoutinesPage>
 
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Promoción eliminada correctamente')),
+        const SnackBar(content: Text('Rutina eliminada correctamente')),
       );
     } catch (e) {
       if (!mounted) return;
@@ -310,7 +310,7 @@ class _PredeterminedRoutinesPageState extends State<PredeterminedRoutinesPage>
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text('✅ Promoción asignada con éxito ($sessionsCount sesiones generadas en su calendario).'),
+          content: Text('✅ Rutina asignada con éxito ($sessionsCount sesiones generadas en su calendario).'),
           backgroundColor: Colors.green,
           duration: const Duration(seconds: 4),
         ),
@@ -395,10 +395,10 @@ class _PredeterminedRoutinesPageState extends State<PredeterminedRoutinesPage>
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: backgroundColor,
+      backgroundColor: Colors.transparent,
       appBar: AppBar(
         title: const Text(
-          'PROMOCIONES',
+          'RUTINAS',
           style: TextStyle(fontWeight: FontWeight.w900, letterSpacing: 1.2, fontSize: 16),
         ),
         centerTitle: true,
@@ -412,7 +412,7 @@ class _PredeterminedRoutinesPageState extends State<PredeterminedRoutinesPage>
           unselectedLabelColor: Colors.white60,
           labelStyle: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13),
           tabs: [
-            const Tab(text: 'MIS PROMOCIONES'),
+            const Tab(text: 'MIS RUTINAS'),
             StreamBuilder<QuerySnapshot>(
               stream: FirebaseFirestore.instance
                   .collection('routine_requests')
@@ -451,7 +451,7 @@ class _PredeterminedRoutinesPageState extends State<PredeterminedRoutinesPage>
         backgroundColor: primaryColor,
         foregroundColor: backgroundColor,
         icon: const Icon(Icons.add_rounded),
-        label: const Text('AGREGAR PROMOCIÓN', style: TextStyle(fontWeight: FontWeight.bold)),
+        label: const Text('AGREGAR RUTINA', style: TextStyle(fontWeight: FontWeight.bold)),
         onPressed: () {
           Navigator.push(
             context,
@@ -488,16 +488,16 @@ class _PredeterminedRoutinesPageState extends State<PredeterminedRoutinesPage>
               child: Column(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  const Icon(Icons.local_offer_outlined, size: 56, color: Colors.white24),
+                  const Icon(Icons.fitness_center_outlined, size: 56, color: Colors.white24),
                   const SizedBox(height: 16),
                   const Text(
-                    'Aún no has creado promociones',
+                    'Aún no has creado rutinas',
                     style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 16),
                     textAlign: TextAlign.center,
                   ),
                   const SizedBox(height: 8),
                   const Text(
-                    'Agrega una promoción creando una rutina para que tus clientes puedan solicitarla y asignársela.',
+                    'Crea rutinas y programas predeterminados para que tus clientes puedan solicitarlas y asignárselas.',
                     style: TextStyle(color: Colors.white54, fontSize: 13),
                     textAlign: TextAlign.center,
                   ),
@@ -551,6 +551,20 @@ class _PredeterminedRoutinesPageState extends State<PredeterminedRoutinesPage>
                 Text(
                   '${routine.durationWeeks} semanas • ${routine.daysPerWeek} días/sem',
                   style: TextStyle(color: primaryColor.withValues(alpha: 0.8), fontSize: 12),
+                ),
+                const SizedBox(width: 8),
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 3),
+                  decoration: BoxDecoration(
+                    color: routine.isFree
+                        ? const Color(0xFF2E7D32).withValues(alpha: 0.9)
+                        : const Color(0xFFD97706).withValues(alpha: 0.9),
+                    borderRadius: BorderRadius.circular(6),
+                  ),
+                  child: Text(
+                    routine.isFree ? 'GRATIS' : '\$${routine.price.toStringAsFixed(2)} USD',
+                    style: const TextStyle(color: Colors.white, fontSize: 9, fontWeight: FontWeight.bold),
+                  ),
                 ),
                 const Spacer(),
                 PopupMenuButton<String>(
@@ -736,10 +750,37 @@ class _PredeterminedRoutinesPageState extends State<PredeterminedRoutinesPage>
               ),
             ],
           ),
-          const SizedBox(height: 12),
-          Text(
-            'Programa solicitado: ${request.routineName}',
-            style: TextStyle(color: primaryColor, fontWeight: FontWeight.bold, fontSize: 13),
+          Row(
+            children: [
+              Expanded(
+                child: Text(
+                  'Programa solicitado: ${request.routineName}',
+                  style: TextStyle(color: primaryColor, fontWeight: FontWeight.bold, fontSize: 13),
+                ),
+              ),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 3),
+                decoration: BoxDecoration(
+                  color: request.isFree
+                      ? const Color(0xFF2E7D32).withValues(alpha: 0.2)
+                      : Colors.amber.withValues(alpha: 0.15),
+                  borderRadius: BorderRadius.circular(6),
+                  border: Border.all(
+                    color: request.isFree
+                        ? const Color(0xFF2E7D32).withValues(alpha: 0.6)
+                        : Colors.amber.withValues(alpha: 0.5),
+                  ),
+                ),
+                child: Text(
+                  request.isFree ? 'Gratis' : '\$${request.price.toStringAsFixed(2)} USD',
+                  style: TextStyle(
+                    color: request.isFree ? const Color(0xFF81C784) : Colors.amberAccent,
+                    fontSize: 10,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+              ),
+            ],
           ),
           const SizedBox(height: 14),
 

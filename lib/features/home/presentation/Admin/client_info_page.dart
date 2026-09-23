@@ -4,6 +4,7 @@ import 'package:intl/intl.dart';
 import 'package:yamanis_fit/core/services/biometrics_service.dart';
 import 'package:yamanis_fit/core/widgets/app_back_button.dart';
 import 'package:yamanis_fit/features/home/presentation/Admin/client_routines_page.dart';
+import 'package:yamanis_fit/features/home/presentation/Admin/client_tracking_sheet_page.dart';
 import 'package:yamanis_fit/features/home/presentation/Client/widgets/body_scan_widget.dart';
 import 'package:yamanis_fit/models/user_data_sheet.dart';
 
@@ -104,7 +105,7 @@ class _ClientInfoPageState extends State<ClientInfoPage> {
     final isActiveNow = isActive && activeUntil != null && activeUntil.isAfter(DateTime.now());
 
     return Scaffold(
-      backgroundColor: backgroundColor,
+      backgroundColor: Colors.transparent,
       appBar: AppBar(
         backgroundColor: Colors.transparent,
         elevation: 0,
@@ -120,6 +121,22 @@ class _ClientInfoPageState extends State<ClientInfoPage> {
           ),
         ),
         actions: [
+          IconButton(
+            icon: const Icon(Icons.table_chart_rounded, color: Color(0xFFFDA4AF)),
+            tooltip: "Tabla de Registro & Series",
+            onPressed: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (_) => ClientTrackingSheetPage(
+                    clientId: widget.clientId,
+                    clientName: widget.clientName,
+                    clientEmail: widget.clientEmail,
+                  ),
+                ),
+              );
+            },
+          ),
           IconButton(
             icon: const Icon(Icons.refresh_rounded, color: Colors.white70),
             tooltip: "Actualizar",
@@ -199,6 +216,42 @@ class _ClientInfoPageState extends State<ClientInfoPage> {
                   _buildTrainingQuestions(assess),
 
                   const SizedBox(height: 32),
+
+                  // Botón de acción: Ir a la Tabla de Registro & Contador Muscular
+                  SizedBox(
+                    width: double.infinity,
+                    height: 52,
+                    child: ElevatedButton.icon(
+                      onPressed: () {
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (_) => ClientTrackingSheetPage(
+                              clientId: widget.clientId,
+                              clientName: widget.clientName,
+                              clientEmail: widget.clientEmail,
+                            ),
+                          ),
+                        );
+                      },
+                      icon: const Icon(Icons.table_chart_rounded),
+                      label: const Text(
+                        "TABLA DE REGISTRO & CONTADOR MUSCULAR",
+                        style: TextStyle(fontWeight: FontWeight.bold, letterSpacing: 0.8),
+                      ),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: const Color(0xFF881337),
+                        foregroundColor: Colors.white,
+                        elevation: 4,
+                        shadowColor: const Color(0xFF881337).withOpacity(0.5),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(16),
+                          side: const BorderSide(color: Color(0xFFFDA4AF), width: 0.5),
+                        ),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 12),
 
                   // Botón de acción: Ir al Calendario y Rutinas del Cliente
                   SizedBox(

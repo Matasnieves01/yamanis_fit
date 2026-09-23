@@ -5,6 +5,7 @@ import 'package:table_calendar/table_calendar.dart';
 import 'package:yamanis_fit/core/services/biometrics_service.dart';
 import 'package:yamanis_fit/models/user_data_sheet.dart';
 import 'client_info_page.dart';
+import 'client_tracking_sheet_page.dart';
 import 'create_routine_page.dart';
 import 'package:yamanis_fit/core/widgets/app_back_button.dart';
 
@@ -854,7 +855,7 @@ class _ClientRoutinesPageState extends State<ClientRoutinesPage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: backgroundColor,
+      backgroundColor: Colors.transparent,
       appBar: AppBar(
         title: Text(widget.clientName),
         centerTitle: true,
@@ -862,6 +863,22 @@ class _ClientRoutinesPageState extends State<ClientRoutinesPage> {
         elevation: 0,
         leading: const AppBackButton(),
         actions: [
+          IconButton(
+            icon: const Icon(Icons.table_chart_rounded, color: Color(0xFFF43F5E)),
+            tooltip: 'Tabla de Control del Alumno',
+            onPressed: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (_) => ClientTrackingSheetPage(
+                    clientId: widget.clientId,
+                    clientName: widget.clientName,
+                    clientEmail: widget.clientEmail,
+                  ),
+                ),
+              );
+            },
+          ),
           IconButton(
             icon: Icon(Icons.assignment_ind_outlined, color: primaryColor),
             tooltip: 'Ficha del Cliente',
@@ -897,6 +914,40 @@ class _ClientRoutinesPageState extends State<ClientRoutinesPage> {
                         side: BorderSide(color: primaryColor.withValues(alpha: 0.4)),
                         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
                         backgroundColor: primaryColor.withValues(alpha: 0.06),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  SizedBox(
+                    width: double.infinity,
+                    height: 48,
+                    child: ElevatedButton.icon(
+                      onPressed: () {
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (_) => ClientTrackingSheetPage(
+                              clientId: widget.clientId,
+                              clientName: widget.clientName,
+                              clientEmail: widget.clientEmail,
+                            ),
+                          ),
+                        );
+                      },
+                      icon: const Icon(Icons.table_chart_rounded, size: 18),
+                      label: const Text(
+                        'TABLA DE REGISTRO & CONTADOR MUSCULAR',
+                        style: TextStyle(
+                          fontWeight: FontWeight.w900,
+                          fontSize: 12,
+                          letterSpacing: 0.8,
+                        ),
+                      ),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: const Color(0xFF881337),
+                        foregroundColor: Colors.white,
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                        elevation: 0,
                       ),
                     ),
                   ),

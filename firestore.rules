@@ -18,6 +18,10 @@ service cloud.firestore {
       allow create: if isSignedIn();
       allow update: if isAdmin() || (isSignedIn() && request.auth.uid == userId);
       allow delete: if isAdmin();
+
+      match /tracking_sheets/{sheetId} {
+        allow read, write: if isSignedIn();
+      }
     }
 
     match /workouts/{workoutId} {

@@ -157,7 +157,7 @@ class _CreatePromotionPageState extends State<CreatePromotionPage> {
     final imagePreview = _imageUrlController.text.trim();
 
     return Scaffold(
-      backgroundColor: backgroundColor,
+      backgroundColor: Colors.transparent,
       appBar: AppBar(
         title: const Text('NUEVA PROMOCIÓN', style: TextStyle(fontWeight: FontWeight.w900)),
         centerTitle: true,

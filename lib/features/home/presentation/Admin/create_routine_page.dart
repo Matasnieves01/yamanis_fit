@@ -1088,7 +1088,8 @@ class _CreateRoutinePageState extends State<CreateRoutinePage> {
   /// Nunca acorta una suscripción vigente más larga: usa la fecha mayor.
   Future<void> _autoActivateClient(DateTime startDate, int weeks, String adminUid) async {
     final userRef = FirebaseFirestore.instance.collection('users').doc(widget.clientId);
-    final planEnd = _dateForStorage(_planEndDate(startDate, weeks));
+    // Fin regular del plan + 1 semana adicional de gracia antes del bloqueo de ejercicios
+    final planEnd = _dateForStorage(_planEndDate(startDate, weeks).add(const Duration(days: 7)));
 
     DateTime activeUntil = planEnd;
     try {
@@ -1132,7 +1133,7 @@ class _CreateRoutinePageState extends State<CreateRoutinePage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: backgroundColor,
+      backgroundColor: Colors.transparent,
       appBar: AppBar(
         title: Text(widget.initialRoutineId == null ? 'CREAR RUTINA' : 'EDITAR RUTINA', style: const TextStyle(fontWeight: FontWeight.w900, letterSpacing: 1.5)),
         centerTitle: true,
@@ -1949,16 +1950,15 @@ class _CreateRoutinePageState extends State<CreateRoutinePage> {
                             itemCount: filteredList.length,
                             itemBuilder: (context, index) {
                               final workout = filteredList[index];
-                              return Container(
-                                margin: const EdgeInsets.only(bottom: 12),
-                                decoration: BoxDecoration(
-                                  color: surfaceColor.withValues(alpha: 0.1),
-                                  borderRadius: BorderRadius.circular(16),
-                                  border: Border.all(color: surfaceColor.withValues(alpha: 0.2)),
-                                ),
+                              return Padding(
+                                padding: const EdgeInsets.only(bottom: 12),
                                 child: Material(
-                                  type: MaterialType.transparency,
-                                  borderRadius: BorderRadius.circular(16),
+                                  color: surfaceColor.withValues(alpha: 0.1),
+                                  shape: RoundedRectangleBorder(
+                                    borderRadius: BorderRadius.circular(16),
+                                    side: BorderSide(color: surfaceColor.withValues(alpha: 0.2)),
+                                  ),
+                                  clipBehavior: Clip.antiAlias,
                                   child: ListTile(
                                     contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
                                     leading: Container(

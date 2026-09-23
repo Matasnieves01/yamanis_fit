@@ -11,6 +11,7 @@
 -keep class io.flutter.** { *; }
 -keep class io.flutter.plugins.** { *; }
 -keep class com.google.firebase.** { *; }
+-keep class com.dexterous.flutterlocalnotifications.** { *; }
 
 # General optimizations
 -repackageclasses ''

@@ -64,6 +64,8 @@ class PredeterminedRoutine {
   final int durationWeeks; // ej. 4 semanas
   final List<PredeterminedDayPlan> days;
   final bool isActive;
+  final double price;
+  final bool isFree;
   final DateTime createdAt;
 
   PredeterminedRoutine({
@@ -78,6 +80,8 @@ class PredeterminedRoutine {
     this.durationWeeks = 4,
     this.days = const [],
     this.isActive = true,
+    this.price = 0.0,
+    this.isFree = true,
     required this.createdAt,
   });
 
@@ -98,6 +102,9 @@ class PredeterminedRoutine {
         .map((m) => PredeterminedDayPlan.fromMap(m))
         .toList();
 
+    final priceVal = (data['price'] as num?)?.toDouble() ?? 0.0;
+    final isFreeVal = data['isFree'] as bool? ?? (priceVal <= 0.0);
+
     return PredeterminedRoutine(
       id: id,
       name: data['name'] ?? 'Programa sin título',
@@ -110,6 +117,8 @@ class PredeterminedRoutine {
       durationWeeks: (data['durationWeeks'] as num?)?.toInt() ?? 4,
       days: parsedDays,
       isActive: data['isActive'] ?? true,
+      price: priceVal,
+      isFree: isFreeVal,
       createdAt: (data['createdAt'] is Timestamp)
           ? (data['createdAt'] as Timestamp).toDate()
           : (data['createdAt'] is DateTime)
@@ -135,6 +144,8 @@ class PredeterminedRoutine {
       'durationWeeks': durationWeeks,
       'days': days.map((d) => d.toMap()).toList(),
       'isActive': isActive,
+      'price': price,
+      'isFree': isFree,
       'createdAt': createdAt,
     };
   }
