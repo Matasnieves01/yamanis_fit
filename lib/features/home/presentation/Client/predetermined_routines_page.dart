@@ -52,10 +52,10 @@ class _PredeterminedRoutinesPageState extends State<PredeterminedRoutinesPage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: backgroundColor,
+      backgroundColor: Colors.transparent,
       appBar: AppBar(
         title: const Text(
-          'PROMOCIONES',
+          'RUTINAS',
           style: TextStyle(fontWeight: FontWeight.w900, letterSpacing: 1.2, fontSize: 17),
         ),
         centerTitle: true,
@@ -177,11 +177,11 @@ class _PredeterminedRoutinesPageState extends State<PredeterminedRoutinesPage> {
       ),
       child: Row(
         children: [
-          Icon(Icons.local_offer_outlined, color: primaryColor, size: 20),
+          Icon(Icons.fitness_center_rounded, color: primaryColor, size: 20),
           const SizedBox(width: 10),
           const Expanded(
             child: Text(
-              'Explora las rutinas en promoción y solicita acceso a la que quieras para tu calendario.',
+              'Explora el catálogo de rutinas y solicita acceso al plan que desees para tu calendario.',
               style: TextStyle(color: Colors.white70, fontSize: 12),
             ),
           ),
@@ -274,16 +274,16 @@ class _PredeterminedRoutinesPageState extends State<PredeterminedRoutinesPage> {
                 child: Column(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
-                    const Icon(Icons.local_offer_outlined, size: 54, color: Colors.white24),
+                    const Icon(Icons.fitness_center_outlined, size: 54, color: Colors.white24),
                     const SizedBox(height: 16),
                     const Text(
-                      'No hay promociones disponibles en este nivel',
+                      'No hay rutinas disponibles en este nivel',
                       style: TextStyle(color: Colors.white70, fontWeight: FontWeight.bold, fontSize: 15),
                       textAlign: TextAlign.center,
                     ),
                     const SizedBox(height: 6),
                     const Text(
-                      'Pronto la entrenadora agregará nuevas rutinas en promoción.',
+                      'Pronto la entrenadora agregará nuevas rutinas a su catálogo.',
                       style: TextStyle(color: Colors.white38, fontSize: 12),
                       textAlign: TextAlign.center,
                     ),
@@ -405,24 +405,47 @@ class _PredeterminedRoutinesPageState extends State<PredeterminedRoutinesPage> {
                       Positioned(
                         top: 12,
                         right: 12,
-                        child: Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
-                          decoration: BoxDecoration(
-                            color: Colors.black.withValues(alpha: 0.65),
-                            borderRadius: BorderRadius.circular(8),
-                            border: Border.all(color: Colors.white24, width: 0.8),
-                          ),
-                          child: Row(
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              Icon(Icons.calendar_month_rounded, color: primaryColor, size: 12),
-                              const SizedBox(width: 4),
-                              Text(
-                                '${routine.durationWeeks} Semanas',
-                                style: const TextStyle(color: Colors.white, fontSize: 10, fontWeight: FontWeight.bold),
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Container(
+                              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 5),
+                              decoration: BoxDecoration(
+                                color: routine.isFree
+                                    ? const Color(0xFF2E7D32).withValues(alpha: 0.92)
+                                    : const Color(0xFFD97706).withValues(alpha: 0.95),
+                                borderRadius: BorderRadius.circular(8),
                               ),
-                            ],
-                          ),
+                              child: Text(
+                                routine.isFree ? 'GRATIS' : '\$${routine.price.toStringAsFixed(2)} USD',
+                                style: const TextStyle(
+                                  color: Colors.white,
+                                  fontSize: 10,
+                                  fontWeight: FontWeight.w900,
+                                ),
+                              ),
+                            ),
+                            const SizedBox(width: 6),
+                            Container(
+                              padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 5),
+                              decoration: BoxDecoration(
+                                color: Colors.black.withValues(alpha: 0.65),
+                                borderRadius: BorderRadius.circular(8),
+                                border: Border.all(color: Colors.white24, width: 0.8),
+                              ),
+                              child: Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  Icon(Icons.calendar_month_rounded, color: primaryColor, size: 12),
+                                  const SizedBox(width: 4),
+                                  Text(
+                                    '${routine.durationWeeks} Sem',
+                                    style: const TextStyle(color: Colors.white, fontSize: 10, fontWeight: FontWeight.bold),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ],
                         ),
                       ),
 
@@ -469,6 +492,25 @@ class _PredeterminedRoutinesPageState extends State<PredeterminedRoutinesPage> {
                         _buildMetric(Icons.repeat_rounded, '${routine.daysPerWeek} días/sem'),
                         const SizedBox(width: 14),
                         _buildMetric(Icons.flash_on_rounded, 'Intensidad ${routine.intensity}'),
+                        const Spacer(),
+                        if (routine.isFree)
+                          Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                            decoration: BoxDecoration(
+                              color: const Color(0xFF2E7D32).withValues(alpha: 0.15),
+                              borderRadius: BorderRadius.circular(6),
+                              border: Border.all(color: const Color(0xFF2E7D32).withValues(alpha: 0.4)),
+                            ),
+                            child: const Text(
+                              'Gratis',
+                              style: TextStyle(color: Color(0xFF81C784), fontSize: 11, fontWeight: FontWeight.bold),
+                            ),
+                          )
+                        else
+                          Text(
+                            '\$${routine.price.toStringAsFixed(2)} USD',
+                            style: TextStyle(color: primaryColor, fontSize: 13, fontWeight: FontWeight.w900),
+                          ),
                       ],
                     ),
 
@@ -540,7 +582,9 @@ class _PredeterminedRoutinesPageState extends State<PredeterminedRoutinesPage> {
                                   ? 'SOLICITUD ENVIADA'
                                   : _hasActiveRoutine
                                       ? 'VER DETALLES'
-                                      : 'EXPLORAR Y SOLICITAR',
+                                      : routine.isFree
+                                          ? 'SOLICITAR GRATIS'
+                                          : 'OBTENER • \$${routine.price.toStringAsFixed(2)} USD',
                               style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 12),
                             ),
                           ],

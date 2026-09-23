@@ -134,7 +134,7 @@ class _UploadPdfPageState extends State<UploadPdfPage> {
     final previewUrl = _getPreviewCoverUrl();
 
     return Scaffold(
-      backgroundColor: backgroundColor,
+      backgroundColor: Colors.transparent,
       appBar: AppBar(
         title: const Text('AÑADIR RECURSO', style: TextStyle(fontWeight: FontWeight.w900)),
         centerTitle: true,

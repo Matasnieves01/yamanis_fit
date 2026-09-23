@@ -2,6 +2,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:yamanis_fit/core/widgets/app_back_button.dart';
+import 'package:yamanis_fit/core/services/notification_service.dart';
 
 
 class SettingsPage extends StatefulWidget {
@@ -24,6 +25,8 @@ class _SettingsPageState extends State<SettingsPage> {
   String _firstName = "";
   String _lastName = "";
   String _email = "";
+  bool _remindersEnabled = true;
+  TimeOfDay _reminderTime = const TimeOfDay(hour: 8, minute: 0);
   bool _isLoading = true;
 
   @override
@@ -38,11 +41,15 @@ class _SettingsPageState extends State<SettingsPage> {
       _email = user.email ?? "";
       try {
         final doc = await _firestore.collection('users').doc(user.uid).get();
+        final remindersOn = await NotificationService.areRemindersEnabled();
+        final time = await NotificationService.getReminderTime();
         if (doc.exists && mounted) {
           final data = doc.data();
           setState(() {
             _firstName = data?['firstName'] ?? '';
             _lastName = data?['lastName'] ?? '';
+            _remindersEnabled = remindersOn;
+            _reminderTime = time;
             _isLoading = false;
           });
         }
@@ -54,6 +61,52 @@ class _SettingsPageState extends State<SettingsPage> {
           _showErrorSnackBar("Error al cargar los datos del usuario");
         }
       }
+    }
+  }
+
+  Future<void> _toggleReminders(bool value) async {
+    setState(() => _remindersEnabled = value);
+    await NotificationService.setRemindersEnabled(value);
+    if (value) {
+      final granted = await NotificationService.requestPermissions();
+      if (!granted && mounted) {
+        _showErrorSnackBar("Permiso de notificaciones no concedido en el sistema");
+      }
+    }
+  }
+
+  Future<void> _pickReminderTime() async {
+    final picked = await showTimePicker(
+      context: context,
+      initialTime: _reminderTime,
+      builder: (context, child) {
+        return Theme(
+          data: Theme.of(context).copyWith(
+            colorScheme: ColorScheme.dark(
+              primary: primaryColor,
+              surface: const Color(0xFF1E2631),
+              onSurface: Colors.white,
+            ),
+          ),
+          child: child!,
+        );
+      },
+    );
+
+    if (picked != null && mounted) {
+      final formatted = picked.format(context);
+      setState(() => _reminderTime = picked);
+      await NotificationService.setReminderTime(picked.hour, picked.minute);
+      if (mounted) {
+        _showSuccessSnackBar("Hora del recordatorio guardada: $formatted");
+      }
+    }
+  }
+
+  Future<void> _testNotification() async {
+    await NotificationService.showInstantTestNotification();
+    if (mounted) {
+      _showSuccessSnackBar("Notificación de prueba enviada al dispositivo");
     }
   }
 
@@ -537,7 +590,7 @@ class _SettingsPageState extends State<SettingsPage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: backgroundColor,
+      backgroundColor: Colors.transparent,
       appBar: AppBar(
         title: const Text('CONFIGURACIÓN', style: TextStyle(fontWeight: FontWeight.w900, letterSpacing: 1.5)),
         centerTitle: true,
@@ -578,6 +631,78 @@ class _SettingsPageState extends State<SettingsPage> {
                       onTap: _showChangePasswordDialog,
                     ),
                     const SizedBox(height: 24),
+                    // Workout Reminders Section
+                    Align(
+                      alignment: Alignment.centerLeft,
+                      child: Text(
+                        'RECORDATORIOS DE ENTRENAMIENTO',
+                        style: TextStyle(
+                          color: primaryColor,
+                          fontSize: 11,
+                          fontWeight: FontWeight.w800,
+                          letterSpacing: 1.2,
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 10),
+                    Material(
+                      color: surfaceColor.withValues(alpha: 0.05),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(16),
+                        side: BorderSide(color: surfaceColor.withValues(alpha: 0.1)),
+                      ),
+                      clipBehavior: Clip.antiAlias,
+                      child: Column(
+                        children: [
+                          SwitchListTile(
+                            activeThumbColor: primaryColor,
+                            contentPadding: const EdgeInsets.symmetric(horizontal: 18, vertical: 4),
+                            secondary: Icon(Icons.notifications_active_outlined, color: primaryColor, size: 24),
+                            title: const Text(
+                              'Avisos de Rutina Diaria',
+                              style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 14),
+                            ),
+                            subtitle: Text(
+                              'Recibe una alerta los días que tengas entrenamiento asignado',
+                              style: TextStyle(color: Colors.white.withValues(alpha: 0.6), fontSize: 12),
+                            ),
+                            value: _remindersEnabled,
+                            onChanged: _toggleReminders,
+                          ),
+                          if (_remindersEnabled) ...[
+                            Divider(height: 1, color: surfaceColor.withValues(alpha: 0.1)),
+                            ListTile(
+                              dense: true,
+                              contentPadding: const EdgeInsets.symmetric(horizontal: 18, vertical: 4),
+                              leading: Icon(Icons.access_time_rounded, color: primaryColor, size: 24),
+                              title: const Text(
+                                'Hora del Recordatorio',
+                                style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 14),
+                              ),
+                              subtitle: Text(
+                                _reminderTime.format(context),
+                                style: TextStyle(color: primaryColor, fontSize: 13, fontWeight: FontWeight.w600),
+                              ),
+                              trailing: Icon(Icons.edit_outlined, size: 18, color: Colors.white.withValues(alpha: 0.4)),
+                              onTap: _pickReminderTime,
+                            ),
+                            Divider(height: 1, color: surfaceColor.withValues(alpha: 0.1)),
+                            ListTile(
+                              dense: true,
+                              contentPadding: const EdgeInsets.symmetric(horizontal: 18, vertical: 2),
+                              leading: const Icon(Icons.send_rounded, color: Colors.white70, size: 20),
+                              title: const Text(
+                                'Probar Notificación',
+                                style: TextStyle(color: Colors.white70, fontSize: 13),
+                              ),
+                              trailing: const Icon(Icons.arrow_forward_ios_rounded, size: 12, color: Colors.white30),
+                              onTap: _testNotification,
+                            ),
+                          ],
+                        ],
+                      ),
+                    ),
+                    const SizedBox(height: 24),
                     // Delete Account Button
                     SizedBox(
                       width: double.infinity,
@@ -613,31 +738,28 @@ class _SettingsPageState extends State<SettingsPage> {
     required String subtitle,
     required VoidCallback onTap,
   }) {
-    return Container(
-      decoration: BoxDecoration(
-        color: surfaceColor.withValues(alpha: 0.05),
+    return Material(
+      color: surfaceColor.withValues(alpha: 0.05),
+      shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: surfaceColor.withValues(alpha: 0.1)),
+        side: BorderSide(color: surfaceColor.withValues(alpha: 0.1)),
       ),
-      child: Material(
-        type: MaterialType.transparency,
-        borderRadius: BorderRadius.circular(16),
-        child: ListTile(
-          dense: true,
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-          contentPadding: const EdgeInsets.symmetric(horizontal: 18, vertical: 6),
-          leading: Icon(icon, color: primaryColor, size: 24),
-          title: Text(
-            title,
-            style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 14),
-          ),
-          subtitle: Text(
-            subtitle,
-            style: TextStyle(color: Colors.white.withValues(alpha: 0.6), fontSize: 13),
-          ),
-          trailing: Icon(Icons.arrow_forward_ios_rounded, size: 14, color: Colors.white.withValues(alpha: 0.2)),
-          onTap: onTap,
+      clipBehavior: Clip.antiAlias,
+      child: ListTile(
+        dense: true,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        contentPadding: const EdgeInsets.symmetric(horizontal: 18, vertical: 6),
+        leading: Icon(icon, color: primaryColor, size: 24),
+        title: Text(
+          title,
+          style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 14),
         ),
+        subtitle: Text(
+          subtitle,
+          style: TextStyle(color: Colors.white.withValues(alpha: 0.6), fontSize: 13),
+        ),
+        trailing: Icon(Icons.arrow_forward_ios_rounded, size: 14, color: Colors.white.withValues(alpha: 0.2)),
+        onTap: onTap,
       ),
     );
   }

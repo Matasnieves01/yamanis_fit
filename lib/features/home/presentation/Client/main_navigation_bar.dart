@@ -121,9 +121,9 @@ class _MainNavigationBarState extends State<MainNavigationBar> {
           label: 'Clientes',
         ),
         const BottomNavigationBarItem(
-          icon: Icon(Icons.local_offer_outlined),
-          activeIcon: Icon(Icons.local_offer),
-          label: 'Promos',
+          icon: Icon(Icons.calendar_month_outlined),
+          activeIcon: Icon(Icons.calendar_month),
+          label: 'Rutinas',
         ),
         const BottomNavigationBarItem(
           icon: Icon(Icons.folder_outlined),
@@ -149,9 +149,9 @@ class _MainNavigationBarState extends State<MainNavigationBar> {
         label: 'Inicio',
       ),
       const BottomNavigationBarItem(
-        icon: Icon(Icons.local_offer_outlined),
-        activeIcon: Icon(Icons.local_offer),
-        label: 'Promociones',
+        icon: Icon(Icons.fitness_center_outlined),
+        activeIcon: Icon(Icons.fitness_center),
+        label: 'Rutinas',
       ),
       const BottomNavigationBarItem(
         icon: Icon(Icons.folder_outlined),
@@ -262,6 +262,7 @@ class _MainNavigationBarState extends State<MainNavigationBar> {
     }
 
     return Scaffold(
+      backgroundColor: Colors.transparent,
       body: Stack(
         fit: StackFit.expand,
         children: [
@@ -349,19 +350,32 @@ class _MainNavigationBarState extends State<MainNavigationBar> {
             ),
         ],
       ),
-      bottomNavigationBar: Theme(
-        data: ThemeData.dark().copyWith(
-          canvasColor: const Color(0xFF11151C),
+      bottomNavigationBar: Container(
+        decoration: BoxDecoration(
+          color: const Color(0xFF11151C).withValues(alpha: 0.95),
+          border: Border(
+            top: BorderSide(
+              color: Colors.white.withValues(alpha: 0.08),
+              width: 1,
+            ),
+          ),
         ),
-        child: BottomNavigationBar(
-          currentIndex: _currentIndex,
-          onTap: _onTabSelected,
-          type: BottomNavigationBarType.fixed,
-          selectedItemColor: primaryColor,
-          unselectedItemColor: Colors.white38,
-          showSelectedLabels: true,
-          showUnselectedLabels: false,
-          items: _items,
+        child: Theme(
+          data: ThemeData.dark().copyWith(
+            canvasColor: Colors.transparent,
+          ),
+          child: BottomNavigationBar(
+            backgroundColor: Colors.transparent,
+            elevation: 0,
+            currentIndex: _currentIndex,
+            onTap: _onTabSelected,
+            type: BottomNavigationBarType.fixed,
+            selectedItemColor: primaryColor,
+            unselectedItemColor: Colors.white38,
+            showSelectedLabels: true,
+            showUnselectedLabels: false,
+            items: _items,
+          ),
         ),
       ),
     );

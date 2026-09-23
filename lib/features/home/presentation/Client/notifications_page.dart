@@ -48,7 +48,7 @@ class _ClientNotificationsPageState extends State<ClientNotificationsPage> {
     final user = FirebaseAuth.instance.currentUser;
     if (user == null) {
       return const Scaffold(
-        backgroundColor: _backgroundColor,
+        backgroundColor: Colors.transparent,
         body: Center(
           child: Text(
             'Inicia sesión para ver notificaciones',
@@ -59,7 +59,7 @@ class _ClientNotificationsPageState extends State<ClientNotificationsPage> {
     }
 
     return Scaffold(
-      backgroundColor: _backgroundColor,
+      backgroundColor: Colors.transparent,
       appBar: AppBar(
         title: const Text(
           'FEEDBACK DEL TRAINER',

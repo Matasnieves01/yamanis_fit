@@ -5,6 +5,9 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:youtube_player_flutter/youtube_player_flutter.dart';
 import 'package:yamanis_fit/core/widgets/app_back_button.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:yamanis_fit/core/services/routine_plan_service.dart';
+import 'package:yamanis_fit/features/home/presentation/Client/widgets/routine_completion_dialogs.dart';
+import 'package:yamanis_fit/core/services/notification_service.dart';
 
 class StartRoutinePage extends StatefulWidget {
   final Map<String, dynamic> routine;
@@ -82,6 +85,54 @@ class _StartRoutinePageState extends State<StartRoutinePage> {
     completionStatus = List.generate(workouts.length, (index) => false);
     resultsList = List.generate(workouts.length, (index) => {});
     _loadAllWorkoutDetails();
+    _checkPlanBlocking();
+  }
+
+  Future<void> _checkPlanBlocking() async {
+    final user = FirebaseAuth.instance.currentUser;
+    if (user == null) return;
+    try {
+      final userDoc = await FirebaseFirestore.instance.collection('users').doc(user.uid).get();
+      final userData = userDoc.data() ?? {};
+      final role = (userData['role'] ?? 'user').toString().toLowerCase();
+      if (role == 'admin') return;
+
+      final routinesSnap = await FirebaseFirestore.instance
+          .collection('routines')
+          .where('clientId', isEqualTo: user.uid)
+          .get();
+      final logsSnap = await FirebaseFirestore.instance
+          .collection('routine_logs')
+          .where('userId', isEqualTo: user.uid)
+          .get();
+      final completedIds = logsSnap.docs
+          .map((d) => (d.data()['routineId'] ?? '').toString())
+          .where((id) => id.isNotEmpty)
+          .toSet();
+
+      final rawRoutines = routinesSnap.docs.map((d) {
+        final m = d.data();
+        m['id'] = d.id;
+        return m;
+      }).toList();
+
+      final status = RoutinePlanService.evaluatePlanStatus(
+        userData: userData,
+        allRoutines: rawRoutines,
+        completedRoutineIds: completedIds,
+      );
+
+      if (status.isBlocked && mounted) {
+        await showDialog(
+          context: context,
+          barrierDismissible: false,
+          builder: (_) => const PlanBlockedDialog(),
+        );
+        if (mounted) {
+          Navigator.pop(context);
+        }
+      }
+    } catch (_) {}
   }
 
   Future<void> _loadAllWorkoutDetails() async {
@@ -212,13 +263,52 @@ class _StartRoutinePageState extends State<StartRoutinePage> {
         'createdAt': FieldValue.serverTimestamp(),
       });
 
+      // Cancelar recordatorio de notificación para la rutina finalizada
+      final dateTs = widget.routine['date'] as Timestamp?;
+      if (dateTs != null) {
+        NotificationService.cancelReminderForDate(dateTs.toDate());
+      }
+
+      // Verificar si este entrenamiento completa todos los ejercicios del plan del usuario
+      bool isPlanCompleted = false;
+      try {
+        final routinesSnap = await FirebaseFirestore.instance
+            .collection('routines')
+            .where('clientId', isEqualTo: user.uid)
+            .get();
+        final logsSnap = await FirebaseFirestore.instance
+            .collection('routine_logs')
+            .where('userId', isEqualTo: user.uid)
+            .get();
+        final completedIds = logsSnap.docs
+            .map((d) => (d.data()['routineId'] ?? '').toString())
+            .where((id) => id.isNotEmpty)
+            .toSet();
+        completedIds.add(widget.routineId);
+
+        final rawRoutines = routinesSnap.docs.map((d) {
+          final m = d.data();
+          m['id'] = d.id;
+          return m;
+        }).toList();
+
+        final status = RoutinePlanService.evaluatePlanStatus(
+          userData: userData ?? {},
+          allRoutines: rawRoutines,
+          completedRoutineIds: completedIds,
+        );
+        isPlanCompleted = status.areAllExercisesCompleted;
+      } catch (e) {
+        debugPrint("Error checking plan completion: $e");
+      }
+
       // Clear autosaved progress after successful completion
       await _clearAutosavedProgress();
 
       if (!mounted) return;
 
       setState(() => isLoading = false);
-      _showSuccessDialog();
+      _showSuccessDialog(isPlanCompleted: isPlanCompleted);
     } catch (e) {
       debugPrint("Error finishing routine: $e");
       if (!mounted) return;
@@ -243,18 +333,30 @@ class _StartRoutinePageState extends State<StartRoutinePage> {
     );
   }
 
-  void _showSuccessDialog() {
+  void _showSuccessDialog({bool isPlanCompleted = false}) {
     showDialog(
       context: context,
       barrierDismissible: false,
       builder: (dialogContext) => RoutineSuccessDialog(
         primaryColor: primaryColor,
-        onContinue: () {
+        onContinue: () async {
           Navigator.pop(dialogContext); // Close success dialog
-          Navigator.pop(
-            context,
-            true,
-          ); // Go back to dashboard with success indicator
+          if (isPlanCompleted && mounted) {
+            // Mostrar diálogo especial de felicitaciones y remedición opcional
+            await showDialog(
+              context: context,
+              barrierDismissible: true,
+              builder: (ctx) => PlanCompletedDialog(
+                primaryColor: primaryColor,
+              ),
+            );
+          }
+          if (mounted) {
+            Navigator.pop(
+              context,
+              true,
+            ); // Go back to dashboard with success indicator
+          }
         },
       ),
     );
@@ -266,7 +368,7 @@ class _StartRoutinePageState extends State<StartRoutinePage> {
     final progress = workouts.isEmpty ? 0.0 : completedCount / workouts.length;
 
     return Scaffold(
-      backgroundColor: backgroundColor,
+      backgroundColor: Colors.transparent,
       appBar: AppBar(
         title: Text(
           widget.routine['name']?.toString().toUpperCase() ?? "RUTINA",

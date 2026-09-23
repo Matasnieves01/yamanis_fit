@@ -9,6 +9,10 @@ import 'package:intl/intl.dart';
 import 'package:yamanis_fit/core/widgets/branded_loading_screen.dart';
 import 'data_sheet_page.dart';
 import 'package:yamanis_fit/core/services/biometrics_service.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+import 'package:yamanis_fit/core/services/routine_plan_service.dart';
+import 'package:yamanis_fit/features/home/presentation/Client/widgets/routine_completion_dialogs.dart';
+import 'package:yamanis_fit/core/services/notification_service.dart';
 
 class DashboardPage extends StatefulWidget {
   const DashboardPage({super.key});
@@ -38,6 +42,7 @@ class _DashboardPageState extends State<DashboardPage> {
   bool _isLoading = true;
   String _userRole = 'user';
   bool _hasCompletedDataSheet = true;
+  RoutinePlanStatus _planStatus = const RoutinePlanStatus();
 
   final Color backgroundColor = const Color(0xFF11151C);
   final Color surfaceColor = const Color(0xFF55768C);
@@ -95,10 +100,12 @@ class _DashboardPageState extends State<DashboardPage> {
       }
 
       final Map<DateTime, List<Map<String, dynamic>>> newRoutines = {};
+      final List<Map<String, dynamic>> rawRoutinesList = [];
 
       for (var doc in snapshot.docs) {
         final data = doc.data();
         data['id'] = doc.id;
+        rawRoutinesList.add(data);
         final Timestamp timestamp = data['date'];
         final DateTime date = timestamp.toDate();
         final DateTime normalizedDate = DateTime.utc(date.year, date.month, date.day);
@@ -109,10 +116,20 @@ class _DashboardPageState extends State<DashboardPage> {
         newRoutines[normalizedDate]!.add(data);
       }
 
+      final planStatus = RoutinePlanService.evaluatePlanStatus(
+        userData: userData,
+        allRoutines: rawRoutinesList,
+        completedRoutineIds: completedIds,
+      );
+
       final activeUntil = (userData['activeUntil'] as Timestamp?)?.toDate();
       final isEnabled = userData['isActive'] == true;
       
-      final isAccountActive = _userRole == 'admin' || (isEnabled && (activeUntil == null || activeUntil.isAfter(DateTime.now())));
+      final isAccountActive = _userRole == 'admin' ||
+          (isEnabled &&
+              (activeUntil == null ||
+                  activeUntil.isAfter(DateTime.now()) ||
+                  planStatus.isInGracePeriod));
 
       // Calculate streak
       // New logic:
@@ -200,11 +217,46 @@ class _DashboardPageState extends State<DashboardPage> {
         _activeUntil = activeUntil;
         _isAccountActive = isAccountActive;
         _hasCompletedDataSheet = isSheetComplete;
+        _planStatus = planStatus;
         _isLoading = false;
       });
+
+      if (_userRole != 'admin') {
+        NotificationService.scheduleWorkoutRemindersForRoutines(
+          allRoutines: snapshot.docs.map((d) => {'id': d.id, ...d.data()}).toList(),
+          completedRoutineIds: completedIds,
+        );
+      }
+
+      if (_userRole != 'admin' && planStatus.areAllExercisesCompleted) {
+        _checkAndShowPlanCompletedPrompt(
+          user.uid,
+          planStatus.currentPlan?.id ?? 'default',
+        );
+      }
     } catch (e) {
       if (!mounted) return;
       setState(() => _isLoading = false);
+    }
+  }
+
+  Future<void> _checkAndShowPlanCompletedPrompt(String uid, String planId) async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final key = 'has_prompted_plan_completion_${uid}_$planId';
+      final alreadyPrompted = prefs.getBool(key) ?? false;
+      if (!alreadyPrompted && mounted) {
+        await prefs.setBool(key, true);
+        await Future.delayed(const Duration(milliseconds: 600));
+        if (!mounted) return;
+        showDialog(
+          context: context,
+          barrierDismissible: true,
+          builder: (_) => PlanCompletedDialog(primaryColor: primaryColor),
+        );
+      }
+    } catch (e) {
+      debugPrint('Error showing plan completed prompt: $e');
     }
   }
 
@@ -323,7 +375,7 @@ class _DashboardPageState extends State<DashboardPage> {
     }
 
     return Scaffold(
-      backgroundColor: backgroundColor,
+      backgroundColor: Colors.transparent,
       body: SafeArea(
               child: SingleChildScrollView(
                 child: Padding(
@@ -411,6 +463,7 @@ class _DashboardPageState extends State<DashboardPage> {
                         ),
                        const SizedBox(height: 10),
                        _buildAccessBadge(),
+                       _buildPlanStatusBanner(),
                        if (routinesForSelectedDay.isEmpty)
                          Container(
                            width: double.infinity,
@@ -1716,6 +1769,7 @@ class _DashboardPageState extends State<DashboardPage> {
             isCompleted: isCompleted,
             isMissed: isMissed,
             canStart: canStart,
+            isBlocked: _planStatus.isBlocked,
           ),
         ],
       ),
@@ -1728,6 +1782,10 @@ class _DashboardPageState extends State<DashboardPage> {
       child: InkWell(
         onTap: (item.workoutId != null)
             ? () {
+                if (_planStatus.isBlocked) {
+                  _showBlockedPlanDialog();
+                  return;
+                }
                 Navigator.push(
                   context,
                   MaterialPageRoute(
@@ -1909,30 +1967,38 @@ class _DashboardPageState extends State<DashboardPage> {
     required bool isCompleted,
     required bool isMissed,
     required bool canStart,
+    bool isBlocked = false,
   }) {
     final buttonColor = isCompleted
         ? Colors.white.withOpacity(0.12)
-        : (!canStart
-            ? Colors.white.withOpacity(0.08)
-            : (isMissed ? const Color(0xFFFF5252) : primaryColor));
+        : (isBlocked
+            ? Colors.redAccent.withOpacity(0.15)
+            : (!canStart
+                ? Colors.white.withOpacity(0.08)
+                : (isMissed ? const Color(0xFFFF5252) : primaryColor)));
 
-    final textColor = (isCompleted || !canStart)
+    final textColor = (isCompleted || (!canStart && !isBlocked))
         ? Colors.white70
-        : const Color(0xFF11151C);
+        : (isBlocked ? Colors.redAccent.shade100 : const Color(0xFF11151C));
 
-    final iconBgColor = (isCompleted || !canStart)
+    final iconBgColor = (isCompleted || (!canStart && !isBlocked))
         ? Colors.white.withOpacity(0.1)
-        : const Color(0xFF11151C);
+        : (isBlocked
+            ? Colors.redAccent.withOpacity(0.2)
+            : const Color(0xFF11151C));
 
-    final iconColor = (isCompleted || !canStart)
+    final iconColor = (isCompleted || (!canStart && !isBlocked))
         ? Colors.white70
-        : (isMissed ? const Color(0xFFFF5252) : primaryColor);
+        : (isBlocked
+            ? Colors.redAccent
+            : (isMissed ? const Color(0xFFFF5252) : primaryColor));
 
     return Container(
       width: double.infinity,
       decoration: BoxDecoration(
         borderRadius: BorderRadius.circular(28),
-        boxShadow: (!isCompleted && canStart)
+        border: isBlocked ? Border.all(color: Colors.redAccent.withOpacity(0.45)) : null,
+        boxShadow: (!isCompleted && canStart && !isBlocked)
             ? [
                 BoxShadow(
                   color: (isMissed ? const Color(0xFFFF5252) : primaryColor).withOpacity(0.35),
@@ -1947,23 +2013,27 @@ class _DashboardPageState extends State<DashboardPage> {
         borderRadius: BorderRadius.circular(28),
         child: InkWell(
           borderRadius: BorderRadius.circular(28),
-          onTap: (isCompleted || !canStart)
+          onTap: isCompleted
               ? null
-              : () async {
-                  final result = await Navigator.push(
-                    context,
-                    MaterialPageRoute(
-                      builder: (context) => StartRoutinePage(
-                        routine: routine,
-                        routineId: routine['id'],
-                      ),
-                    ),
-                  );
+              : (isBlocked
+                  ? () => _showBlockedPlanDialog()
+                  : (!canStart
+                      ? null
+                      : () async {
+                          final result = await Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (context) => StartRoutinePage(
+                                routine: routine,
+                                routineId: routine['id'],
+                              ),
+                            ),
+                          );
 
-                  if (result == true) {
-                    _fetchRoutines();
-                  }
-                },
+                          if (result == true) {
+                            _fetchRoutines();
+                          }
+                        })),
           child: Padding(
             padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
             child: Row(
@@ -1976,7 +2046,9 @@ class _DashboardPageState extends State<DashboardPage> {
                     shape: BoxShape.circle,
                   ),
                   child: Icon(
-                    isCompleted ? Icons.check_rounded : Icons.play_arrow_rounded,
+                    isCompleted
+                        ? Icons.check_rounded
+                        : (isBlocked ? Icons.lock_clock_rounded : Icons.play_arrow_rounded),
                     color: iconColor,
                     size: 22,
                   ),
@@ -1986,9 +2058,13 @@ class _DashboardPageState extends State<DashboardPage> {
                   child: Text(
                     isCompleted
                         ? "RUTINA COMPLETADA"
-                        : canStart
-                            ? (isMissed ? "COMPLETAR RUTINA" : "EMPEZAR RUTINA")
-                            : "NO DISPONIBLE",
+                        : (isBlocked
+                            ? "EJERCICIOS BLOQUEADOS"
+                            : (canStart
+                                ? (_planStatus.isInGracePeriod
+                                    ? "COMPLETAR (GRACIA)"
+                                    : (isMissed ? "COMPLETAR RUTINA" : "EMPEZAR RUTINA"))
+                                : "NO DISPONIBLE")),
                     style: TextStyle(
                       color: textColor,
                       fontWeight: FontWeight.w900,
@@ -2008,9 +2084,9 @@ class _DashboardPageState extends State<DashboardPage> {
                 ),
                 const SizedBox(width: 4),
                 Icon(
-                  Icons.chevron_right_rounded,
-                  color: textColor,
-                  size: 20,
+                  isBlocked ? Icons.chevron_right_rounded : Icons.arrow_forward_ios_rounded,
+                  color: textColor.withOpacity(0.85),
+                  size: 14,
                 ),
               ],
             ),
@@ -2020,20 +2096,7 @@ class _DashboardPageState extends State<DashboardPage> {
     );
   }
 
-  Widget _buildTag(String label, Color color) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-      decoration: BoxDecoration(
-        color: color.withOpacity(0.2),
-        borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: color.withOpacity(0.3)),
-      ),
-      child: Text(
-        label,
-        style: TextStyle(color: color, fontSize: 9, fontWeight: FontWeight.bold),
-      ),
-    );
-  }
+
 
 
    DateTime _normalizeDay(DateTime date) => DateTime.utc(date.year, date.month, date.day);
@@ -2076,24 +2139,39 @@ class _DashboardPageState extends State<DashboardPage> {
      return routineDay.isBefore(today) && !_isRoutineCompleted(routine);
    }
 
-   bool _canStartRoutine(Map<String, dynamic> routine) {
-     final isCompleted = _isRoutineCompleted(routine);
-     if (isCompleted) return false;
+  bool _canStartRoutine(Map<String, dynamic> routine) {
+    if (_userRole == 'admin') return true;
 
-     // Permite iniciar cualquier rutina que esté en la semana actual (desbloqueo semanal)
-     return _isRoutineInCurrentWeek(routine);
-   }
+    // Si el plan expiró la semana de gracia y no se completaron todos los ejercicios -> BLOQUEADO
+    if (_planStatus.isBlocked) return false;
 
-   /// Check if a routine is within 24 hours of being completed (grace period)
-   bool _isInGracePeriod(Map<String, dynamic> routine) {
-     final logId = routine['id'] ?? '';
-     if (logId.isEmpty) return false;
+    final isCompleted = _isRoutineCompleted(routine);
+    if (isCompleted) return false;
 
-     // Check the completed routine logs
-     // This will be updated when we fetch routine_logs
-     // For now, return false - will be enhanced in the future
-     return false;
-   }
+    // Si está en la semana de gracia adicional, puede completar las rutinas pendientes del plan
+    if (_planStatus.isInGracePeriod) {
+      return true;
+    }
+
+    // Permite iniciar cualquier rutina que esté en la semana actual (desbloqueo semanal)
+    if (_isRoutineInCurrentWeek(routine)) return true;
+
+    // O rutinas pasadas no completadas para ponerse al día
+    final isMissed = _isRoutineMissed(routine);
+    if (isMissed) return true;
+
+    return false;
+  }
+
+  void _showBlockedPlanDialog() {
+    showDialog(
+      context: context,
+      barrierDismissible: true,
+      builder: (_) => PlanBlockedDialog(
+        onRenewWhatsApp: _openWhatsApp,
+      ),
+    );
+  }
 
   Future<void> _openWhatsApp() async {
     const phone = '50769184836';
@@ -2144,6 +2222,331 @@ class _DashboardPageState extends State<DashboardPage> {
         ),
       ),
     );
+  }
+
+  Widget _buildPlanStatusBanner() {
+    if (_userRole == 'admin') return const SizedBox.shrink();
+
+    if (_planStatus.isInGracePeriod) {
+      return Container(
+        margin: const EdgeInsets.only(bottom: 14),
+        padding: const EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          gradient: const LinearGradient(
+            colors: [Color(0xFF2C2212), Color(0xFF1B1812)],
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+          ),
+          borderRadius: BorderRadius.circular(20),
+          border: Border.all(
+            color: Colors.amber.withValues(alpha: 0.5),
+            width: 1.3,
+          ),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.amber.withValues(alpha: 0.12),
+              blurRadius: 16,
+              offset: const Offset(0, 4),
+            ),
+          ],
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                Container(
+                  padding: const EdgeInsets.all(8),
+                  decoration: BoxDecoration(
+                    color: Colors.amber.withValues(alpha: 0.2),
+                    shape: BoxShape.circle,
+                  ),
+                  child: const Icon(
+                    Icons.hourglass_top_rounded,
+                    color: Colors.amber,
+                    size: 20,
+                  ),
+                ),
+                const SizedBox(width: 10),
+                const Expanded(
+                  child: Text(
+                    'SEMANA ADICIONAL EN CURSO',
+                    style: TextStyle(
+                      color: Colors.amber,
+                      fontSize: 13,
+                      fontWeight: FontWeight.w900,
+                      letterSpacing: 0.8,
+                    ),
+                  ),
+                ),
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 4),
+                  decoration: BoxDecoration(
+                    color: Colors.amber.withValues(alpha: 0.15),
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(color: Colors.amber.withValues(alpha: 0.3)),
+                  ),
+                  child: Text(
+                    '${_planStatus.daysLeftInGracePeriod} ${_planStatus.daysLeftInGracePeriod == 1 ? 'DÍA' : 'DÍAS'}',
+                    style: const TextStyle(
+                      color: Colors.amber,
+                      fontSize: 11,
+                      fontWeight: FontWeight.w900,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 10),
+            Text(
+              'Has superado las semanas de tu plan sin completar todos los ejercicios. Tienes 1 semana adicional antes del bloqueo para completar los ejercicios que te faltan.',
+              style: TextStyle(
+                color: Colors.white.withValues(alpha: 0.85),
+                fontSize: 12.5,
+                height: 1.35,
+              ),
+            ),
+            const SizedBox(height: 10),
+            Row(
+              children: [
+                Expanded(
+                  child: ClipRRect(
+                    borderRadius: BorderRadius.circular(6),
+                    child: LinearProgressIndicator(
+                      value: _planStatus.completionProgress,
+                      backgroundColor: Colors.white.withValues(alpha: 0.1),
+                      valueColor: const AlwaysStoppedAnimation<Color>(Colors.amber),
+                      minHeight: 6,
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 12),
+                Text(
+                  '${_planStatus.completedRoutines}/${_planStatus.totalRoutines} rutinas',
+                  style: TextStyle(
+                    color: Colors.white.withValues(alpha: 0.7),
+                    fontSize: 11.5,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+              ],
+            ),
+          ],
+        ),
+      );
+    }
+
+    if (_planStatus.isBlocked) {
+      return Container(
+        margin: const EdgeInsets.only(bottom: 14),
+        padding: const EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          gradient: const LinearGradient(
+            colors: [Color(0xFF2C1318), Color(0xFF1B1214)],
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+          ),
+          borderRadius: BorderRadius.circular(20),
+          border: Border.all(
+            color: Colors.redAccent.withValues(alpha: 0.5),
+            width: 1.3,
+          ),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.redAccent.withValues(alpha: 0.15),
+              blurRadius: 16,
+              offset: const Offset(0, 4),
+            ),
+          ],
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                Container(
+                  padding: const EdgeInsets.all(8),
+                  decoration: BoxDecoration(
+                    color: Colors.redAccent.withValues(alpha: 0.2),
+                    shape: BoxShape.circle,
+                  ),
+                  child: const Icon(
+                    Icons.lock_clock_rounded,
+                    color: Colors.redAccent,
+                    size: 20,
+                  ),
+                ),
+                const SizedBox(width: 10),
+                const Expanded(
+                  child: Text(
+                    'EJERCICIOS BLOQUEADOS',
+                    style: TextStyle(
+                      color: Colors.redAccent,
+                      fontSize: 13,
+                      fontWeight: FontWeight.w900,
+                      letterSpacing: 0.8,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 8),
+            Text(
+              'Tu plan y la semana adicional han finalizado sin completar todos los ejercicios. Los ejercicios se encuentran bloqueados.',
+              style: TextStyle(
+                color: Colors.white.withValues(alpha: 0.85),
+                fontSize: 12.5,
+                height: 1.35,
+              ),
+            ),
+            const SizedBox(height: 12),
+            SizedBox(
+              width: double.infinity,
+              height: 38,
+              child: ElevatedButton.icon(
+                onPressed: _openWhatsApp,
+                icon: const Icon(Icons.chat_rounded, color: Colors.white, size: 16),
+                label: const Text(
+                  'RENOVAR PLAN POR WHATSAPP',
+                  style: TextStyle(
+                    color: Colors.white,
+                    fontSize: 11.5,
+                    fontWeight: FontWeight.w900,
+                    letterSpacing: 0.5,
+                  ),
+                ),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: const Color(0xFF25D366),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(19),
+                  ),
+                ),
+              ),
+            ),
+          ],
+        ),
+      );
+    }
+
+    if (_planStatus.areAllExercisesCompleted) {
+      return Container(
+        margin: const EdgeInsets.only(bottom: 14),
+        padding: const EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          gradient: const LinearGradient(
+            colors: [Color(0xFF16251A), Color(0xFF111A15)],
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+          ),
+          borderRadius: BorderRadius.circular(20),
+          border: Border.all(
+            color: primaryColor.withValues(alpha: 0.45),
+            width: 1.3,
+          ),
+          boxShadow: [
+            BoxShadow(
+              color: primaryColor.withValues(alpha: 0.12),
+              blurRadius: 16,
+              offset: const Offset(0, 4),
+            ),
+          ],
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                Container(
+                  padding: const EdgeInsets.all(8),
+                  decoration: BoxDecoration(
+                    color: primaryColor.withValues(alpha: 0.2),
+                    shape: BoxShape.circle,
+                  ),
+                  child: Icon(
+                    Icons.emoji_events_rounded,
+                    color: primaryColor,
+                    size: 20,
+                  ),
+                ),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      const Text(
+                        '¡PLAN COMPLETADO AL 100%!',
+                        style: TextStyle(
+                          color: Colors.white,
+                          fontSize: 13,
+                          fontWeight: FontWeight.w900,
+                          letterSpacing: 0.8,
+                        ),
+                      ),
+                      Text(
+                        'Has terminado todos los ejercicios de tu rutina',
+                        style: TextStyle(
+                          color: primaryColor,
+                          fontSize: 11,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 10),
+            Text(
+              '¿Quieres ver cómo ha cambiado tu cuerpo? Te invitamos a registrar tus medidas corporales para comparar tu progreso (opcional).',
+              style: TextStyle(
+                color: Colors.white.withValues(alpha: 0.85),
+                fontSize: 12.5,
+                height: 1.35,
+              ),
+            ),
+            const SizedBox(height: 12),
+            SizedBox(
+              width: double.infinity,
+              height: 38,
+              child: ElevatedButton.icon(
+                onPressed: () {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (_) => const DataSheetPage(
+                        isRequiredForRoutine: false,
+                      ),
+                    ),
+                  );
+                },
+                icon: const Icon(
+                  Icons.straighten_rounded,
+                  color: Color(0xFF11151C),
+                  size: 16,
+                ),
+                label: const Text(
+                  'TOMAR MEDIDAS (OPCIONAL)',
+                  style: TextStyle(
+                    color: Color(0xFF11151C),
+                    fontSize: 11.5,
+                    fontWeight: FontWeight.w900,
+                    letterSpacing: 0.5,
+                  ),
+                ),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: primaryColor,
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(19),
+                  ),
+                ),
+              ),
+            ),
+          ],
+        ),
+      );
+    }
+
+    return const SizedBox.shrink();
   }
 
 

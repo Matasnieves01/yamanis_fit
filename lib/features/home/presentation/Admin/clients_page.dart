@@ -4,6 +4,7 @@ import 'package:intl/intl.dart';
 import 'package:yamanis_fit/models/user_data_sheet.dart';
 import 'client_routines_page.dart';
 import 'client_info_page.dart';
+import 'client_tracking_sheet_page.dart';
 
 enum ClientFilter { all, active, expired, pendingData }
 
@@ -167,10 +168,23 @@ class _ClientsPageState extends State<ClientsPage> {
     );
   }
 
+  void _openClientTrackingSheet(String clientId, String clientName, String clientEmail) {
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (_) => ClientTrackingSheetPage(
+          clientId: clientId,
+          clientName: clientName,
+          clientEmail: clientEmail,
+        ),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: backgroundColor,
+      backgroundColor: Colors.transparent,
       appBar: AppBar(
         title: const Text(
           "CLIENTES",
@@ -638,6 +652,8 @@ class _ClientsPageState extends State<ClientsPage> {
                           _openClientInfo(clientId, displayName, email);
                         } else if (value == 'routines') {
                           _openClientRoutines(clientId, displayName, email);
+                        } else if (value == 'sheet') {
+                          _openClientTrackingSheet(clientId, displayName, email);
                         } else if (value == 'cancel') {
                           _cancelSubscription(clientId, displayName);
                         }
@@ -660,6 +676,16 @@ class _ClientsPageState extends State<ClientsPage> {
                               Icon(Icons.calendar_month_rounded, color: Colors.white70, size: 18),
                               SizedBox(width: 10),
                               Text("Gestionar Rutinas", style: TextStyle(color: Colors.white, fontSize: 13)),
+                            ],
+                          ),
+                        ),
+                        const PopupMenuItem(
+                          value: 'sheet',
+                          child: Row(
+                            children: [
+                              Icon(Icons.table_chart_rounded, color: Color(0xFFF43F5E), size: 18),
+                              SizedBox(width: 10),
+                              Text("Tabla de Control & Series", style: TextStyle(color: Colors.white, fontSize: 13)),
                             ],
                           ),
                         ),
@@ -826,6 +852,32 @@ class _ClientsPageState extends State<ClientsPage> {
                       ),
                     ),
                   ],
+                ),
+
+                const SizedBox(height: 8),
+
+                // 4. Botón Tabla de Registro & Contador Muscular (Plantilla Oficial)
+                SizedBox(
+                  width: double.infinity,
+                  child: ElevatedButton.icon(
+                    onPressed: () => _openClientTrackingSheet(clientId, displayName, email),
+                    icon: const Icon(Icons.table_chart_rounded, size: 16),
+                    label: const Text(
+                      "TABLA DE REGISTRO & CONTADOR MUSCULAR",
+                      style: TextStyle(
+                        fontSize: 11,
+                        fontWeight: FontWeight.w900,
+                        letterSpacing: 0.5,
+                      ),
+                    ),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: const Color(0xFF881337),
+                      foregroundColor: Colors.white,
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                      padding: const EdgeInsets.symmetric(vertical: 10),
+                      elevation: 0,
+                    ),
+                  ),
                 ),
               ],
             ),

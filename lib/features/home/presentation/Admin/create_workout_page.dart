@@ -357,7 +357,7 @@ class _CreateWorkoutPageState extends State<CreateWorkoutPage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: backgroundColor,
+      backgroundColor: Colors.transparent,
       appBar: AppBar(
         title: Text(isEditing ? 'EDITAR EJERCICIO' : 'CREAR EJERCICIO', 
           style: const TextStyle(fontWeight: FontWeight.w900, letterSpacing: 1.5)),

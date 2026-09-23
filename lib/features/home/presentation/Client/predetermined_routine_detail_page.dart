@@ -108,13 +108,15 @@ class _PredeterminedRoutineDetailPageState
             Icon(Icons.assignment_turned_in_rounded, color: primaryColor),
             const SizedBox(width: 8),
             const Text(
-              'Solicitar Programa',
+              'Solicitar Rutina',
               style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 16),
             ),
           ],
         ),
         content: Text(
-          '¿Deseas solicitar a la entrenadora que te asigne "${widget.routine.name}" en tu calendario de entrenamiento?',
+          widget.routine.isFree
+              ? '¿Deseas solicitar a la entrenadora que te asigne "${widget.routine.name}" en tu calendario de entrenamiento?'
+              : '¿Deseas solicitar acceso al programa "${widget.routine.name}" por \$${widget.routine.price.toStringAsFixed(2)} USD para tu calendario?',
           style: const TextStyle(color: Colors.white70, fontSize: 14),
         ),
         actions: [
@@ -129,7 +131,12 @@ class _PredeterminedRoutineDetailPageState
               foregroundColor: backgroundColor,
               shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
             ),
-            child: const Text('CONFIRMAR SOLICITUD', style: TextStyle(fontWeight: FontWeight.bold)),
+            child: Text(
+              widget.routine.isFree
+                  ? 'CONFIRMAR SOLICITUD'
+                  : 'SOLICITAR (\$${widget.routine.price.toStringAsFixed(2)} USD)',
+              style: const TextStyle(fontWeight: FontWeight.bold),
+            ),
           ),
         ],
       ),
@@ -166,26 +173,60 @@ class _PredeterminedRoutineDetailPageState
         context: context,
         builder: (context) => AlertDialog(
           backgroundColor: backgroundColor,
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(20),
+            side: BorderSide(color: primaryColor.withValues(alpha: 0.3)),
+          ),
           title: Row(
             children: [
               Icon(Icons.check_circle_rounded, color: primaryColor),
               const SizedBox(width: 8),
-              Text('¡SOLICITUD ENVIADA!', style: TextStyle(color: primaryColor, fontWeight: FontWeight.bold)),
+              Text(
+                'SOLICITUD ENVIADA',
+                style: TextStyle(color: primaryColor, fontWeight: FontWeight.w900, fontSize: 16),
+              ),
             ],
           ),
-          content: const Text(
-            'Tu entrenadora ha recibido la solicitud. Te notificaremos en cuanto revise tu perfil y la asigne a tu calendario.',
-            style: TextStyle(color: Colors.white70),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                'Has solicitado acceso a:\n"${widget.routine.name}"',
+                style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 14),
+              ),
+              const SizedBox(height: 12),
+              if (!widget.routine.isFree) ...[
+                Text(
+                  'Precio: \$${widget.routine.price.toStringAsFixed(2)} USD',
+                  style: TextStyle(color: primaryColor, fontWeight: FontWeight.bold, fontSize: 14),
+                ),
+                const SizedBox(height: 8),
+                const Text(
+                  'Para completar el desbloqueo y asignación, envía el comprobante de pago por WhatsApp a la entrenadora.\n\nUna vez confirmado, la rutina se asignará a tu calendario de entrenamiento.',
+                  style: TextStyle(color: Colors.white70, fontSize: 13, height: 1.4),
+                ),
+              ] else ...[
+                const Text(
+                  'Tu entrenadora ha recibido la solicitud. Te notificaremos en cuanto revise tu perfil y asigne la rutina a tu calendario.',
+                  style: TextStyle(color: Colors.white70, fontSize: 13, height: 1.4),
+                ),
+              ],
+            ],
           ),
           actions: [
-            ElevatedButton(
-              onPressed: () => Navigator.pop(context),
-              style: ElevatedButton.styleFrom(
-                backgroundColor: primaryColor,
-                foregroundColor: backgroundColor,
+            SizedBox(
+              width: double.infinity,
+              child: ElevatedButton(
+                onPressed: () => Navigator.pop(context),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: primaryColor,
+                  foregroundColor: backgroundColor,
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                  padding: const EdgeInsets.symmetric(vertical: 12),
+                ),
+                child: const Text('ENTENDIDO', style: TextStyle(fontWeight: FontWeight.bold)),
               ),
-              child: const Text('ENTENDIDO'),
             ),
           ],
         ),
@@ -207,7 +248,7 @@ class _PredeterminedRoutineDetailPageState
     final bool isThisPending = _pending?.predeterminedRoutineId == widget.routine.id;
 
     return Scaffold(
-      backgroundColor: backgroundColor,
+      backgroundColor: Colors.transparent,
       body: Stack(
         children: [
           CustomScrollView(
@@ -277,6 +318,24 @@ class _PredeterminedRoutineDetailPageState
                               widget.routine.level.toUpperCase(),
                               style: TextStyle(
                                 color: backgroundColor,
+                                fontWeight: FontWeight.w900,
+                                fontSize: 11,
+                              ),
+                            ),
+                          ),
+                          const SizedBox(width: 8),
+                          Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                            decoration: BoxDecoration(
+                              color: widget.routine.isFree
+                                  ? const Color(0xFF2E7D32).withValues(alpha: 0.95)
+                                  : const Color(0xFFD97706).withValues(alpha: 0.95),
+                              borderRadius: BorderRadius.circular(8),
+                            ),
+                            child: Text(
+                              widget.routine.isFree ? 'GRATIS' : '\$${widget.routine.price.toStringAsFixed(2)} USD',
+                              style: const TextStyle(
+                                color: Colors.white,
                                 fontWeight: FontWeight.w900,
                                 fontSize: 11,
                               ),
@@ -574,7 +633,9 @@ class _PredeterminedRoutineDetailPageState
                                 ? 'SOLICITUD PENDIENTE DE APROBACIÓN'
                                 : _hasActive
                                     ? 'YA TIENES UNA RUTINA ACTIVA'
-                                    : 'SOLICITAR PROMOCIÓN',
+                                    : widget.routine.isFree
+                                        ? 'SOLICITAR RUTINA (GRATIS)'
+                                        : 'OBTENER RUTINA • \$${widget.routine.price.toStringAsFixed(2)} USD',
                             style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13),
                           ),
                         ],

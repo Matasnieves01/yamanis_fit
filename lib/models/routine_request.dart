@@ -8,6 +8,8 @@ class RoutineRequest {
   final String predeterminedRoutineId;
   final String routineName;
   final String status; // 'pending', 'approved', 'rejected'
+  final double price;
+  final bool isFree;
   final DateTime requestedAt;
   final DateTime? resolvedAt;
   final String? rejectionReason;
@@ -20,6 +22,8 @@ class RoutineRequest {
     required this.predeterminedRoutineId,
     required this.routineName,
     this.status = 'pending',
+    this.price = 0.0,
+    this.isFree = true,
     required this.requestedAt,
     this.resolvedAt,
     this.rejectionReason,
@@ -30,6 +34,9 @@ class RoutineRequest {
   bool get isRejected => status == 'rejected';
 
   factory RoutineRequest.fromMap(Map<String, dynamic> data, String id) {
+    final priceVal = (data['price'] as num?)?.toDouble() ?? 0.0;
+    final isFreeVal = data['isFree'] as bool? ?? (priceVal <= 0.0);
+
     return RoutineRequest(
       id: id,
       userId: data['userId'] ?? '',
@@ -38,6 +45,8 @@ class RoutineRequest {
       predeterminedRoutineId: data['predeterminedRoutineId'] ?? data['routineId'] ?? '',
       routineName: data['routineName'] ?? 'Rutina predeterminada',
       status: (data['status'] ?? 'pending').toString().toLowerCase().trim(),
+      price: priceVal,
+      isFree: isFreeVal,
       requestedAt: (data['requestedAt'] is Timestamp)
           ? (data['requestedAt'] as Timestamp).toDate()
           : (data['requestedAt'] is DateTime)
@@ -65,6 +74,8 @@ class RoutineRequest {
       'predeterminedRoutineId': predeterminedRoutineId,
       'routineName': routineName,
       'status': status,
+      'price': price,
+      'isFree': isFree,
       'requestedAt': requestedAt,
       if (resolvedAt != null) 'resolvedAt': resolvedAt,
       if (rejectionReason != null) 'rejectionReason': rejectionReason,

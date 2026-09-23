@@ -100,7 +100,7 @@ class _ViewNotificationPageState extends State<ViewNotificationPage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: backgroundColor,
+      backgroundColor: Colors.transparent,
       appBar: AppBar(
         title: const Text('DETALLES DE RUTINA',
             style: TextStyle(fontWeight: FontWeight.w900, letterSpacing: 1.5)),

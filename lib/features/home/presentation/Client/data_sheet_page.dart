@@ -504,7 +504,7 @@ class _DataSheetPageState extends State<DataSheetPage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: backgroundColor,
+      backgroundColor: Colors.transparent,
       appBar: AppBar(
         title: const Text(
           "PLANILLA DE DATOS",
