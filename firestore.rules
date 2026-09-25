@@ -22,6 +22,14 @@ service cloud.firestore {
       match /tracking_sheets/{sheetId} {
         allow read, write: if isSignedIn();
       }
+
+      match /biometric_history/{historyId} {
+        allow read, write: if isSignedIn() && (request.auth.uid == userId || isAdmin());
+      }
+
+      match /{allSubcollections=**} {
+        allow read, write: if isSignedIn() && (request.auth.uid == userId || isAdmin());
+      }
     }
 
     match /workouts/{workoutId} {

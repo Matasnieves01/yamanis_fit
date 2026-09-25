@@ -75,19 +75,23 @@ class BiometricsService {
       }, SetOptions(merge: true));
 
       // 3. Guardar en el historial para auditoría y seguimiento
-      await _firestore.collection('users').doc(userId).collection('biometric_history').add({
-        'weight': newB.weight,
-        'height': newB.height,
-        'neck': newB.neck,
-        'chest': newB.chest,
-        'waist': newB.waist,
-        'hips': newB.hips,
-        'biceps': newB.biceps,
-        'thigh': newB.thigh,
-        'calves': newB.calves,
-        'deltas': deltas,
-        'recordedAt': FieldValue.serverTimestamp(),
-      });
+      try {
+        await _firestore.collection('users').doc(userId).collection('biometric_history').add({
+          'weight': newB.weight,
+          'height': newB.height,
+          'neck': newB.neck,
+          'chest': newB.chest,
+          'waist': newB.waist,
+          'hips': newB.hips,
+          'biceps': newB.biceps,
+          'thigh': newB.thigh,
+          'calves': newB.calves,
+          'deltas': deltas,
+          'recordedAt': FieldValue.serverTimestamp(),
+        });
+      } catch (histError) {
+        debugPrint('[BiometricsService] Aviso: Historial biométrico no se pudo registrar en subcolección: $histError');
+      }
     } catch (e) {
       debugPrint('[BiometricsService] Error al guardar planilla: $e');
       rethrow;
@@ -186,13 +190,17 @@ class BiometricsService {
         'updatedAt': FieldValue.serverTimestamp(),
       }, SetOptions(merge: true));
 
-      await _firestore.collection('users').doc(userId).collection('biometric_history').add({
-        'weight': newWeight,
-        'previousWeight': currentOldWeight,
-        'weightDelta': double.parse((newWeight - currentOldWeight).toStringAsFixed(2)),
-        'recordedAt': FieldValue.serverTimestamp(),
-        'type': 'quick_weight',
-      });
+      try {
+        await _firestore.collection('users').doc(userId).collection('biometric_history').add({
+          'weight': newWeight,
+          'previousWeight': currentOldWeight,
+          'weightDelta': double.parse((newWeight - currentOldWeight).toStringAsFixed(2)),
+          'recordedAt': FieldValue.serverTimestamp(),
+          'type': 'quick_weight',
+        });
+      } catch (histError) {
+        debugPrint('[BiometricsService] Aviso: Historial biométrico no se pudo registrar: $histError');
+      }
     } catch (e) {
       debugPrint('[BiometricsService] Error al registrar peso: $e');
       rethrow;
