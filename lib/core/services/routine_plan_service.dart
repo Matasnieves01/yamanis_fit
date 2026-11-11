@@ -57,11 +57,15 @@ class RoutinePlanStatus {
 }
 
 class RoutinePlanService {
-  /// Agrupa la lista de rutinas en bloques/planes basados en fecha y distancia temporal
+  static DateTime _dayOnly(DateTime d) => DateTime(d.year, d.month, d.day);
+
+  /// Agrupa la lista de rutinas en bloques/planes separados cada vez que se crea una
+  /// nueva rutina (por `planId`, lote de `createdAt`, `planStartDate`, o ciclo de semanas).
   static List<RoutinePlanModel> groupRoutinesIntoPlans(
     List<Map<String, dynamic>> allRoutines, {
     DateTime? userStartDate,
     int? userPlanWeeks,
+    String? currentPlanId,
     DateTime? nowOverride,
   }) {
     if (allRoutines.isEmpty) {
@@ -88,86 +92,155 @@ class RoutinePlanService {
       return tsA.compareTo(tsB);
     });
 
-    final planDurationWeeks = userPlanWeeks ?? 4;
-    final planCycleEnd = userStartDate?.add(Duration(days: planDurationWeeks * 7 + 7));
+    final DateTime? userStartDay =
+        userStartDate != null ? _dayOnly(userStartDate) : null;
+    final int defaultPlanWeeks =
+        (userPlanWeeks != null && userPlanWeeks > 0) ? userPlanWeeks : 4;
 
     final List<List<Map<String, dynamic>>> clusters = [];
     List<Map<String, dynamic>> currentCluster = [];
 
     for (final r in sorted) {
-      final rDate = (r['date'] as Timestamp?)?.toDate();
-      if (rDate == null) continue;
+      final rDateRaw = (r['date'] as Timestamp?)?.toDate();
+      if (rDateRaw == null) continue;
+      final rDay = _dayOnly(rDateRaw);
 
       if (currentCluster.isEmpty) {
         currentCluster.add(r);
-      } else {
-        final lastDate =
-            (currentCluster.last['date'] as Timestamp?)?.toDate() ?? rDate;
-        final gapDays = rDate.difference(lastDate).inDays;
+        continue;
+      }
 
-        final bool bothInCurrentPlanCycle = userStartDate != null &&
-            planCycleEnd != null &&
-            !lastDate.isBefore(userStartDate.subtract(const Duration(days: 1))) &&
-            !lastDate.isAfter(planCycleEnd) &&
-            !rDate.isBefore(userStartDate.subtract(const Duration(days: 1))) &&
-            !rDate.isAfter(planCycleEnd);
+      final first = currentCluster.first;
+      final prev = currentCluster.last;
+      final firstDateRaw = (first['date'] as Timestamp).toDate();
+      final prevDateRaw = (prev['date'] as Timestamp).toDate();
+      final firstDay = _dayOnly(firstDateRaw);
+      final prevDay = _dayOnly(prevDateRaw);
 
-        // Separación de más de 28 días sin entrenamientos indica un plan distinto
-        if (!bothInCurrentPlanCycle && gapDays > 28) {
-          clusters.add(currentCluster);
-          currentCluster = [r];
-        } else {
-          currentCluster.add(r);
+      final String rPlanId = (r['planId'] ?? '').toString().trim();
+      final String firstPlanId = (first['planId'] ?? '').toString().trim();
+
+      bool shouldStartNewPlan = false;
+
+      // 1. Si alguno tiene planId explícito y son distintos, separar siempre
+      if (rPlanId.isNotEmpty || firstPlanId.isNotEmpty) {
+        if (rPlanId != firstPlanId) {
+          shouldStartNewPlan = true;
         }
+      } else {
+        // Rutinas sin planId explícito (creadas previamente mes a mes):
+
+        // 2. Si fueron creadas en lotes distintos (diferencia > 2 días en createdAt)
+        // y la fecha programada pertenece a una semana posterior al inicio del bloque actual
+        final firstCreatedTs = first['createdAt'] as Timestamp?;
+        final rCreatedTs = r['createdAt'] as Timestamp?;
+        if (firstCreatedTs != null && rCreatedTs != null) {
+          final firstCreatedDay = _dayOnly(firstCreatedTs.toDate());
+          final rCreatedDay = _dayOnly(rCreatedTs.toDate());
+          final createdGap = rCreatedDay.difference(firstCreatedDay).inDays.abs();
+          if (createdGap > 2 && rDay.difference(firstDay).inDays >= 7) {
+            shouldStartNewPlan = true;
+          }
+        }
+
+        // 3. Si cruza la fecha de inicio del plan actual del usuario (planStartDate)
+        if (!shouldStartNewPlan &&
+            userStartDay != null &&
+            prevDay.isBefore(userStartDay) &&
+            !rDay.isBefore(userStartDay)) {
+          shouldStartNewPlan = true;
+        }
+
+        // 4. Si supera la duración en semanas del bloque (por defecto 4 semanas = 1 mes)
+        if (!shouldStartNewPlan) {
+          final explicitDur = (first['durationWeeks'] as num?)?.toInt();
+          final int targetWeeks = (explicitDur != null && explicitDur > 0)
+              ? explicitDur
+              : (userStartDay != null && !firstDay.isBefore(userStartDay)
+                  ? defaultPlanWeeks
+                  : 4);
+          final spanFromClusterStart = rDay.difference(firstDay).inDays;
+          if (spanFromClusterStart >= targetWeeks * 7) {
+            shouldStartNewPlan = true;
+          }
+        }
+
+        // 5. Si hay una pausa de más de 14 días sin entrenamientos
+        final gapDays = rDay.difference(prevDay).inDays;
+        if (!shouldStartNewPlan && gapDays > 14) {
+          shouldStartNewPlan = true;
+        }
+      }
+
+      if (shouldStartNewPlan) {
+        clusters.add(currentCluster);
+        currentCluster = [r];
+      } else {
+        currentCluster.add(r);
       }
     }
     if (currentCluster.isNotEmpty) {
       clusters.add(currentCluster);
     }
 
-    final now = nowOverride ?? DateTime.now();
     final List<RoutinePlanModel> plans = [];
 
     for (int i = 0; i < clusters.length; i++) {
       final cluster = clusters[i];
       final firstDate = (cluster.first['date'] as Timestamp).toDate();
       final lastDate = (cluster.last['date'] as Timestamp).toDate();
+      final firstDay = _dayOnly(firstDate);
+      final lastDay = _dayOnly(lastDate);
 
-      int calculatedWeeks = userPlanWeeks ?? 1;
+      int? explicitWeeks;
+      String? explicitPlanId;
       for (final r in cluster) {
         final dur = (r['durationWeeks'] as num?)?.toInt();
-        if (dur != null && dur > calculatedWeeks) {
-          calculatedWeeks = dur;
+        if (dur != null && dur > 0) {
+          explicitWeeks = dur;
+        }
+        final pid = (r['planId'] ?? '').toString().trim();
+        if (pid.isNotEmpty) {
+          explicitPlanId = pid;
         }
       }
-      final spanDays = lastDate.difference(firstDate).inDays;
-      final weeksFromSpan = (spanDays / 7).floor() + 1;
+
+      final spanDays = lastDay.difference(firstDay).inDays;
+      final weeksFromSpan = (spanDays ~/ 7) + 1;
+
+      int calculatedWeeks;
+      if (explicitWeeks != null) {
+        calculatedWeeks = explicitWeeks;
+      } else if (userStartDay != null &&
+          firstDay.difference(userStartDay).inDays.abs() <= 7 &&
+          userPlanWeeks != null &&
+          userPlanWeeks > 0) {
+        calculatedWeeks = userPlanWeeks;
+      } else {
+        calculatedWeeks = weeksFromSpan;
+      }
       if (weeksFromSpan > calculatedWeeks) {
         calculatedWeeks = weeksFromSpan;
       }
       calculatedWeeks = calculatedWeeks.clamp(1, 12);
 
-      // Determinación de si este plan es el actual
+      final bool isLastCluster = (i == clusters.length - 1);
       bool isCurrent = false;
-      if (userStartDate != null) {
-        final diffDays = firstDate.difference(userStartDate).inDays.abs();
-        if (diffDays <= 7) {
-          isCurrent = true;
-        }
-      }
-      if (!isCurrent) {
-        final planEndWithGrace = firstDate.add(Duration(days: calculatedWeeks * 7 + 7));
-        if (!now.isBefore(firstDate) && !now.isAfter(planEndWithGrace)) {
-          isCurrent = true;
-        }
+      if (currentPlanId != null &&
+          currentPlanId.isNotEmpty &&
+          explicitPlanId == currentPlanId) {
+        isCurrent = true;
+      } else if (isLastCluster) {
+        isCurrent = true;
       }
 
-      final planId = 'plan_${DateFormat('yyyyMMdd').format(firstDate)}';
-      final title = isCurrent ? 'Plan Actual' : 'Plan Anterior';
+      final planId = (explicitPlanId != null && explicitPlanId.isNotEmpty)
+          ? explicitPlanId
+          : 'plan_${DateFormat('yyyyMMdd').format(firstDate)}_$i';
 
       plans.add(RoutinePlanModel(
         id: planId,
-        title: title,
+        title: isCurrent ? 'Plan Actual' : 'Plan Anterior',
         startDate: firstDate,
         endDate: lastDate,
         durationWeeks: calculatedWeeks,
@@ -176,19 +249,23 @@ class RoutinePlanService {
       ));
     }
 
-    // Si ningún plan coincidió con now ni con userStartDate, marcar el último (más reciente) como actual
-    if (plans.isNotEmpty && !plans.any((p) => p.isCurrent)) {
-      final lastPlan = plans.last;
-      final index = plans.indexOf(lastPlan);
-      plans[index] = RoutinePlanModel(
-        id: lastPlan.id,
-        title: 'Plan Actual',
-        startDate: lastPlan.startDate,
-        endDate: lastPlan.endDate,
-        durationWeeks: lastPlan.durationWeeks,
-        routines: lastPlan.routines,
-        isCurrent: true,
-      );
+    // Garantizar que solo un plan (el más reciente o el que coincide con currentPlanId) sea marcado como actual
+    if (plans.isNotEmpty) {
+      int currentIdx = plans.lastIndexWhere((p) => p.isCurrent);
+      if (currentIdx == -1) currentIdx = plans.length - 1;
+      for (int i = 0; i < plans.length; i++) {
+        final p = plans[i];
+        final isCurr = (i == currentIdx);
+        plans[i] = RoutinePlanModel(
+          id: p.id,
+          title: isCurr ? 'Plan Actual' : 'Plan Anterior',
+          startDate: p.startDate,
+          endDate: p.endDate,
+          durationWeeks: p.durationWeeks,
+          routines: p.routines,
+          isCurrent: isCurr,
+        );
+      }
     }
 
     plans.sort((a, b) {
@@ -235,10 +312,12 @@ class RoutinePlanService {
     final userPlanStart = (userData['planStartDate'] as Timestamp?)?.toDate();
     final planDurationFromUser =
         (userData['planDurationWeeks'] as num?)?.toInt();
+    final currentPlanId = userData['currentPlanId']?.toString();
     final plans = groupRoutinesIntoPlans(
       allRoutines,
       userStartDate: userPlanStart,
       userPlanWeeks: planDurationFromUser,
+      currentPlanId: currentPlanId,
       nowOverride: now,
     );
     final currentPlan = plans.firstWhere(

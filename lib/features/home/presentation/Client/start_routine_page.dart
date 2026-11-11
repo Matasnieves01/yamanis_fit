@@ -6,6 +6,7 @@ import 'package:youtube_player_flutter/youtube_player_flutter.dart';
 import 'package:yamanis_fit/core/widgets/app_back_button.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:yamanis_fit/core/services/routine_plan_service.dart';
+import 'package:yamanis_fit/core/services/exercise_weight_service.dart';
 import 'package:yamanis_fit/features/home/presentation/Client/widgets/routine_completion_dialogs.dart';
 import 'package:yamanis_fit/core/services/notification_service.dart';
 
@@ -33,6 +34,7 @@ class _StartRoutinePageState extends State<StartRoutinePage> {
   List<bool> completionStatus = [];
   List<Map<String, dynamic>> resultsList = [];
   Map<String, Map<String, dynamic>> workoutDetailsCache = {};
+  Map<String, ExerciseWeightRecord> _exerciseWeightRecords = {};
   bool isLoading = true;
   bool _canStartToday = true;
 
@@ -136,6 +138,20 @@ class _StartRoutinePageState extends State<StartRoutinePage> {
   }
 
   Future<void> _loadAllWorkoutDetails() async {
+    final user = FirebaseAuth.instance.currentUser;
+    if (user != null) {
+      try {
+        _exerciseWeightRecords =
+            await ExerciseWeightService.loadUserExerciseWeights(user.uid);
+        workouts = ExerciseWeightService.applySavedWeightsToWorkouts(
+          workouts,
+          _exerciseWeightRecords,
+        );
+      } catch (e) {
+        debugPrint("Error loading saved exercise weights: $e");
+      }
+    }
+
     for (var workout in workouts) {
       final List exercises = workout['exercises'] ?? [workout];
       for (var ex in exercises) {
@@ -161,22 +177,81 @@ class _StartRoutinePageState extends State<StartRoutinePage> {
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
+      useSafeArea: true,
       backgroundColor: backgroundColor,
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(32)),
       ),
       builder: (context) => WorkoutDetailSheet(
+        workoutIndex: index,
         workoutGroup: workoutGroup,
         exercises: exercises,
         detailsCache: workoutDetailsCache,
+        weightRecords: _exerciseWeightRecords,
         primaryColor: primaryColor,
         secondaryColor: secondaryColor,
         routineId: widget.routineId,
-        onComplete: (results) {
+        routineName: (widget.routine['name'] ?? 'Rutina').toString(),
+        onComplete: (results) async {
+          final exercisesResults = (results['exercises'] as List?)
+                  ?.whereType<Map>()
+                  .map((m) => Map<String, dynamic>.from(m))
+                  .toList() ??
+              [];
+
           setState(() {
             completionStatus[index] = true;
             resultsList[index] = results;
+
+            // Actualizar peso en la tarjeta de la rutina actual
+            if (workouts[index] is Map) {
+              final updatedGroup = Map<String, dynamic>.from(workouts[index] as Map);
+              final rawExs = (updatedGroup['exercises'] as List?) ?? [updatedGroup];
+              final List<Map<String, dynamic>> newExs = [];
+              for (int i = 0; i < rawExs.length; i++) {
+                final exMap = Map<String, dynamic>.from(rawExs[i] as Map);
+                if (i < exercisesResults.length) {
+                  final actualW = (exercisesResults[i]['actualWeight'] ?? '').toString().trim();
+                  final actualR = (exercisesResults[i]['actualReps'] ?? '').toString().trim();
+                  if (actualW.isNotEmpty) {
+                    exMap['weight'] = actualW;
+                    exMap['lastLiftedWeight'] = actualW;
+                  }
+                  if (actualR.isNotEmpty) {
+                    exMap['reps'] = actualR;
+                  }
+                }
+                newExs.add(exMap);
+              }
+              updatedGroup['exercises'] = newExs;
+              if (newExs.isNotEmpty) {
+                updatedGroup['weight'] = newExs.first['weight'];
+              }
+              workouts[index] = updatedGroup;
+            }
           });
+
+          // Guardar peso levantado en el historial del ejercicio para los próximos días
+          final user = FirebaseAuth.instance.currentUser;
+          if (user != null && exercisesResults.isNotEmpty) {
+            final updatedRecords = await ExerciseWeightService.saveExerciseWeights(
+              uid: user.uid,
+              routineId: widget.routineId,
+              routineName: (widget.routine['name'] ?? 'Rutina').toString(),
+              exercisesResults: exercisesResults,
+              currentRecords: _exerciseWeightRecords,
+            );
+            if (mounted) {
+              setState(() {
+                _exerciseWeightRecords = updatedRecords;
+                workouts = ExerciseWeightService.applySavedWeightsToWorkouts(
+                  workouts,
+                  _exerciseWeightRecords,
+                );
+              });
+            }
+          }
+
           _checkRoutineCompletion();
         },
       ),
@@ -193,8 +268,10 @@ class _StartRoutinePageState extends State<StartRoutinePage> {
   Future<void> _clearAutosavedProgress() async {
     try {
       final prefs = await SharedPreferences.getInstance();
-      final saveKey = 'workout_${widget.routineId}_progress';
-      await prefs.remove(saveKey);
+      await prefs.remove('workout_${widget.routineId}_progress');
+      for (int i = 0; i < workouts.length; i++) {
+        await prefs.remove('workout_${widget.routineId}_${i}_progress');
+      }
     } catch (e) {
       debugPrint("Error clearing autosaved progress: $e");
     }
@@ -1084,22 +1161,28 @@ class _StartRoutinePageState extends State<StartRoutinePage> {
 }
 
 class WorkoutDetailSheet extends StatefulWidget {
+  final int workoutIndex;
   final dynamic workoutGroup;
   final List exercises;
   final Map<String, Map<String, dynamic>> detailsCache;
+  final Map<String, ExerciseWeightRecord> weightRecords;
   final Color primaryColor;
   final Color secondaryColor;
   final String routineId;
+  final String routineName;
   final Function(Map<String, dynamic> results) onComplete;
 
   const WorkoutDetailSheet({
     super.key,
+    required this.workoutIndex,
     required this.workoutGroup,
     required this.exercises,
     required this.detailsCache,
+    this.weightRecords = const {},
     required this.primaryColor,
     required this.secondaryColor,
     required this.routineId,
+    this.routineName = 'Rutina',
     required this.onComplete,
   });
 
@@ -1112,6 +1195,9 @@ class _WorkoutDetailSheetState extends State<WorkoutDetailSheet> {
   late List<TextEditingController> _weightControllers;
   late List<TextEditingController> _repsControllers;
   String selectedFeedback = "Good";
+
+  String get _autosaveKey =>
+      'workout_${widget.routineId}_${widget.workoutIndex}_progress';
 
   @override
   void initState() {
@@ -1126,7 +1212,15 @@ class _WorkoutDetailSheetState extends State<WorkoutDetailSheet> {
     }).toList();
 
     _weightControllers = widget.exercises.map((ex) {
-      return TextEditingController(text: ex['weight']?.toString() ?? "");
+      final record = ExerciseWeightService.findRecord(
+        widget.weightRecords,
+        workoutId: ex['workoutId']?.toString(),
+        workoutName: (ex['workoutName'] ?? ex['name'])?.toString(),
+      );
+      final initialWeight = (record != null && record.lastWeight.isNotEmpty)
+          ? record.lastWeight
+          : (ex['weight']?.toString() ?? "");
+      return TextEditingController(text: initialWeight);
     }).toList();
 
     _repsControllers = widget.exercises.map((ex) {
@@ -1148,8 +1242,7 @@ class _WorkoutDetailSheetState extends State<WorkoutDetailSheet> {
   Future<void> _loadAutosavedProgress() async {
     try {
       final prefs = await SharedPreferences.getInstance();
-      final saveKey = 'workout_${widget.routineId}_progress';
-      final savedData = prefs.getString(saveKey);
+      final savedData = prefs.getString(_autosaveKey);
 
       if (savedData != null) {
         // Parse and restore data
@@ -1163,10 +1256,14 @@ class _WorkoutDetailSheetState extends State<WorkoutDetailSheet> {
             i < weights.length && i < _weightControllers.length;
             i++
           ) {
-            _weightControllers[i].text = weights[i];
+            if (weights[i].trim().isNotEmpty) {
+              _weightControllers[i].text = weights[i];
+            }
           }
           for (var i = 0; i < reps.length && i < _repsControllers.length; i++) {
-            _repsControllers[i].text = reps[i];
+            if (reps[i].trim().isNotEmpty) {
+              _repsControllers[i].text = reps[i];
+            }
           }
         }
       }
@@ -1178,13 +1275,12 @@ class _WorkoutDetailSheetState extends State<WorkoutDetailSheet> {
   Future<void> _autosaveProgress() async {
     try {
       final prefs = await SharedPreferences.getInstance();
-      final saveKey = 'workout_${widget.routineId}_progress';
 
       final weights = _weightControllers.map((c) => c.text).join(',');
       final reps = _repsControllers.map((c) => c.text).join(',');
       final data = '$weights|$reps';
 
-      await prefs.setString(saveKey, data);
+      await prefs.setString(_autosaveKey, data);
     } catch (e) {
       debugPrint("Error autosaving progress: $e");
     }
@@ -1206,36 +1302,44 @@ class _WorkoutDetailSheetState extends State<WorkoutDetailSheet> {
 
   @override
   Widget build(BuildContext context) {
+    final screenHeight = MediaQuery.of(context).size.height;
     return Container(
+      constraints: BoxConstraints(
+        maxHeight: screenHeight * 0.88,
+      ),
       padding: EdgeInsets.only(
         bottom: MediaQuery.of(context).viewInsets.bottom,
       ),
-      decoration: BoxDecoration(
-        color: const Color(0xFF11151C),
-        borderRadius: const BorderRadius.vertical(top: Radius.circular(32)),
+      decoration: const BoxDecoration(
+        color: Color(0xFF11151C),
+        borderRadius: BorderRadius.vertical(top: Radius.circular(32)),
       ),
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          const SizedBox(height: 12),
-          Container(
-            width: 40,
-            height: 4,
-            decoration: BoxDecoration(
-              color: Colors.white24,
-              borderRadius: BorderRadius.circular(2),
+      child: SafeArea(
+        top: false,
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const SizedBox(height: 12),
+            Container(
+              width: 40,
+              height: 4,
+              decoration: BoxDecoration(
+                color: Colors.white24,
+                borderRadius: BorderRadius.circular(2),
+              ),
             ),
-          ),
-          Flexible(
-            child: SingleChildScrollView(
-              padding: const EdgeInsets.fromLTRB(18, 16, 18, 24),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  _buildHeader(),
-                  const SizedBox(height: 16),
-                  _buildTrainerFeedbackSection(),
-                  ..._buildExerciseDetailsList(),
+            Padding(
+              padding: const EdgeInsets.fromLTRB(18, 12, 18, 8),
+              child: _buildHeader(),
+            ),
+            Flexible(
+              child: SingleChildScrollView(
+                padding: const EdgeInsets.fromLTRB(18, 8, 18, 24),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    _buildTrainerFeedbackSection(),
+                    ..._buildExerciseDetailsList(),
                   const SizedBox(height: 24),
                   const Text(
                     "¿CÓMO TE SENTISTE?",
@@ -1286,12 +1390,16 @@ class _WorkoutDetailSheetState extends State<WorkoutDetailSheet> {
                               .entries
                               .map(
                                 (e) => {
+                                  'workoutId': e.value['workoutId'],
                                   'name': e.value['workoutName'],
-                                  'plannedWeight': e.value['weight'],
+                                  'plannedWeight':
+                                      e.value['trainerWeight'] ??
+                                      e.value['weight'],
                                   'actualWeight':
-                                      _weightControllers[e.key].text,
+                                      _weightControllers[e.key].text.trim(),
                                   'plannedReps': e.value['reps'],
-                                  'actualReps': _repsControllers[e.key].text,
+                                  'actualReps':
+                                      _repsControllers[e.key].text.trim(),
                                 },
                               )
                               .toList(),
@@ -1340,6 +1448,7 @@ class _WorkoutDetailSheetState extends State<WorkoutDetailSheet> {
           ),
         ],
       ),
+    ),
     );
   }
 
@@ -1608,11 +1717,170 @@ class _WorkoutDetailSheetState extends State<WorkoutDetailSheet> {
     );
   }
 
+  String _formatShortDate(DateTime date) {
+    const months = [
+      'Ene', 'Feb', 'Mar', 'Abr', 'May', 'Jun',
+      'Jul', 'Ago', 'Sep', 'Oct', 'Nov', 'Dic',
+    ];
+    return '${date.day} ${months[date.month - 1]}';
+  }
+
+  void _showWeightHistoryModal(String exerciseName, List<ExerciseWeightEntry> history) {
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        backgroundColor: const Color(0xFF151A24),
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(24),
+          side: BorderSide(color: widget.primaryColor.withValues(alpha: 0.25)),
+        ),
+        title: Row(
+          children: [
+            Icon(Icons.history_rounded, color: widget.primaryColor, size: 22),
+            const SizedBox(width: 8),
+            Expanded(
+              child: Text(
+                'Historial de Peso\n$exerciseName',
+                style: const TextStyle(
+                  color: Colors.white,
+                  fontSize: 15,
+                  fontWeight: FontWeight.w900,
+                  height: 1.25,
+                ),
+              ),
+            ),
+          ],
+        ),
+        content: SizedBox(
+          width: double.maxFinite,
+          child: ListView.separated(
+            shrinkWrap: true,
+            itemCount: history.length,
+            separatorBuilder: (_, __) => const SizedBox(height: 8),
+            itemBuilder: (context, index) {
+              final entry = history[index];
+              final isLatest = index == 0;
+              return Container(
+                padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+                decoration: BoxDecoration(
+                  color: isLatest
+                      ? widget.primaryColor.withValues(alpha: 0.12)
+                      : Colors.white.withValues(alpha: 0.04),
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(
+                    color: isLatest
+                        ? widget.primaryColor.withValues(alpha: 0.35)
+                        : Colors.white.withValues(alpha: 0.08),
+                  ),
+                ),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Row(
+                          children: [
+                            Text(
+                              _formatShortDate(entry.date),
+                              style: TextStyle(
+                                color: isLatest ? widget.primaryColor : Colors.white70,
+                                fontSize: 12,
+                                fontWeight: FontWeight.w800,
+                              ),
+                            ),
+                            if (isLatest) ...[
+                              const SizedBox(width: 6),
+                              Container(
+                                padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                                decoration: BoxDecoration(
+                                  color: widget.primaryColor.withValues(alpha: 0.2),
+                                  borderRadius: BorderRadius.circular(6),
+                                ),
+                                child: Text(
+                                  'ÚLTIMO',
+                                  style: TextStyle(
+                                    color: widget.primaryColor,
+                                    fontSize: 8.5,
+                                    fontWeight: FontWeight.w900,
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ],
+                        ),
+                        if (entry.routineName.isNotEmpty) ...[
+                          const SizedBox(height: 2),
+                          Text(
+                            entry.routineName,
+                            style: TextStyle(
+                              color: Colors.white.withValues(alpha: 0.45),
+                              fontSize: 10.5,
+                            ),
+                          ),
+                        ],
+                      ],
+                    ),
+                    Row(
+                      children: [
+                        Text(
+                          '${entry.weight} kg',
+                          style: TextStyle(
+                            color: isLatest ? widget.primaryColor : Colors.white,
+                            fontSize: 15,
+                            fontWeight: FontWeight.w900,
+                          ),
+                        ),
+                        if (entry.reps.isNotEmpty) ...[
+                          const SizedBox(width: 6),
+                          Text(
+                            '× ${entry.reps} reps',
+                            style: TextStyle(
+                              color: Colors.white.withValues(alpha: 0.55),
+                              fontSize: 11.5,
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                        ],
+                      ],
+                    ),
+                  ],
+                ),
+              );
+            },
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: Text(
+              'CERRAR',
+              style: TextStyle(
+                color: widget.primaryColor,
+                fontWeight: FontWeight.w900,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
   Widget _buildWeightInputCompact(
     int idx,
     String recommendedWeight,
     String recommendedReps,
   ) {
+    final ex = widget.exercises[idx];
+    final record = ExerciseWeightService.findRecord(
+      widget.weightRecords,
+      workoutId: ex['workoutId']?.toString(),
+      workoutName: (ex['workoutName'] ?? ex['name'])?.toString(),
+    );
+    final hasHistory = record != null && record.lastWeight.isNotEmpty;
+    final displayWeight = hasHistory ? record.lastWeight : recommendedWeight;
+    final trainerWeight = (ex['trainerWeight'] ?? '').toString().trim();
+
     return Container(
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
@@ -1621,6 +1889,7 @@ class _WorkoutDetailSheetState extends State<WorkoutDetailSheet> {
         border: Border.all(color: Colors.white.withValues(alpha: 0.08)),
       ),
       child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Row(
             children: [
@@ -1629,9 +1898,11 @@ class _WorkoutDetailSheetState extends State<WorkoutDetailSheet> {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      "PESO RECOMENDADO",
+                      hasHistory ? "ÚLTIMO PESO LEVANTADO" : "PESO RECOMENDADO",
                       style: TextStyle(
-                        color: Colors.white.withValues(alpha: 0.5),
+                        color: hasHistory
+                            ? widget.primaryColor.withValues(alpha: 0.85)
+                            : Colors.white.withValues(alpha: 0.5),
                         fontSize: 8,
                         fontWeight: FontWeight.w900,
                         letterSpacing: 0.3,
@@ -1639,19 +1910,32 @@ class _WorkoutDetailSheetState extends State<WorkoutDetailSheet> {
                     ),
                     const SizedBox(height: 2),
                     Text(
-                      "$recommendedWeight kg",
+                      "$displayWeight kg",
                       style: TextStyle(
-                        color: Colors.white.withValues(alpha: 0.8),
+                        color: Colors.white.withValues(alpha: 0.9),
                         fontSize: 14,
                         fontWeight: FontWeight.w900,
                       ),
                     ),
+                    if (hasHistory &&
+                        trainerWeight.isNotEmpty &&
+                        trainerWeight != displayWeight) ...[
+                      const SizedBox(height: 2),
+                      Text(
+                        "Sugerido inicial: $trainerWeight kg",
+                        style: TextStyle(
+                          color: Colors.white.withValues(alpha: 0.4),
+                          fontSize: 9.5,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                    ],
                   ],
                 ),
               ),
               const SizedBox(width: 8),
               Container(
-                width: 70,
+                width: 78,
                 padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
                 decoration: BoxDecoration(
                   color: widget.primaryColor.withValues(alpha: 0.1),
@@ -1731,7 +2015,7 @@ class _WorkoutDetailSheetState extends State<WorkoutDetailSheet> {
               ),
               const SizedBox(width: 8),
               Container(
-                width: 70,
+                width: 78,
                 padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
                 decoration: BoxDecoration(
                   color: widget.secondaryColor.withValues(alpha: 0.1),
@@ -1781,6 +2065,99 @@ class _WorkoutDetailSheetState extends State<WorkoutDetailSheet> {
               ),
             ],
           ),
+          if (hasHistory && record.history.isNotEmpty) ...[
+            const SizedBox(height: 12),
+            const Divider(color: Colors.white10, height: 1),
+            const SizedBox(height: 10),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Row(
+                  children: [
+                    Icon(
+                      Icons.history_rounded,
+                      size: 13,
+                      color: widget.primaryColor.withValues(alpha: 0.85),
+                    ),
+                    const SizedBox(width: 5),
+                    Text(
+                      "HISTORIAL DE PESO LEVANTADO",
+                      style: TextStyle(
+                        color: Colors.white.withValues(alpha: 0.65),
+                        fontSize: 8.5,
+                        fontWeight: FontWeight.w900,
+                        letterSpacing: 0.4,
+                      ),
+                    ),
+                  ],
+                ),
+                if (record.history.length > 3)
+                  GestureDetector(
+                    onTap: () => _showWeightHistoryModal(
+                      (ex['workoutName'] ?? 'Ejercicio').toString(),
+                      record.history,
+                    ),
+                    child: Text(
+                      "Ver todo (${record.history.length})",
+                      style: TextStyle(
+                        color: widget.primaryColor,
+                        fontSize: 10,
+                        fontWeight: FontWeight.w800,
+                      ),
+                    ),
+                  ),
+              ],
+            ),
+            const SizedBox(height: 8),
+            Wrap(
+              spacing: 6,
+              runSpacing: 6,
+              children: record.history.take(4).map((entry) {
+                return GestureDetector(
+                  onTap: () {
+                    setState(() {
+                      _weightControllers[idx].text = entry.weight;
+                    });
+                  },
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 9,
+                      vertical: 5,
+                    ),
+                    decoration: BoxDecoration(
+                      color: Colors.white.withValues(alpha: 0.05),
+                      borderRadius: BorderRadius.circular(8),
+                      border: Border.all(
+                        color: widget.primaryColor.withValues(alpha: 0.22),
+                      ),
+                    ),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Text(
+                          "${entry.weight} kg",
+                          style: TextStyle(
+                            color: widget.primaryColor,
+                            fontSize: 11,
+                            fontWeight: FontWeight.w900,
+                          ),
+                        ),
+                        const SizedBox(width: 5),
+                        Text(
+                          "• ${_formatShortDate(entry.date)}",
+                          style: TextStyle(
+                            color: Colors.white.withValues(alpha: 0.55),
+                            fontSize: 10,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                );
+              }).toList(),
+            ),
+          ],
         ],
       ),
     );
@@ -1793,37 +2170,40 @@ class _WorkoutDetailSheetState extends State<WorkoutDetailSheet> {
         Row(
           mainAxisSize: MainAxisSize.min,
           children: [
-            InkWell(
-              borderRadius: BorderRadius.circular(12),
-              onTap: () => Navigator.pop(context),
-              child: Container(
-                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-                decoration: BoxDecoration(
-                  color: Colors.white.withValues(alpha: 0.08),
-                  borderRadius: BorderRadius.circular(12),
-                  border: Border.all(color: Colors.white.withValues(alpha: 0.12)),
-                ),
-                child: const Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Icon(Icons.arrow_back_ios_new_rounded, size: 13, color: Colors.white),
-                    SizedBox(width: 4),
-                    Text(
-                      "ATRÁS",
-                      style: TextStyle(
-                        color: Colors.white,
-                        fontSize: 11,
-                        fontWeight: FontWeight.bold,
-                        letterSpacing: 0.5,
+            Material(
+              color: Colors.transparent,
+              child: InkWell(
+                borderRadius: BorderRadius.circular(14),
+                onTap: () => Navigator.pop(context),
+                child: Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+                  decoration: BoxDecoration(
+                    color: Colors.white.withValues(alpha: 0.08),
+                    borderRadius: BorderRadius.circular(14),
+                    border: Border.all(color: Colors.white.withValues(alpha: 0.14)),
+                  ),
+                  child: const Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Icon(Icons.arrow_back_ios_new_rounded, size: 15, color: Colors.white),
+                      SizedBox(width: 6),
+                      Text(
+                        "ATRÁS",
+                        style: TextStyle(
+                          color: Colors.white,
+                          fontSize: 12,
+                          fontWeight: FontWeight.bold,
+                          letterSpacing: 0.5,
+                        ),
                       ),
-                    ),
-                  ],
+                    ],
+                  ),
                 ),
               ),
             ),
             const SizedBox(width: 10),
             Container(
-              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
               decoration: BoxDecoration(
                 color: widget.primaryColor.withValues(alpha: 0.1),
                 borderRadius: BorderRadius.circular(12),
@@ -1844,9 +2224,8 @@ class _WorkoutDetailSheetState extends State<WorkoutDetailSheet> {
         IconButton(
           onPressed: () => Navigator.pop(context),
           tooltip: 'Cerrar ejercicio',
-          visualDensity: VisualDensity.compact,
           icon: Container(
-            padding: const EdgeInsets.all(6),
+            padding: const EdgeInsets.all(8),
             decoration: BoxDecoration(
               color: Colors.white.withValues(alpha: 0.08),
               shape: BoxShape.circle,

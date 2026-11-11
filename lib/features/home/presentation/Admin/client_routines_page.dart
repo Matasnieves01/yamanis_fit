@@ -3,6 +3,7 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:table_calendar/table_calendar.dart';
 import 'package:yamanis_fit/core/services/biometrics_service.dart';
+import 'package:yamanis_fit/core/services/routine_plan_service.dart';
 import 'package:yamanis_fit/models/user_data_sheet.dart';
 import 'client_info_page.dart';
 import 'client_tracking_sheet_page.dart';
@@ -319,12 +320,6 @@ class _ClientRoutinesPageState extends State<ClientRoutinesPage> {
     );
 
     if (choice == 'same') {
-      final hasDataSheet = await BiometricsService.hasCompletedDataSheet(widget.clientId);
-      if (!hasDataSheet) {
-        if (!mounted) return;
-        _showIncompleteDataSheetWarning(widget.clientName);
-        return;
-      }
       if (!mounted) return;
       Navigator.push(
         context,
@@ -351,13 +346,6 @@ class _ClientRoutinesPageState extends State<ClientRoutinesPage> {
 
       if (selectedClient != null && mounted) {
         final targetClientId = selectedClient['id'] as String;
-        final targetClientName = (selectedClient['name'] ?? selectedClient['email'] ?? 'el cliente') as String;
-        final hasDataSheet = await BiometricsService.hasCompletedDataSheet(targetClientId);
-        if (!hasDataSheet) {
-          if (!mounted) return;
-          _showIncompleteDataSheetWarning(targetClientName);
-          return;
-        }
 
         Navigator.push(
           context,
@@ -373,47 +361,26 @@ class _ClientRoutinesPageState extends State<ClientRoutinesPage> {
     }
   }
 
-  void _showIncompleteDataSheetWarning(String clientName) {
-    showDialog(
-      context: context,
-      builder: (context) => AlertDialog(
-        backgroundColor: backgroundColor,
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(20),
-          side: BorderSide(color: Colors.amber.withValues(alpha: 0.4)),
-        ),
-        title: const Row(
-          children: [
-            Icon(Icons.warning_amber_rounded, color: Colors.amber, size: 24),
-            SizedBox(width: 8),
-            Expanded(
-              child: Text(
-                'Planilla Pendiente',
-                style: TextStyle(color: Colors.amber, fontWeight: FontWeight.bold, fontSize: 16),
-              ),
-            ),
-          ],
-        ),
-        content: Text(
-          '$clientName aún no ha completado su planilla de medidas corporales y antecedentes de salud obligatorios.\n\nPor seguridad del usuario y lineamientos de entrenamiento, no es posible asignarle o crearle una rutina hasta que complete sus datos.',
-          style: const TextStyle(color: Colors.white70, fontSize: 14),
-        ),
-        actions: [
-          ElevatedButton(
-            onPressed: () => Navigator.pop(context),
-            style: ElevatedButton.styleFrom(
-              backgroundColor: primaryColor,
-              foregroundColor: backgroundColor,
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-            ),
-            child: const Text('ENTENDIDO', style: TextStyle(fontWeight: FontWeight.bold)),
-          ),
-        ],
-      ),
-    );
-  }
-
   void _showAdjustProgressDialog(Map<String, dynamic> routine, String routineId) {
+    final allRoutines = _clientRoutines.values.expand((list) => list).toList();
+    final plans = RoutinePlanService.groupRoutinesIntoPlans(allRoutines);
+    RoutinePlanModel? activePlan;
+    for (final p in plans) {
+      if (p.routines.any((r) => r['id']?.toString() == routineId)) {
+        activePlan = p;
+        break;
+      }
+    }
+    activePlan ??= plans.first;
+
+    final int totalWeeks = activePlan.durationWeeks.clamp(1, 12);
+    final firstDate = activePlan.startDate;
+    final firstDay = DateTime(firstDate.year, firstDate.month, firstDate.day);
+    final routineDate = (routine['date'] as Timestamp?)?.toDate() ?? firstDate;
+    final routineDay = DateTime(routineDate.year, routineDate.month, routineDate.day);
+    final int currentWeek = ((routineDay.difference(firstDay).inDays ~/ 7) + 1).clamp(1, totalWeeks);
+    final Set<int> selectedWeeks = {currentWeek};
+
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
@@ -439,16 +406,190 @@ class _ClientRoutinesPageState extends State<ClientRoutinesPage> {
         }
 
         return StatefulBuilder(builder: (context, setModalState) {
+          final isRemainingSelected = selectedWeeks.length == (totalWeeks - currentWeek + 1) &&
+              List.generate(totalWeeks - currentWeek + 1, (i) => currentWeek + i)
+                  .every(selectedWeeks.contains);
+          final isAllSelected = selectedWeeks.length == totalWeeks;
+
           return Padding(
             padding: EdgeInsets.only(bottom: MediaQuery.of(context).viewInsets.bottom),
             child: Container(
-              height: MediaQuery.of(context).size.height * 0.8,
+              height: MediaQuery.of(context).size.height * 0.85,
               padding: const EdgeInsets.all(16),
               child: Column(
                 children: [
                   Container(width: 40, height: 4, decoration: BoxDecoration(color: Colors.white24, borderRadius: BorderRadius.circular(2))),
                   const SizedBox(height: 12),
-                  Text('Ajustar Progreso - ${routine['name'] ?? ''}', style: const TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.bold)),
+                  Text('Ajustar Reps y Peso - ${routine['name'] ?? ''}', style: const TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.bold)),
+                  if (totalWeeks > 1) ...[
+                    const SizedBox(height: 12),
+                    Container(
+                      width: double.infinity,
+                      padding: const EdgeInsets.all(12),
+                      decoration: BoxDecoration(
+                        color: surfaceColor.withValues(alpha: 0.12),
+                        borderRadius: BorderRadius.circular(14),
+                        border: Border.all(color: primaryColor.withValues(alpha: 0.3)),
+                      ),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Row(
+                            children: [
+                              Icon(Icons.date_range_rounded, color: primaryColor, size: 15),
+                              const SizedBox(width: 6),
+                              Text(
+                                'MODIFICAR SEMANAS SELECCIONADAS JUNTAS',
+                                style: TextStyle(
+                                  color: primaryColor,
+                                  fontSize: 10.5,
+                                  fontWeight: FontWeight.w900,
+                                  letterSpacing: 0.5,
+                                ),
+                              ),
+                            ],
+                          ),
+                          const SizedBox(height: 8),
+                          Wrap(
+                            spacing: 6,
+                            runSpacing: 6,
+                            children: [
+                              GestureDetector(
+                                onTap: () => setModalState(() {
+                                  selectedWeeks
+                                    ..clear()
+                                    ..add(currentWeek);
+                                }),
+                                child: Container(
+                                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                                  decoration: BoxDecoration(
+                                    color: selectedWeeks.length == 1 && selectedWeeks.contains(currentWeek)
+                                        ? primaryColor.withValues(alpha: 0.22)
+                                        : Colors.black26,
+                                    borderRadius: BorderRadius.circular(8),
+                                    border: Border.all(
+                                      color: selectedWeeks.length == 1 && selectedWeeks.contains(currentWeek)
+                                          ? primaryColor
+                                          : Colors.white12,
+                                    ),
+                                  ),
+                                  child: Text(
+                                    'Solo Sem $currentWeek',
+                                    style: TextStyle(
+                                      color: selectedWeeks.length == 1 && selectedWeeks.contains(currentWeek)
+                                          ? primaryColor
+                                          : Colors.white70,
+                                      fontSize: 11,
+                                      fontWeight: FontWeight.bold,
+                                    ),
+                                  ),
+                                ),
+                              ),
+                              if (currentWeek < totalWeeks)
+                                GestureDetector(
+                                  onTap: () => setModalState(() {
+                                    selectedWeeks.clear();
+                                    for (int w = currentWeek; w <= totalWeeks; w++) {
+                                      selectedWeeks.add(w);
+                                    }
+                                  }),
+                                  child: Container(
+                                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                                    decoration: BoxDecoration(
+                                      color: isRemainingSelected && !isAllSelected
+                                          ? primaryColor.withValues(alpha: 0.22)
+                                          : Colors.black26,
+                                      borderRadius: BorderRadius.circular(8),
+                                      border: Border.all(
+                                        color: isRemainingSelected && !isAllSelected
+                                            ? primaryColor
+                                            : Colors.white12,
+                                      ),
+                                    ),
+                                    child: Text(
+                                      'Resto (Sem $currentWeek-$totalWeeks)',
+                                      style: TextStyle(
+                                        color: isRemainingSelected && !isAllSelected
+                                            ? primaryColor
+                                            : Colors.white70,
+                                        fontSize: 11,
+                                        fontWeight: FontWeight.bold,
+                                      ),
+                                    ),
+                                  ),
+                                ),
+                              GestureDetector(
+                                onTap: () => setModalState(() {
+                                  selectedWeeks.clear();
+                                  for (int w = 1; w <= totalWeeks; w++) {
+                                    selectedWeeks.add(w);
+                                  }
+                                }),
+                                child: Container(
+                                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                                  decoration: BoxDecoration(
+                                    color: isAllSelected
+                                        ? primaryColor.withValues(alpha: 0.22)
+                                        : Colors.black26,
+                                    borderRadius: BorderRadius.circular(8),
+                                    border: Border.all(
+                                      color: isAllSelected ? primaryColor : Colors.white12,
+                                    ),
+                                  ),
+                                  child: Text(
+                                    'Todas (1-$totalWeeks)',
+                                    style: TextStyle(
+                                      color: isAllSelected ? primaryColor : Colors.white70,
+                                      fontSize: 11,
+                                      fontWeight: FontWeight.bold,
+                                    ),
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
+                          const SizedBox(height: 8),
+                          Wrap(
+                            spacing: 6,
+                            runSpacing: 6,
+                            children: List.generate(totalWeeks, (idx) {
+                              final w = idx + 1;
+                              final isSel = selectedWeeks.contains(w);
+                              return GestureDetector(
+                                onTap: () {
+                                  setModalState(() {
+                                    if (isSel && selectedWeeks.length > 1) {
+                                      selectedWeeks.remove(w);
+                                    } else {
+                                      selectedWeeks.add(w);
+                                    }
+                                  });
+                                },
+                                child: Container(
+                                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                                  decoration: BoxDecoration(
+                                    color: isSel ? primaryColor : Colors.white.withValues(alpha: 0.05),
+                                    borderRadius: BorderRadius.circular(8),
+                                    border: Border.all(
+                                      color: isSel ? primaryColor : Colors.white24,
+                                    ),
+                                  ),
+                                  child: Text(
+                                    'Sem $w',
+                                    style: TextStyle(
+                                      color: isSel ? backgroundColor : Colors.white70,
+                                      fontWeight: FontWeight.bold,
+                                      fontSize: 11,
+                                    ),
+                                  ),
+                                ),
+                              );
+                            }),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
                   const SizedBox(height: 12),
                   Expanded(
                     child: ListView.builder(
@@ -532,15 +673,15 @@ class _ClientRoutinesPageState extends State<ClientRoutinesPage> {
                       ),
                       const SizedBox(width: 12),
                       SizedBox(
-                        width: 160,
+                        width: 180,
                         child: ElevatedButton(
                           onPressed: () async {
-                            // Build updated workouts structure
                             try {
                               final messenger = ScaffoldMessenger.of(this.context);
                               final admin = FirebaseAuth.instance.currentUser;
                               if (admin == null) return;
 
+                              final Map<String, ({String reps, String weight})> changesByExerciseKey = {};
                               final List<Map<String, dynamic>> updatedWorkouts = [];
                               for (var wi = 0; wi < workouts.length; wi++) {
                                 final w = Map<String, dynamic>.from(workouts[wi]);
@@ -553,29 +694,113 @@ class _ClientRoutinesPageState extends State<ClientRoutinesPage> {
                                   if (newReps.isNotEmpty) ex['reps'] = newReps;
                                   if (newWeight.isNotEmpty) ex['weight'] = newWeight;
                                   newExercises.add(ex);
+
+                                  final wId = (ex['workoutId'] ?? '').toString().trim();
+                                  final wName = (ex['workoutName'] ?? '').toString().trim().toLowerCase();
+                                  if (wId.isNotEmpty) {
+                                    changesByExerciseKey['id:$wId'] = (reps: newReps, weight: newWeight);
+                                  }
+                                  if (wName.isNotEmpty) {
+                                    changesByExerciseKey['name:$wName'] = (reps: newReps, weight: newWeight);
+                                  }
+                                }
+                                if (newExercises.isNotEmpty) {
+                                  w['reps'] = newExercises.first['reps'] ?? w['reps'];
+                                  w['weight'] = newExercises.first['weight'] ?? w['weight'];
                                 }
                                 w['exercises'] = newExercises;
                                 updatedWorkouts.add(w);
                               }
 
-                              await FirebaseFirestore.instance.collection('routines').doc(routineId).update({
+                              final batch = FirebaseFirestore.instance.batch();
+                              final routinesCol = FirebaseFirestore.instance.collection('routines');
+
+                              batch.update(routinesCol.doc(routineId), {
                                 'workouts': updatedWorkouts,
                                 'updatedAt': FieldValue.serverTimestamp(),
                                 'updatedBy': admin.uid,
                               });
 
+                              if (selectedWeeks.length > 1 || !selectedWeeks.contains(currentWeek)) {
+                                for (final r in activePlan!.routines) {
+                                  final rId = (r['id'] ?? '').toString();
+                                  if (rId.isEmpty || rId == routineId) continue;
+                                  final rDate = (r['date'] as Timestamp?)?.toDate() ?? firstDate;
+                                  final rDay = DateTime(rDate.year, rDate.month, rDate.day);
+                                  final weekIdx = ((rDay.difference(firstDay).inDays ~/ 7) + 1).clamp(1, totalWeeks);
+                                  if (!selectedWeeks.contains(weekIdx)) continue;
+
+                                  final rawWList = (r['workouts'] as List?) ?? [];
+                                  bool docChanged = false;
+                                  final newWList = <Map<String, dynamic>>[];
+
+                                  for (final rawW in rawWList) {
+                                    final wMap = Map<String, dynamic>.from(rawW as Map);
+                                    final rawExs = (wMap['exercises'] as List?) ?? [wMap];
+                                    final updatedExs = <Map<String, dynamic>>[];
+                                    bool groupChanged = false;
+
+                                    for (final rawEx in rawExs) {
+                                      final exMap = Map<String, dynamic>.from(rawEx as Map);
+                                      final wId = (exMap['workoutId'] ?? '').toString().trim();
+                                      final wName = (exMap['workoutName'] ?? '').toString().trim().toLowerCase();
+                                      final match = (wId.isNotEmpty ? changesByExerciseKey['id:$wId'] : null) ??
+                                          (wName.isNotEmpty ? changesByExerciseKey['name:$wName'] : null);
+                                      if (match != null) {
+                                        if (match.reps.isNotEmpty) exMap['reps'] = match.reps;
+                                        if (match.weight.isNotEmpty) exMap['weight'] = match.weight;
+                                        docChanged = true;
+                                        groupChanged = true;
+                                      }
+                                      updatedExs.add(exMap);
+                                    }
+
+                                    if (groupChanged && updatedExs.isNotEmpty) {
+                                      wMap['reps'] = updatedExs.first['reps'] ?? wMap['reps'];
+                                      wMap['weight'] = updatedExs.first['weight'] ?? wMap['weight'];
+                                    }
+                                    wMap['exercises'] = updatedExs;
+                                    newWList.add(wMap);
+                                  }
+
+                                  if (docChanged) {
+                                    batch.update(routinesCol.doc(rId), {
+                                      'workouts': newWList,
+                                      'updatedAt': FieldValue.serverTimestamp(),
+                                      'updatedBy': admin.uid,
+                                    });
+                                  }
+                                }
+                              }
+
+                              await batch.commit();
+
                               if (!mounted) return;
                               if (!context.mounted) return;
                               Navigator.pop(context);
-                              messenger.showSnackBar(const SnackBar(content: Text('Progreso ajustado correctamente'), backgroundColor: Colors.green));
+                              messenger.showSnackBar(
+                                SnackBar(
+                                  content: Text(
+                                    selectedWeeks.length > 1
+                                        ? 'Progreso ajustado en ${selectedWeeks.length} semanas'
+                                        : 'Progreso ajustado correctamente',
+                                  ),
+                                  backgroundColor: Colors.green,
+                                ),
+                              );
                               await _loadClientData();
                             } catch (e) {
                               if (!mounted || !context.mounted) return;
                               ScaffoldMessenger.of(this.context).showSnackBar(SnackBar(content: Text('Error ajustando progreso: $e'), backgroundColor: Colors.redAccent));
                             }
                           },
-                          style: ElevatedButton.styleFrom(backgroundColor: primaryColor),
-                          child: const Text('GUARDAR CAMBIOS'),
+                          style: ElevatedButton.styleFrom(backgroundColor: primaryColor, foregroundColor: backgroundColor),
+                          child: Text(
+                            selectedWeeks.length > 1
+                                ? 'GUARDAR (${selectedWeeks.length} SEM)'
+                                : 'GUARDAR CAMBIOS',
+                            style: const TextStyle(fontWeight: FontWeight.bold),
+                          ),
                         ),
                       ),
                     ],
@@ -677,19 +902,19 @@ class _ClientRoutinesPageState extends State<ClientRoutinesPage> {
               ),
               child: const Row(
                 children: [
-                  Icon(Icons.assignment_late_outlined, color: Colors.amber, size: 20),
+                  Icon(Icons.info_outline_rounded, color: Colors.amber, size: 20),
                   SizedBox(width: 10),
                   Expanded(
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Text(
-                          'Planilla y medidas pendientes',
+                          'Medidas iniciales pendientes',
                           style: TextStyle(color: Colors.amber, fontWeight: FontWeight.bold, fontSize: 13),
                         ),
                         SizedBox(height: 2),
                         Text(
-                          'El cliente no ha llenado sus medidas ni encuesta de salud. No se le pueden asignar rutinas.',
+                          'Al cliente se le solicitarán sus medidas obligatorias cuando inicie su plan por primera vez. Puedes crearle su rutina sin bloqueo.',
                           style: TextStyle(color: Colors.white70, fontSize: 11),
                         ),
                       ],
@@ -956,14 +1181,7 @@ class _ClientRoutinesPageState extends State<ClientRoutinesPage> {
                     width: double.infinity,
                     height: 52,
                     child: ElevatedButton.icon(
-                      onPressed: () async {
-                        final hasDataSheet = await BiometricsService.hasCompletedDataSheet(widget.clientId);
-                        if (!hasDataSheet) {
-                          if (!mounted) return;
-                          _showIncompleteDataSheetWarning(widget.clientName);
-                          return;
-                        }
-                        if (!mounted) return;
+                      onPressed: () {
                         Navigator.push(
                           context,
                           MaterialPageRoute(
@@ -994,6 +1212,7 @@ class _ClientRoutinesPageState extends State<ClientRoutinesPage> {
                       firstDay: DateTime.utc(2020, 1, 1),
                       lastDay: DateTime.utc(2030, 12, 31),
                       focusedDay: _focusedDay,
+                      availableGestures: AvailableGestures.horizontalSwipe,
                       selectedDayPredicate: (day) => isSameDay(_selectedDay, day),
                       eventLoader: (day) => _clientRoutines[_normalizeDay(day)] ?? [],
                       onDaySelected: (selectedDay, focusedDay) {

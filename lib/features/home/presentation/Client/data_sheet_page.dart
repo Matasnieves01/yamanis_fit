@@ -21,6 +21,9 @@ class _DataSheetPageState extends State<DataSheetPage> {
 
   bool _isLoading = true;
   bool _isSaving = false;
+  bool _hasExistingCompleteSheet = false;
+
+  bool get _areMeasurementsMandatory => !_hasExistingCompleteSheet;
 
   // Controllers - Sección 1: Medidas
   final _ageController = TextEditingController();
@@ -121,7 +124,11 @@ class _DataSheetPageState extends State<DataSheetPage> {
     _userName = user.displayName ?? '';
 
     try {
+      final hasCompletedOnce = await BiometricsService.hasCompletedDataSheet(user.uid);
       final sheet = await BiometricsService.getDataSheet(user.uid);
+      if (mounted) {
+        _hasExistingCompleteSheet = hasCompletedOnce || (sheet != null && sheet.isComplete);
+      }
       if (sheet != null && mounted) {
         final b = sheet.biometrics;
         final a = sheet.assessment;
@@ -593,7 +600,9 @@ class _DataSheetPageState extends State<DataSheetPage> {
                     // SECCIÓN 1: MEDIDAS CORPORALES & BIOMETRÍA
                     _buildSectionCard(
                       title: "1. Medidas & Antropometría",
-                      subtitle: "Indica tus medidas con cinta métrica flexible",
+                      subtitle: _areMeasurementsMandatory
+                          ? "Obligatorio al iniciar tu primer plan"
+                          : "Opcional para actualizar y comparar tu progreso",
                       icon: Icons.accessibility_new_rounded,
                       trailing: TextButton.icon(
                         onPressed: _showMeasurementGuideDialog,
@@ -611,6 +620,7 @@ class _DataSheetPageState extends State<DataSheetPage> {
                                 hint: "ej. 24",
                                 suffix: "años",
                                 isNumeric: true,
+                                isRequired: _areMeasurementsMandatory,
                               ),
                             ),
                             const SizedBox(width: 12),
@@ -621,6 +631,7 @@ class _DataSheetPageState extends State<DataSheetPage> {
                                 hint: "ej. 175",
                                 suffix: "cm",
                                 isNumeric: true,
+                                isRequired: _areMeasurementsMandatory,
                               ),
                             ),
                           ],
@@ -632,6 +643,7 @@ class _DataSheetPageState extends State<DataSheetPage> {
                           suffix: "kg",
                           icon: Icons.scale_rounded,
                           isNumeric: true,
+                          isRequired: _areMeasurementsMandatory,
                         ),
                         const Divider(color: Colors.white12, height: 26),
                         const Text(
@@ -648,6 +660,7 @@ class _DataSheetPageState extends State<DataSheetPage> {
                                 hint: "ej. 38",
                                 suffix: "cm",
                                 isNumeric: true,
+                                isRequired: _areMeasurementsMandatory,
                               ),
                             ),
                             const SizedBox(width: 12),
@@ -658,6 +671,7 @@ class _DataSheetPageState extends State<DataSheetPage> {
                                 hint: "ej. 104",
                                 suffix: "cm",
                                 isNumeric: true,
+                                isRequired: _areMeasurementsMandatory,
                               ),
                             ),
                           ],
@@ -671,6 +685,7 @@ class _DataSheetPageState extends State<DataSheetPage> {
                                 hint: "ej. 82",
                                 suffix: "cm",
                                 isNumeric: true,
+                                isRequired: _areMeasurementsMandatory,
                               ),
                             ),
                             const SizedBox(width: 12),
@@ -681,6 +696,7 @@ class _DataSheetPageState extends State<DataSheetPage> {
                                 hint: "ej. 98",
                                 suffix: "cm",
                                 isNumeric: true,
+                                isRequired: _areMeasurementsMandatory,
                               ),
                             ),
                           ],
@@ -694,6 +710,7 @@ class _DataSheetPageState extends State<DataSheetPage> {
                                 hint: "ej. 38.5",
                                 suffix: "cm",
                                 isNumeric: true,
+                                isRequired: _areMeasurementsMandatory,
                               ),
                             ),
                             const SizedBox(width: 12),
@@ -704,6 +721,7 @@ class _DataSheetPageState extends State<DataSheetPage> {
                                 hint: "ej. 60",
                                 suffix: "cm",
                                 isNumeric: true,
+                                isRequired: _areMeasurementsMandatory,
                               ),
                             ),
                           ],
@@ -714,6 +732,7 @@ class _DataSheetPageState extends State<DataSheetPage> {
                           hint: "ej. 39",
                           suffix: "cm",
                           isNumeric: true,
+                          isRequired: _areMeasurementsMandatory,
                         ),
                       ],
                     ),

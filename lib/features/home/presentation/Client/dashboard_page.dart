@@ -11,7 +11,9 @@ import 'data_sheet_page.dart';
 import 'package:yamanis_fit/core/services/biometrics_service.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:yamanis_fit/core/services/routine_plan_service.dart';
+import 'package:yamanis_fit/core/services/exercise_weight_service.dart';
 import 'package:yamanis_fit/features/home/presentation/Client/widgets/routine_completion_dialogs.dart';
+import 'package:yamanis_fit/features/home/presentation/Client/widgets/data_sheet_required_dialog.dart';
 import 'package:yamanis_fit/core/services/notification_service.dart';
 
 class DashboardPage extends StatefulWidget {
@@ -99,12 +101,24 @@ class _DashboardPageState extends State<DashboardPage> {
         }
       }
 
+      final exerciseWeightRecords =
+          await ExerciseWeightService.loadUserExerciseWeights(
+        user.uid,
+        preloadedLogs: logsSnapshot.docs,
+      );
+
       final Map<DateTime, List<Map<String, dynamic>>> newRoutines = {};
       final List<Map<String, dynamic>> rawRoutinesList = [];
 
       for (var doc in snapshot.docs) {
         final data = doc.data();
         data['id'] = doc.id;
+        if (data['workouts'] is List) {
+          data['workouts'] = ExerciseWeightService.applySavedWeightsToWorkouts(
+            data['workouts'] as List,
+            exerciseWeightRecords,
+          );
+        }
         rawRoutinesList.add(data);
         final Timestamp timestamp = data['date'];
         final DateTime date = timestamp.toDate();
@@ -322,7 +336,7 @@ class _DashboardPageState extends State<DashboardPage> {
           ),
           const SizedBox(height: 8),
           Text(
-            "Debes completar tus medidas corporales y la encuesta de salud para que tu entrenadora pueda diseñar y asignarte tu plan de entrenamiento.",
+            "Para iniciar tu plan de entrenamiento por primera vez, debes registrar tus medidas corporales iniciales y la encuesta de salud.",
             style: TextStyle(
               color: Colors.white.withValues(alpha: 0.75),
               fontSize: 12,
@@ -337,7 +351,9 @@ class _DashboardPageState extends State<DashboardPage> {
               onPressed: () async {
                 final completed = await Navigator.push(
                   context,
-                  MaterialPageRoute(builder: (_) => const DataSheetPage()),
+                  MaterialPageRoute(
+                    builder: (_) => const DataSheetPage(isRequiredForRoutine: true),
+                  ),
                 );
                 if (completed == true) {
                   _fetchRoutines();
@@ -410,7 +426,9 @@ class _DashboardPageState extends State<DashboardPage> {
                         ],
                       ),
                       const SizedBox(height: 20),
-                      if (_userRole == 'user' && !_hasCompletedDataSheet) ...[
+                      if (_userRole == 'user' &&
+                          !_hasCompletedDataSheet &&
+                          _completedRoutineIds.isEmpty) ...[
                         _buildDataSheetPendingBanner(),
                         const SizedBox(height: 16),
                       ],
@@ -914,11 +932,17 @@ class _DashboardPageState extends State<DashboardPage> {
             lastDay: DateTime.utc(2030, 12, 31),
             focusedDay: _focusedDay,
             startingDayOfWeek: StartingDayOfWeek.monday,
+            availableGestures: AvailableGestures.horizontalSwipe,
             selectedDayPredicate: (day) => isSameDay(_selectedDay, day),
             eventLoader: (day) => _getRoutinesForDay(day),
             onDaySelected: (selectedDay, focusedDay) {
               setState(() {
                 _selectedDay = selectedDay;
+                _focusedDay = focusedDay;
+              });
+            },
+            onPageChanged: (focusedDay) {
+              setState(() {
                 _focusedDay = focusedDay;
               });
             },
@@ -2020,7 +2044,33 @@ class _DashboardPageState extends State<DashboardPage> {
                   : (!canStart
                       ? null
                       : () async {
-                          final result = await Navigator.push(
+                          // Obligatorio solo cuando el cliente inicia su plan por primera vez
+                          if (_userRole == 'user' &&
+                              !_hasCompletedDataSheet &&
+                              _completedRoutineIds.isEmpty) {
+                            final fillNow = await showDialog<bool>(
+                              context: context,
+                              barrierDismissible: false,
+                              builder: (context) => const DataSheetRequiredDialog(
+                                customTitle: '¡Registra tus Medidas Iniciales!',
+                                customSubtitle:
+                                    'Antes de iniciar tu plan por primera vez, es obligatorio completar tus medidas corporales iniciales y tu encuesta de salud para llevar el control de tu progreso.',
+                              ),
+                            );
+                            if (fillNow != true || !mounted) return;
+                            final completed = await Navigator.push<bool>(
+                              context,
+                              MaterialPageRoute(
+                                builder: (_) => const DataSheetPage(
+                                  isRequiredForRoutine: true,
+                                ),
+                              ),
+                            );
+                            if (completed != true || !mounted) return;
+                            setState(() => _hasCompletedDataSheet = true);
+                          }
+
+                          await Navigator.push(
                             context,
                             MaterialPageRoute(
                               builder: (context) => StartRoutinePage(
@@ -2030,7 +2080,7 @@ class _DashboardPageState extends State<DashboardPage> {
                             ),
                           );
 
-                          if (result == true) {
+                          if (mounted) {
                             _fetchRoutines();
                           }
                         })),
