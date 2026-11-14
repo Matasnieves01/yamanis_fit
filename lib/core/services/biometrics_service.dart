@@ -40,17 +40,17 @@ class BiometricsService {
       }
 
       final updatedBiometrics = UserBiometrics(
-        weight: newB.weight,
+        weight: newB.weight ?? oldBiometrics.weight,
         previousWeight: oldBiometrics.weight ?? newB.weight,
-        height: newB.height,
-        age: newB.age,
-        neck: newB.neck,
-        chest: newB.chest,
-        waist: newB.waist,
-        hips: newB.hips,
-        biceps: newB.biceps,
-        thigh: newB.thigh,
-        calves: newB.calves,
+        height: newB.height ?? oldBiometrics.height,
+        age: newB.age ?? oldBiometrics.age,
+        neck: newB.neck ?? oldBiometrics.neck,
+        chest: newB.chest ?? oldBiometrics.chest,
+        waist: newB.waist ?? oldBiometrics.waist,
+        hips: newB.hips ?? oldBiometrics.hips,
+        biceps: newB.biceps ?? oldBiometrics.biceps,
+        thigh: newB.thigh ?? oldBiometrics.thigh,
+        calves: newB.calves ?? oldBiometrics.calves,
         updatedAt: DateTime.now(),
         previousDeltas: deltas.isNotEmpty ? deltas : (oldBiometrics.previousDeltas ?? {}),
       );
@@ -126,7 +126,8 @@ class BiometricsService {
     }
   }
 
-  /// Verifica si el usuario ha completado obligatoriamente su planilla de datos (medidas corporales y encuesta de salud)
+  /// Verifica si el usuario ya completó su planilla/medidas iniciales o si ya inició
+  /// un plan previamente (las medidas solo son obligatorias al iniciar el primer plan).
   static Future<bool> hasCompletedDataSheet(String userId) async {
     try {
       final doc = await _firestore.collection('users').doc(userId).get();
@@ -134,22 +135,37 @@ class BiometricsService {
       final data = doc.data();
       if (data == null) return false;
 
-      // 1. Si dataSheet está estructurado en el documento de usuario
+      // 1. Si ya tiene marcado que completó la planilla o biometría inicial alguna vez
+      if (data['hasCompletedDataSheet'] == true || data['hasCompletedBiometrics'] == true) {
+        return true;
+      }
+
+      // 2. Si dataSheet está estructurado en el documento de usuario
       if (data['dataSheet'] is Map) {
         final dsMap = Map<String, dynamic>.from(data['dataSheet']);
         final ds = UserDataSheet.fromMap(dsMap, userId);
-        return ds.biometrics.isComplete && ds.assessment.isComplete;
-      }
-
-      // 2. Si tiene flag 'hasCompletedDataSheet' pero guardado por partes
-      if (data['hasCompletedDataSheet'] == true) {
-        final biometricsMap = data['biometrics'] as Map<String, dynamic>?;
-        final assessmentMap = data['assessment'] as Map<String, dynamic>?;
-        final b = UserBiometrics.fromMap(biometricsMap);
-        final a = HealthLifestyleAssessment.fromMap(assessmentMap);
-        if (b.isComplete && (a.isComplete || (assessmentMap != null && assessmentMap.isNotEmpty))) {
+        if (ds.isComplete || ds.biometrics.isComplete) {
           return true;
         }
+      }
+
+      // 3. Si tiene medidas registradas en 'biometrics'
+      if (data['biometrics'] is Map) {
+        final b = UserBiometrics.fromMap(Map<String, dynamic>.from(data['biometrics']));
+        if (b.isComplete || (b.weight != null && b.height != null)) {
+          return true;
+        }
+      }
+
+      // 4. Si el usuario ya inició un plan anteriormente (tiene sesiones completadas en routine_logs),
+      // ya no está en su primer plan por primera vez, por lo que las medidas son opcionales.
+      final logsSnap = await _firestore
+          .collection('routine_logs')
+          .where('userId', isEqualTo: userId)
+          .limit(1)
+          .get();
+      if (logsSnap.docs.isNotEmpty) {
+        return true;
       }
 
       return false;

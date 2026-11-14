@@ -6,6 +6,7 @@ import 'package:yamanis_fit/core/services/routine_plan_service.dart';
 import 'package:yamanis_fit/core/widgets/app_back_button.dart';
 import 'package:yamanis_fit/features/home/presentation/Admin/client_info_page.dart';
 import 'package:yamanis_fit/features/home/presentation/Admin/client_routines_page.dart';
+import 'package:yamanis_fit/features/home/presentation/Admin/create_routine_page.dart';
 
 class ClientTrackingSheetPage extends StatefulWidget {
   final String clientId;
@@ -44,6 +45,9 @@ class _ClientTrackingSheetPageState extends State<ClientTrackingSheetPage>
   // Datos del alumno
   String _studentGoal = "Recomposición corporal";
   DateTime? _startDate;
+  DateTime? _planStartDate;
+  int? _userPlanWeeks;
+  String? _currentPlanId;
   int _weeksElapsed = 1;
   String _trainerName = "Yamanis Ortega";
 
@@ -128,7 +132,11 @@ class _ClientTrackingSheetPageState extends State<ClientTrackingSheetPage>
 
       // Extraer objetivo y fecha de inicio
       final createdAtTs = userData['createdAt'] as Timestamp?;
-      _startDate = createdAtTs?.toDate() ?? DateTime.now();
+      final planStartTs = userData['planStartDate'] as Timestamp?;
+      _planStartDate = planStartTs?.toDate();
+      _userPlanWeeks = (userData['planDurationWeeks'] as num?)?.toInt();
+      _currentPlanId = userData['currentPlanId']?.toString();
+      _startDate = _planStartDate ?? createdAtTs?.toDate() ?? DateTime.now();
 
       final dataSheet = userData['dataSheet'] as Map<String, dynamic>?;
       final assessment = dataSheet?['assessment'] as Map<String, dynamic>?;
@@ -246,7 +254,9 @@ class _ClientTrackingSheetPageState extends State<ClientTrackingSheetPage>
   List<RoutinePlanModel> _groupRoutinesIntoPlans(List<Map<String, dynamic>> allRoutines) {
     return RoutinePlanService.groupRoutinesIntoPlans(
       allRoutines,
-      userStartDate: _startDate,
+      userStartDate: _planStartDate,
+      userPlanWeeks: _userPlanWeeks,
+      currentPlanId: _currentPlanId,
     );
   }
 
@@ -304,13 +314,15 @@ class _ClientTrackingSheetPageState extends State<ClientTrackingSheetPage>
       }
     } else {
       final firstDate = plan.startDate;
+      final firstDay = DateTime(firstDate.year, firstDate.month, firstDate.day);
 
       for (int i = 0; i < routines.length; i++) {
         final r = routines[i];
         final rId = r['id']?.toString() ?? '';
         final rDate = (r['date'] as Timestamp?)?.toDate() ?? firstDate;
-        final days = rDate.difference(firstDate).inDays;
-        final weekIdx = ((days / 7).floor() + 1).clamp(1, _totalWeeksCount);
+        final rDay = DateTime(rDate.year, rDate.month, rDate.day);
+        final days = rDay.difference(firstDay).inDays;
+        final weekIdx = ((days ~/ 7) + 1).clamp(1, _totalWeeksCount);
 
         final log = logsByRoutineId[rId];
         final routineName = r['name']?.toString() ?? 'Día';
@@ -586,122 +598,460 @@ class _ClientTrackingSheetPageState extends State<ClientTrackingSheetPage>
       weightCtrls.add(TextEditingController());
     }
 
+    final Set<int> selectedWeeks = {_selectedWeek};
+
     showDialog(
       context: context,
-      builder: (context) => AlertDialog(
-        backgroundColor: cardColor,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-        title: Row(
-          children: [
-            Icon(Icons.edit_note_rounded, color: primaryColor, size: 24),
-            const SizedBox(width: 8),
-            Expanded(
-              child: Text(
-                ex.exerciseName.toUpperCase(),
-                style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 15),
-                overflow: TextOverflow.ellipsis,
-              ),
-            ),
-          ],
-        ),
-        content: SizedBox(
-          width: 500,
-          child: SingleChildScrollView(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              mainAxisSize: MainAxisSize.min,
+      builder: (context) => StatefulBuilder(
+        builder: (context, setDialogState) {
+          final isRemainingSelected = selectedWeeks.length == (_totalWeeksCount - _selectedWeek + 1) &&
+              List.generate(_totalWeeksCount - _selectedWeek + 1, (i) => _selectedWeek + i)
+                  .every(selectedWeeks.contains);
+          final isAllSelected = selectedWeeks.length == _totalWeeksCount;
+
+          return AlertDialog(
+            backgroundColor: cardColor,
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+            title: Row(
               children: [
-                _buildDialogField("Categoría de ejercicio (Músculo)", catCtrl),
-                const SizedBox(height: 8),
-                _buildDialogField("Feedback Técnico (Entrenadora)", feedbackCtrl),
-                const SizedBox(height: 8),
-                _buildDialogField("Notas del Alumno", noteCtrl),
-                const SizedBox(height: 12),
-                Row(
+                Icon(Icons.edit_note_rounded, color: primaryColor, size: 24),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: Text(
+                    ex.exerciseName.toUpperCase(),
+                    style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 15),
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                ),
+              ],
+            ),
+            content: SizedBox(
+              width: 500,
+              child: SingleChildScrollView(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  mainAxisSize: MainAxisSize.min,
                   children: [
-                    Expanded(child: _buildDialogField("Series", setsCtrl)),
-                    const SizedBox(width: 8),
-                    Expanded(child: _buildDialogField("RIR/RPE", rirCtrl)),
-                  ],
-                ),
-                const SizedBox(height: 14),
-                const Text(
-                  "SERIES (REPS & PESO EN KG) - MÁX 4 SERIES",
-                  style: TextStyle(color: Colors.white70, fontWeight: FontWeight.bold, fontSize: 11),
-                ),
-                const SizedBox(height: 6),
-                for (int i = 0; i < 4; i++) ...[
-                  Row(
-                    children: [
-                      Text("S${i + 1}:", style: TextStyle(color: primaryColor, fontWeight: FontWeight.bold, fontSize: 12)),
-                      const SizedBox(width: 8),
-                      Expanded(
-                        child: TextField(
-                          controller: repsCtrls[i],
-                          keyboardType: TextInputType.number,
-                          style: const TextStyle(color: Colors.white, fontSize: 12),
-                          decoration: InputDecoration(
-                            isDense: true,
-                            hintText: "Reps",
-                            hintStyle: const TextStyle(color: Colors.white24, fontSize: 11),
-                            filled: true,
-                            fillColor: surfaceColor,
-                            contentPadding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
-                            border: OutlineInputBorder(borderRadius: BorderRadius.circular(8), borderSide: BorderSide.none),
+                    _buildDialogField("Categoría de ejercicio (Músculo)", catCtrl),
+                    const SizedBox(height: 8),
+                    _buildDialogField("Feedback Técnico (Entrenadora)", feedbackCtrl),
+                    const SizedBox(height: 8),
+                    _buildDialogField("Notas del Alumno", noteCtrl),
+                    const SizedBox(height: 12),
+                    Row(
+                      children: [
+                        Expanded(child: _buildDialogField("Series", setsCtrl)),
+                        const SizedBox(width: 8),
+                        Expanded(child: _buildDialogField("RIR/RPE", rirCtrl)),
+                      ],
+                    ),
+                    const SizedBox(height: 14),
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        const Expanded(
+                          child: Text(
+                            "SERIES (REPS & PESO EN KG)",
+                            style: TextStyle(color: Colors.white70, fontWeight: FontWeight.bold, fontSize: 11),
                           ),
                         ),
-                      ),
-                      const SizedBox(width: 8),
-                      Expanded(
-                        child: TextField(
-                          controller: weightCtrls[i],
-                          keyboardType: TextInputType.number,
-                          style: const TextStyle(color: Colors.white, fontSize: 12),
-                          decoration: InputDecoration(
-                            isDense: true,
-                            hintText: "Kg",
-                            hintStyle: const TextStyle(color: Colors.white24, fontSize: 11),
-                            filled: true,
-                            fillColor: surfaceColor,
-                            contentPadding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
-                            border: OutlineInputBorder(borderRadius: BorderRadius.circular(8), borderSide: BorderSide.none),
+                        TextButton.icon(
+                          onPressed: () {
+                            final r1 = repsCtrls[0].text.trim();
+                            final w1 = weightCtrls[0].text.trim();
+                            final count = (int.tryParse(setsCtrl.text.trim()) ?? 4).clamp(1, 4);
+                            for (int i = 1; i < count; i++) {
+                              repsCtrls[i].text = r1;
+                              weightCtrls[i].text = w1;
+                            }
+                            setDialogState(() {});
+                          },
+                          style: TextButton.styleFrom(
+                            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                            minimumSize: Size.zero,
+                            tapTargetSize: MaterialTapTargetSize.shrinkWrap,
                           ),
+                          icon: Icon(Icons.copy_all_rounded, color: primaryColor, size: 13),
+                          label: Text(
+                            "Copiar S1 a todas",
+                            style: TextStyle(color: primaryColor, fontSize: 10.5, fontWeight: FontWeight.bold),
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 6),
+                    for (int i = 0; i < 4; i++) ...[
+                      Row(
+                        children: [
+                          Text("S${i + 1}:", style: TextStyle(color: primaryColor, fontWeight: FontWeight.bold, fontSize: 12)),
+                          const SizedBox(width: 8),
+                          Expanded(
+                            child: TextField(
+                              controller: repsCtrls[i],
+                              keyboardType: TextInputType.number,
+                              style: const TextStyle(color: Colors.white, fontSize: 12),
+                              decoration: InputDecoration(
+                                isDense: true,
+                                hintText: "Reps",
+                                hintStyle: const TextStyle(color: Colors.white24, fontSize: 11),
+                                filled: true,
+                                fillColor: surfaceColor,
+                                contentPadding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
+                                border: OutlineInputBorder(borderRadius: BorderRadius.circular(8), borderSide: BorderSide.none),
+                              ),
+                            ),
+                          ),
+                          const SizedBox(width: 8),
+                          Expanded(
+                            child: TextField(
+                              controller: weightCtrls[i],
+                              keyboardType: TextInputType.number,
+                              style: const TextStyle(color: Colors.white, fontSize: 12),
+                              decoration: InputDecoration(
+                                isDense: true,
+                                hintText: "Kg",
+                                hintStyle: const TextStyle(color: Colors.white24, fontSize: 11),
+                                filled: true,
+                                fillColor: surfaceColor,
+                                contentPadding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
+                                border: OutlineInputBorder(borderRadius: BorderRadius.circular(8), borderSide: BorderSide.none),
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 6),
+                    ],
+                    if (_totalWeeksCount > 1) ...[
+                      const SizedBox(height: 10),
+                      Container(
+                        width: double.infinity,
+                        padding: const EdgeInsets.all(12),
+                        decoration: BoxDecoration(
+                          color: surfaceColor.withValues(alpha: 0.6),
+                          borderRadius: BorderRadius.circular(14),
+                          border: Border.all(color: primaryColor.withValues(alpha: 0.25)),
+                        ),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Row(
+                              children: [
+                                Icon(Icons.date_range_rounded, color: primaryColor, size: 15),
+                                const SizedBox(width: 6),
+                                Text(
+                                  "APLICAR CAMBIOS EN SEMANAS",
+                                  style: TextStyle(
+                                    color: primaryColor,
+                                    fontSize: 10.5,
+                                    fontWeight: FontWeight.w900,
+                                    letterSpacing: 0.6,
+                                  ),
+                                ),
+                              ],
+                            ),
+                            const SizedBox(height: 8),
+                            Wrap(
+                              spacing: 6,
+                              runSpacing: 6,
+                              children: [
+                                _buildQuickWeekActionChip(
+                                  label: "Solo Sem $_selectedWeek",
+                                  active: selectedWeeks.length == 1 && selectedWeeks.contains(_selectedWeek),
+                                  onTap: () => setDialogState(() {
+                                    selectedWeeks
+                                      ..clear()
+                                      ..add(_selectedWeek);
+                                  }),
+                                ),
+                                if (_selectedWeek < _totalWeeksCount)
+                                  _buildQuickWeekActionChip(
+                                    label: "Resto (Sem $_selectedWeek-$_totalWeeksCount)",
+                                    active: isRemainingSelected && !isAllSelected,
+                                    onTap: () => setDialogState(() {
+                                      selectedWeeks.clear();
+                                      for (int w = _selectedWeek; w <= _totalWeeksCount; w++) {
+                                        selectedWeeks.add(w);
+                                      }
+                                    }),
+                                  ),
+                                _buildQuickWeekActionChip(
+                                  label: "Todas (1-$_totalWeeksCount)",
+                                  active: isAllSelected,
+                                  onTap: () => setDialogState(() {
+                                    selectedWeeks.clear();
+                                    for (int w = 1; w <= _totalWeeksCount; w++) {
+                                      selectedWeeks.add(w);
+                                    }
+                                  }),
+                                ),
+                              ],
+                            ),
+                            const SizedBox(height: 8),
+                            Wrap(
+                              spacing: 6,
+                              runSpacing: 6,
+                              children: List.generate(_totalWeeksCount, (idx) {
+                                final w = idx + 1;
+                                final isSel = selectedWeeks.contains(w);
+                                return GestureDetector(
+                                  onTap: () {
+                                    setDialogState(() {
+                                      if (isSel && selectedWeeks.length > 1) {
+                                        selectedWeeks.remove(w);
+                                      } else {
+                                        selectedWeeks.add(w);
+                                      }
+                                    });
+                                  },
+                                  child: Container(
+                                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+                                    decoration: BoxDecoration(
+                                      color: isSel ? primaryColor : Colors.white.withValues(alpha: 0.05),
+                                      borderRadius: BorderRadius.circular(8),
+                                      border: Border.all(
+                                        color: isSel ? primaryColor : Colors.white24,
+                                      ),
+                                    ),
+                                    child: Text(
+                                      "Sem $w",
+                                      style: TextStyle(
+                                        color: isSel ? backgroundColor : Colors.white70,
+                                        fontWeight: FontWeight.bold,
+                                        fontSize: 11,
+                                      ),
+                                    ),
+                                  ),
+                                );
+                              }),
+                            ),
+                          ],
                         ),
                       ),
                     ],
-                  ),
-                  const SizedBox(height: 6),
-                ],
-              ],
+                  ],
+                ),
+              ),
             ),
-          ),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text("CANCELAR", style: TextStyle(color: Colors.white54)),
-          ),
-          ElevatedButton(
-            onPressed: () {
-              setState(() {
-                ex.studentNotes = noteCtrl.text.trim();
-                ex.category = catCtrl.text.trim();
-                ex.technicalFeedback = feedbackCtrl.text.trim();
-                ex.rirRpe = rirCtrl.text.trim();
-                ex.totalSets = setsCtrl.text.trim();
-                for (int i = 0; i < 4 && i < ex.sets.length; i++) {
-                  ex.sets[i].reps = repsCtrls[i].text.trim();
-                  ex.sets[i].weight = weightCtrls[i].text.trim();
-                }
-              });
-              Navigator.pop(context);
-            },
-            style: ElevatedButton.styleFrom(backgroundColor: primaryColor, foregroundColor: backgroundColor),
-            child: const Text("APLICAR", style: TextStyle(fontWeight: FontWeight.bold)),
-          ),
-        ],
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(context),
+                child: const Text("CANCELAR", style: TextStyle(color: Colors.white54)),
+              ),
+              ElevatedButton(
+                onPressed: () async {
+                  final newNotes = noteCtrl.text.trim();
+                  final newCategory = catCtrl.text.trim();
+                  final newFeedback = feedbackCtrl.text.trim();
+                  final newRir = rirCtrl.text.trim();
+                  final newSets = setsCtrl.text.trim();
+                  final newRepsList = List.generate(4, (i) => repsCtrls[i].text.trim());
+                  final newWeightList = List.generate(4, (i) => weightCtrls[i].text.trim());
+
+                  setState(() {
+                    for (final w in selectedWeeks) {
+                      final weekDays = _weeksData[w] ?? [];
+                      for (final d in weekDays) {
+                        for (final targetEx in d.exercises) {
+                          final matchesId = ex.workoutId != null &&
+                              ex.workoutId!.isNotEmpty &&
+                              targetEx.workoutId == ex.workoutId;
+                          final matchesName = targetEx.exerciseName.trim().toLowerCase() ==
+                              ex.exerciseName.trim().toLowerCase();
+
+                          if (matchesId || matchesName) {
+                            if (w == _selectedWeek && identical(targetEx, ex)) {
+                              targetEx.studentNotes = newNotes;
+                            }
+                            targetEx.category = newCategory;
+                            targetEx.technicalFeedback = newFeedback;
+                            targetEx.rirRpe = newRir;
+                            targetEx.totalSets = newSets;
+                            for (int i = 0; i < 4 && i < targetEx.sets.length; i++) {
+                              targetEx.sets[i].reps = newRepsList[i];
+                              targetEx.sets[i].weight = newWeightList[i];
+                            }
+                          }
+                        }
+                      }
+                    }
+                  });
+
+                  Navigator.pop(context);
+                  await _saveWeeksAndSyncRoutines(
+                    selectedWeeks: selectedWeeks,
+                    workoutId: ex.workoutId,
+                    exerciseName: ex.exerciseName,
+                    newSets: newSets,
+                    primaryReps: newRepsList.firstWhere((r) => r.isNotEmpty, orElse: () => ''),
+                    primaryWeight: newWeightList.firstWhere((w) => w.isNotEmpty, orElse: () => ''),
+                  );
+                },
+                style: ElevatedButton.styleFrom(backgroundColor: primaryColor, foregroundColor: backgroundColor),
+                child: Text(
+                  selectedWeeks.length > 1
+                      ? "APLICAR (${selectedWeeks.length} SEM)"
+                      : "APLICAR",
+                  style: const TextStyle(fontWeight: FontWeight.bold),
+                ),
+              ),
+            ],
+          );
+        },
       ),
     );
+  }
+
+  Widget _buildQuickWeekActionChip({
+    required String label,
+    required bool active,
+    required VoidCallback onTap,
+  }) {
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 5),
+        decoration: BoxDecoration(
+          color: active ? primaryColor.withValues(alpha: 0.2) : Colors.black26,
+          borderRadius: BorderRadius.circular(8),
+          border: Border.all(
+            color: active ? primaryColor : Colors.white12,
+          ),
+        ),
+        child: Text(
+          label,
+          style: TextStyle(
+            color: active ? primaryColor : Colors.white70,
+            fontSize: 10.5,
+            fontWeight: FontWeight.bold,
+          ),
+        ),
+      ),
+    );
+  }
+
+  Future<void> _saveWeeksAndSyncRoutines({
+    required Set<int> selectedWeeks,
+    required String? workoutId,
+    required String exerciseName,
+    required String newSets,
+    required String primaryReps,
+    required String primaryWeight,
+  }) async {
+    try {
+      final plan = _selectedPlan;
+      final planId = plan?.id ?? 'default';
+      final trackingSheetsUpdate = <String, dynamic>{};
+
+      for (final w in selectedWeeks) {
+        final days = _weeksData[w] ?? [];
+        final daysToSave = days.map((d) => d.toMap()).toList();
+        trackingSheetsUpdate['${planId}_week_$w'] = {
+          'planId': planId,
+          'weekNumber': w,
+          'days': daysToSave,
+          'updatedAt': DateTime.now().toIso8601String(),
+        };
+        if (plan?.isCurrent == true) {
+          trackingSheetsUpdate['week_$w'] = {
+            'weekNumber': w,
+            'days': daysToSave,
+            'updatedAt': DateTime.now().toIso8601String(),
+          };
+        }
+      }
+
+      await FirebaseFirestore.instance
+          .collection('users')
+          .doc(widget.clientId)
+          .set({'trackingSheets': trackingSheetsUpdate}, SetOptions(merge: true));
+
+      // Sincronizar también en los documentos de 'routines' de las semanas seleccionadas
+      if (plan != null && plan.routines.isNotEmpty) {
+        final firstDate = plan.startDate;
+        final firstDay = DateTime(firstDate.year, firstDate.month, firstDate.day);
+        final batch = FirebaseFirestore.instance.batch();
+        int updatedDocs = 0;
+
+        for (final r in plan.routines) {
+          final rId = r['id']?.toString() ?? '';
+          if (rId.isEmpty) continue;
+          final rDate = (r['date'] as Timestamp?)?.toDate() ?? firstDate;
+          final rDay = DateTime(rDate.year, rDate.month, rDate.day);
+          final weekIdx = ((rDay.difference(firstDay).inDays ~/ 7) + 1).clamp(1, _totalWeeksCount);
+          if (!selectedWeeks.contains(weekIdx)) continue;
+
+          final rawWorkouts = (r['workouts'] as List?) ?? [];
+          bool changed = false;
+          final updatedWorkouts = <Map<String, dynamic>>[];
+
+          for (final wGroup in rawWorkouts) {
+            final wMap = Map<String, dynamic>.from(wGroup as Map);
+            final rawExList = (wMap['exercises'] as List?) ?? [wMap];
+            final newExList = <Map<String, dynamic>>[];
+            bool groupMatched = false;
+
+            for (final exItem in rawExList) {
+              final exMap = Map<String, dynamic>.from(exItem as Map);
+              final wId = exMap['workoutId']?.toString();
+              final wName = (exMap['workoutName'] ?? '').toString();
+              final matchesId = workoutId != null && workoutId.isNotEmpty && wId == workoutId;
+              final matchesName = wName.trim().toLowerCase() == exerciseName.trim().toLowerCase();
+
+              if (matchesId || matchesName) {
+                if (primaryReps.isNotEmpty) exMap['reps'] = primaryReps;
+                if (primaryWeight.isNotEmpty) exMap['weight'] = primaryWeight;
+                groupMatched = true;
+                changed = true;
+              }
+              newExList.add(exMap);
+            }
+
+            if (groupMatched) {
+              if (newSets.isNotEmpty) wMap['sets'] = newSets;
+              if (newExList.isNotEmpty) {
+                wMap['reps'] = newExList.first['reps'] ?? wMap['reps'];
+                wMap['weight'] = newExList.first['weight'] ?? wMap['weight'];
+              }
+            }
+            wMap['exercises'] = newExList;
+            updatedWorkouts.add(wMap);
+          }
+
+          if (changed) {
+            r['workouts'] = updatedWorkouts;
+            batch.update(
+              FirebaseFirestore.instance.collection('routines').doc(rId),
+              {
+                'workouts': updatedWorkouts,
+                'updatedAt': FieldValue.serverTimestamp(),
+              },
+            );
+            updatedDocs++;
+          }
+        }
+
+        if (updatedDocs > 0) {
+          await batch.commit();
+        }
+      }
+
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              selectedWeeks.length > 1
+                  ? 'Ejercicio actualizado en ${selectedWeeks.length} semanas'
+                  : 'Ejercicio actualizado en Semana $_selectedWeek',
+            ),
+            backgroundColor: primaryColor,
+            behavior: SnackBarBehavior.floating,
+          ),
+        );
+      }
+    } catch (e) {
+      debugPrint('Error sincronizando semanas: $e');
+    }
   }
 
   void _editDaySummary(DaySheetData day) {
@@ -790,6 +1140,21 @@ class _ClientTrackingSheetPageState extends State<ClientTrackingSheetPage>
           ),
         ),
         actions: [
+          IconButton(
+            icon: Icon(Icons.add_circle_outline_rounded, color: primaryColor),
+            tooltip: "Crear Nueva Rutina",
+            onPressed: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (_) => CreateRoutinePage(
+                    clientId: widget.clientId,
+                    clientEmail: widget.clientEmail,
+                  ),
+                ),
+              ).then((_) => _loadAllTrackingData());
+            },
+          ),
           IconButton(
             icon: const Icon(Icons.refresh_rounded, color: Colors.white70),
             tooltip: "Recargar datos",
@@ -1633,11 +1998,13 @@ class _ClientTrackingSheetPageState extends State<ClientTrackingSheetPage>
     // Lista exacta de 14 músculos de la Imagen 2
     final specificMuscles = MuscleConstants.specificMuscles;
 
-    // Calcular series por músculo para cada día de la semana actual
+    // Calcular series y ejercicios por músculo para cada día de la semana actual
     // Map<Músculo, List<int seriesPorDía>>
     final Map<String, List<int>> matrix = {};
+    final Map<String, int> exerciseCounts = {};
     for (final m in specificMuscles) {
       matrix[m] = List.generate(days.length, (_) => 0);
+      exerciseCounts[m] = 0;
     }
 
     for (int d = 0; d < days.length; d++) {
@@ -1649,6 +2016,7 @@ class _ClientTrackingSheetPageState extends State<ClientTrackingSheetPage>
         // Si coincide exactamente con uno de los 14
         if (matrix.containsKey(muscle) && matrix[muscle] != null && matrix[muscle]!.length > d) {
           matrix[muscle]![d] += setsCount;
+          exerciseCounts[muscle] = (exerciseCounts[muscle] ?? 0) + 1;
         } else {
           // Si es general (ej. Piernas, Brazos), buscar el músculo representativo
           bool mapped = false;
@@ -1656,6 +2024,7 @@ class _ClientTrackingSheetPageState extends State<ClientTrackingSheetPage>
             if (sm.toLowerCase() == muscle.toLowerCase()) {
               if (matrix[sm] != null && matrix[sm]!.length > d) {
                 matrix[sm]![d] += setsCount;
+                exerciseCounts[sm] = (exerciseCounts[sm] ?? 0) + 1;
               }
               mapped = true;
               break;
@@ -1666,18 +2035,22 @@ class _ClientTrackingSheetPageState extends State<ClientTrackingSheetPage>
             if (muscle.toLowerCase().contains('hombro')) {
               if (matrix['Deltoides anterior'] != null && matrix['Deltoides anterior']!.length > d) {
                 matrix['Deltoides anterior']![d] += setsCount;
+                exerciseCounts['Deltoides anterior'] = (exerciseCounts['Deltoides anterior'] ?? 0) + 1;
               }
             } else if (muscle.toLowerCase().contains('pecho')) {
               if (matrix['Pectoral'] != null && matrix['Pectoral']!.length > d) {
                 matrix['Pectoral']![d] += setsCount;
+                exerciseCounts['Pectoral'] = (exerciseCounts['Pectoral'] ?? 0) + 1;
               }
             } else if (muscle.toLowerCase().contains('brazo')) {
               if (matrix['Bíceps'] != null && matrix['Bíceps']!.length > d) {
                 matrix['Bíceps']![d] += setsCount;
+                exerciseCounts['Bíceps'] = (exerciseCounts['Bíceps'] ?? 0) + 1;
               }
             } else if (muscle.toLowerCase().contains('espalda')) {
               if (matrix['Espalda'] != null && matrix['Espalda']!.length > d) {
                 matrix['Espalda']![d] += setsCount;
+                exerciseCounts['Espalda'] = (exerciseCounts['Espalda'] ?? 0) + 1;
               }
             }
           }
@@ -1746,6 +2119,14 @@ class _ClientTrackingSheetPageState extends State<ClientTrackingSheetPage>
                       style: TextStyle(color: Colors.white, fontWeight: FontWeight.w900, fontSize: 11),
                     ),
                   ),
+                  const DataColumn(
+                    label: Center(
+                      child: Text(
+                        "EJERCICIOS",
+                        style: TextStyle(color: Color(0xFFAEE084), fontWeight: FontWeight.w900, fontSize: 11),
+                      ),
+                    ),
+                  ),
                   for (int d = 0; d < days.length; d++)
                     DataColumn(
                       label: Center(
@@ -1777,6 +2158,7 @@ class _ClientTrackingSheetPageState extends State<ClientTrackingSheetPage>
                   ...specificMuscles.map((muscle) {
                     final rowSeries = matrix[muscle] ?? [];
                     final rowSum = rowSeries.fold<int>(0, (sum, val) => sum + val);
+                    final exCount = exerciseCounts[muscle] ?? 0;
 
                     return DataRow(
                       cells: [
@@ -1787,6 +2169,18 @@ class _ClientTrackingSheetPageState extends State<ClientTrackingSheetPage>
                               color: rowSum > 0 ? Colors.white : Colors.white60,
                               fontWeight: rowSum > 0 ? FontWeight.w900 : FontWeight.w500,
                               fontSize: 12,
+                            ),
+                          ),
+                        ),
+                        DataCell(
+                          Center(
+                            child: Text(
+                              "$exCount ej",
+                              style: TextStyle(
+                                color: exCount > 0 ? Colors.white : Colors.white30,
+                                fontWeight: exCount > 0 ? FontWeight.bold : FontWeight.normal,
+                                fontSize: 11.5,
+                              ),
                             ),
                           ),
                         ),
@@ -1841,6 +2235,14 @@ class _ClientTrackingSheetPageState extends State<ClientTrackingSheetPage>
                         Text(
                           "SUMA TOTAL SESIONES",
                           style: TextStyle(color: Colors.white, fontWeight: FontWeight.w900, fontSize: 11),
+                        ),
+                      ),
+                      DataCell(
+                        Center(
+                          child: Text(
+                            "${specificMuscles.fold<int>(0, (sum, m) => sum + (exerciseCounts[m] ?? 0))} ej",
+                            style: TextStyle(color: primaryColor, fontWeight: FontWeight.w900, fontSize: 12),
+                          ),
                         ),
                       ),
                       for (int d = 0; d < days.length; d++)

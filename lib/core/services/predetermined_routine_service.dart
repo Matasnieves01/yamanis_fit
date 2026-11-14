@@ -158,7 +158,6 @@ class PredeterminedRoutineService {
 
   /// La entrenadora aprueba y asigna la rutina al usuario.
   /// REGLAS ESTRICTAS:
-  /// - Solo se puede aprobar y asignar si el usuario tiene su planilla de medidas y salud completada.
   /// - Solo se puede aprobar y asignar si el usuario NO tiene una rutina ya asignada.
   static Future<int> approveAndAssignRoutine({
     required String requestId,
@@ -167,15 +166,7 @@ class PredeterminedRoutineService {
     String? targetUserName,
     DateTime? startDate,
   }) async {
-    // 1. REGLA ESTRICTA: Validar que el usuario tenga completada su planilla de medidas y salud
-    final hasCompletedDataSheet = await BiometricsService.hasCompletedDataSheet(targetUserId);
-    if (!hasCompletedDataSheet) {
-      throw Exception(
-        'No se puede asignar: El usuario aún no ha completado su planilla de medidas corporales y antecedentes de salud obligatorios.',
-      );
-    }
-
-    // 2. REGLA ESTRICTA: Verificar que el usuario NO tenga una rutina activa
+    // 1. REGLA ESTRICTA: Verificar que el usuario NO tenga una rutina activa
     final hasActive = await userHasActiveRoutine(targetUserId);
     if (hasActive) {
       throw Exception(
@@ -190,6 +181,8 @@ class PredeterminedRoutineService {
     // 3. Generar las sesiones de entrenamiento semana a semana
     final batch = _firestore.batch();
     final routinesCollection = _firestore.collection('routines');
+    final planId = 'plan_pred_${routine.id}_${DateTime.now().millisecondsSinceEpoch}';
+    final planStartStorage = DateTime.utc(cleanStart.year, cleanStart.month, cleanStart.day, 12, 0, 0);
     int totalSessions = 0;
 
     for (int week = 0; week < routine.durationWeeks; week++) {
@@ -256,12 +249,24 @@ class PredeterminedRoutineService {
           'clientId': targetUserId,
           'date': Timestamp.fromDate(storageDate),
           'predeterminedRoutineId': routine.id,
+          'planId': planId,
+          'durationWeeks': routine.durationWeeks,
+          'planStartDate': Timestamp.fromDate(planStartStorage),
           'weekNumber': week + 1,
           'createdAt': FieldValue.serverTimestamp(),
         });
         totalSessions++;
       }
     }
+
+    // Actualizar metadatos del plan actual en el documento del cliente
+    final userRef = _firestore.collection('users').doc(targetUserId);
+    batch.set(userRef, {
+      'currentPlanId': planId,
+      'planDurationWeeks': routine.durationWeeks,
+      'planStartDate': Timestamp.fromDate(planStartStorage),
+      'updatedAt': FieldValue.serverTimestamp(),
+    }, SetOptions(merge: true));
 
     // 4. Actualizar estado de la solicitud a aprobada
     final requestRef = _firestore.collection('routine_requests').doc(requestId);
