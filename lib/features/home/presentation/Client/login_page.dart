@@ -175,9 +175,37 @@ class _LoginPageState extends State<LoginPage> {
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: Colors.transparent,
-      body: GestureDetector(
-        onTap: () => FocusScope.of(context).unfocus(),
-        child: SafeArea(
+      body: Stack(
+        fit: StackFit.expand,
+        children: [
+          // Background photo
+          Positioned.fill(
+            child: Image.asset(
+              'assets/fotos/Login.jpg',
+              fit: BoxFit.cover,
+              alignment: Alignment.center,
+            ),
+          ),
+          // Dark ambient overlay ensuring perfect contrast and readability
+          Positioned.fill(
+            child: Container(
+              decoration: BoxDecoration(
+                gradient: LinearGradient(
+                  begin: Alignment.topCenter,
+                  end: Alignment.bottomCenter,
+                  colors: [
+                    backgroundColor.withValues(alpha: 0.72),
+                    backgroundColor.withValues(alpha: 0.85),
+                    backgroundColor.withValues(alpha: 0.94),
+                  ],
+                ),
+              ),
+            ),
+          ),
+          // Content
+          GestureDetector(
+            onTap: () => FocusScope.of(context).unfocus(),
+            child: SafeArea(
               child: Center(
                 child: SingleChildScrollView(
                   physics: const BouncingScrollPhysics(),
@@ -479,6 +507,8 @@ class _LoginPageState extends State<LoginPage> {
                 ),
               ),
             ),
+          ),
+        ],
       ),
     );
   }
