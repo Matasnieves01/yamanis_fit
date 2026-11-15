@@ -27,6 +27,7 @@
     "rules": "storage.rules"
   },
   "hosting": {
+    "site": "vyofit-5eedf",
     "public": "build/web",
     "ignore": [
       "firebase.json",
