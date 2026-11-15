@@ -6,7 +6,7 @@ class OtaService {
 
   /// Indica si el motor de Shorebird está activo en esta compilación.
   /// Será false en modo debug / emulador y true cuando se compile con shorebird release.
-  static bool get isAvailable => _updater.isAvailable;
+  static bool get isAvailable => !kIsWeb && _updater.isAvailable;
 
   /// Obtiene el número del parche actual si existe (ej. parche #1, #2...).
   static Future<int?> getCurrentPatchNumber() async {

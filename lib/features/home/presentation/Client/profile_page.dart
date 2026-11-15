@@ -22,9 +22,6 @@ class _ProfilePageState extends State<ProfilePage> {
   String _displayName = "Cargando...";
   String _email = "";
   String _initials = "YF";
-  String _planName = "Plan Atleta";
-  bool _isPro = true;
-  bool _hasBiometrics = false;
   UserBiometrics? _biometrics;
   bool _isLoading = true;
 
@@ -64,25 +61,8 @@ class _ProfilePageState extends State<ProfilePage> {
           final biometricsMap = data['biometrics'] as Map<String, dynamic>?;
           if (biometricsMap != null) {
             _biometrics = UserBiometrics.fromMap(biometricsMap);
-            _hasBiometrics = _biometrics?.isComplete == true ||
-                data['hasCompletedDataSheet'] == true ||
-                data['hasCompletedBiometrics'] == true;
           } else {
-            _hasBiometrics = false;
             _biometrics = null;
-          }
-
-          final role = data['role']?.toString();
-          final isActive = data['isActive'] == true;
-          _isPro = role == 'admin' || isActive;
-
-          final customPlan = data['planName']?.toString();
-          if (customPlan != null && customPlan.isNotEmpty) {
-            _planName = customPlan;
-          } else if (_isPro) {
-            _planName = "Plan Anual Atleta";
-          } else {
-            _planName = "Sin Plan Activo";
           }
 
           setState(() => _isLoading = false);

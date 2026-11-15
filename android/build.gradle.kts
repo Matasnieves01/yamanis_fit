@@ -42,7 +42,7 @@ subprojects {
         sourceCompatibility = JavaVersion.VERSION_17.toString()
         targetCompatibility = JavaVersion.VERSION_17.toString()
         options.encoding = "UTF-8"
-        options.compilerArgs.addAll(listOf("-Xlint:-options"))
+        options.compilerArgs.addAll(listOf("-Xlint:-options", "-Xlint:-deprecation", "-Xlint:-unchecked"))
     }
     
     // Force Kotlin compatibility with newer compilerOptions DSL

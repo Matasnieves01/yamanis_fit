@@ -265,7 +265,7 @@ class BodyScanWidget extends StatelessWidget {
                         spacing: 6,
                         children: [
                           Text(
-                            hasWeight ? "${b!.weight!.toStringAsFixed(1)} kg" : "-- kg",
+                            hasWeight ? "${b.weight!.toStringAsFixed(1)} kg" : "-- kg",
                             style: const TextStyle(
                               color: Colors.white,
                               fontSize: 19,

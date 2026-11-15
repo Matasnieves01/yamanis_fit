@@ -1,4 +1,5 @@
 import 'dart:io';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:pdfrx/pdfrx.dart';
 import 'package:yamanis_fit/core/services/pdf_cache_service.dart';
@@ -32,6 +33,14 @@ class _PdfViewerPageState extends State<PdfViewerPage> {
   }
 
   Future<void> _loadPdf({bool forceRefresh = false}) async {
+    if (kIsWeb) {
+      setState(() {
+        _isLoading = false;
+        _errorMessage = null;
+      });
+      return;
+    }
+
     setState(() {
       _isLoading = true;
       _errorMessage = null;
@@ -169,6 +178,22 @@ class _PdfViewerPageState extends State<PdfViewerPage> {
 
     if (_errorMessage != null) {
       return _buildErrorView();
+    }
+
+    if (kIsWeb) {
+      return PdfViewer.uri(
+        Uri.parse(PdfCacheService.normalizeDriveUrl(widget.resource.url)),
+        params: PdfViewerParams(
+          loadingBannerBuilder: (context, bytesDownloaded, totalBytes) {
+            return Center(
+              child: CircularProgressIndicator(
+                value: totalBytes != null ? bytesDownloaded / totalBytes : null,
+                color: _primaryColor,
+              ),
+            );
+          },
+        ),
+      );
     }
 
     if (_pdfFile != null) {

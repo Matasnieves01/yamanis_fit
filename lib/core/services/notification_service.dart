@@ -1,5 +1,5 @@
-import 'dart:io';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -24,7 +24,7 @@ class NotificationService {
 
   /// Inicializa el servicio de notificaciones locales y la base de datos de zonas horarias
   static Future<void> init() async {
-    if (_isInitialized) return;
+    if (kIsWeb || _isInitialized) return;
 
     try {
       // 1. Inicializar zonas horarias
@@ -56,7 +56,7 @@ class NotificationService {
       );
 
       // Crear canal de notificación de alta importancia en Android
-      if (Platform.isAndroid) {
+      if (!kIsWeb && defaultTargetPlatform == TargetPlatform.android) {
         final androidImpl = _notificationsPlugin
             .resolvePlatformSpecificImplementation<
                 AndroidFlutterLocalNotificationsPlugin>();
@@ -82,8 +82,9 @@ class NotificationService {
 
   /// Solicita permisos de notificación al usuario (iOS y Android 13+)
   static Future<bool> requestPermissions() async {
+    if (kIsWeb) return false;
     try {
-      if (Platform.isIOS) {
+      if (defaultTargetPlatform == TargetPlatform.iOS) {
         final iosImpl = _notificationsPlugin
             .resolvePlatformSpecificImplementation<
                 IOSFlutterLocalNotificationsPlugin>();
@@ -93,7 +94,7 @@ class NotificationService {
           sound: true,
         );
         return granted ?? false;
-      } else if (Platform.isAndroid) {
+      } else if (defaultTargetPlatform == TargetPlatform.android) {
         final androidImpl = _notificationsPlugin
             .resolvePlatformSpecificImplementation<
                 AndroidFlutterLocalNotificationsPlugin>();

@@ -41,16 +41,6 @@ class _StartRoutinePageState extends State<StartRoutinePage> {
   DateTime _normalizeDay(DateTime date) =>
       DateTime.utc(date.year, date.month, date.day);
 
-  /// Get the start of the current week (Monday)
-  DateTime _getWeekStart() {
-    final now = DateTime.now();
-    final today = _normalizeDay(now);
-    final daysToMonday = (today.weekday == DateTime.monday)
-        ? 0
-        : (today.weekday - DateTime.monday);
-    return today.subtract(Duration(days: daysToMonday));
-  }
-
   /// Get the end of the current week (Sunday)
   DateTime _getWeekEnd() {
     final now = DateTime.now();
@@ -59,16 +49,6 @@ class _StartRoutinePageState extends State<StartRoutinePage> {
         ? 0
         : (DateTime.sunday - today.weekday);
     return today.add(Duration(days: daysToSunday));
-  }
-
-  /// Check if a routine is in the current week (Monday-Sunday)
-  bool _isRoutineInCurrentWeek() {
-    final routineDateTs = widget.routine['date'] as Timestamp?;
-    if (routineDateTs == null) return false;
-    final routineDay = _normalizeDay(routineDateTs.toDate());
-    final weekStart = _getWeekStart();
-    final weekEnd = _getWeekEnd();
-    return !routineDay.isBefore(weekStart) && !routineDay.isAfter(weekEnd);
   }
 
   @override
@@ -533,10 +513,12 @@ class _StartRoutinePageState extends State<StartRoutinePage> {
     if (m.contains('pecho')) return Icons.accessibility_new_rounded;
     if (m.contains('espalda')) return Icons.airline_seat_recline_normal_rounded;
     if (m.contains('hombro')) return Icons.sports_handball_rounded;
-    if (m.contains('bícep') || m.contains('trícep') || m.contains('brazo'))
+    if (m.contains('bícep') || m.contains('trícep') || m.contains('brazo')) {
       return Icons.sports_mma_rounded;
-    if (m.contains('abdom') || m.contains('core'))
+    }
+    if (m.contains('abdom') || m.contains('core')) {
       return Icons.airline_seat_flat_rounded;
+    }
     if (m.contains('cardio')) return Icons.directions_run_rounded;
     return Icons.fitness_center_rounded;
   }
@@ -1756,7 +1738,7 @@ class _WorkoutDetailSheetState extends State<WorkoutDetailSheet> {
           child: ListView.separated(
             shrinkWrap: true,
             itemCount: history.length,
-            separatorBuilder: (_, __) => const SizedBox(height: 8),
+            separatorBuilder: (_, _) => const SizedBox(height: 8),
             itemBuilder: (context, index) {
               final entry = history[index];
               final isLatest = index == 0;

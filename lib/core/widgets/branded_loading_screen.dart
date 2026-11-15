@@ -5,7 +5,6 @@ class BrandedLoadingScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    const Color brandBackground = Color(0xFF11151C);
     const Color brandPrimary = Color(0xFFAEE084);
 
     return Scaffold(
@@ -26,7 +25,7 @@ class BrandedLoadingScreen extends StatelessWidget {
                 errorBuilder: (context, error, stackTrace) => Container(
                   height: 160,
                   width: 160,
-                  color: brandPrimary.withOpacity(0.1),
+                  color: brandPrimary.withValues(alpha: 0.1),
                   child: const Icon(Icons.fitness_center_rounded,
                       size: 64, color: brandPrimary),
                 ),

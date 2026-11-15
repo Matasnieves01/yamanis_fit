@@ -1,5 +1,6 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:yamanis_fit/core/services/exercise_weight_service.dart';
 import 'package:yamanis_fit/core/services/routine_plan_service.dart';
 
 void main() {
@@ -107,6 +108,82 @@ void main() {
       expect(status.areAllExercisesCompleted, isTrue);
       expect(status.isInGracePeriod, isFalse);
       expect(status.isBlocked, isFalse);
+    });
+  });
+
+  group('RoutinePlanService.groupRoutinesIntoPlans & ExerciseWeightService', () {
+    test('Separa meses consecutivos en planes independientes de 4 semanas cada uno', () {
+      final month1Routines = List.generate(4, (w) => {
+        'id': 'm1_w${w + 1}',
+        'name': 'Tren Inferior',
+        'planId': 'plan_mes_1',
+        'durationWeeks': 4,
+        'weekNumber': w + 1,
+        'date': Timestamp.fromDate(DateTime(2026, 9, 1 + w * 7)),
+      });
+      final month2Routines = List.generate(4, (w) => {
+        'id': 'm2_w${w + 1}',
+        'name': 'Tren Inferior',
+        'planId': 'plan_mes_2',
+        'durationWeeks': 4,
+        'weekNumber': w + 1,
+        'date': Timestamp.fromDate(DateTime(2026, 9, 29 + w * 7)),
+      });
+
+      final plans = RoutinePlanService.groupRoutinesIntoPlans(
+        [...month1Routines, ...month2Routines],
+        userPlanWeeks: 4,
+        currentPlanId: 'plan_mes_2',
+      );
+
+      expect(plans.length, equals(2));
+      expect(plans.first.id, equals('plan_mes_2'));
+      expect(plans.first.isCurrent, isTrue);
+      expect(plans.first.durationWeeks, equals(4));
+      expect(plans.last.id, equals('plan_mes_1'));
+      expect(plans.last.isCurrent, isFalse);
+      expect(plans.last.durationWeeks, equals(4));
+    });
+
+    test('Pre-llena el último peso levantado conservando trainerWeight', () {
+      final records = <String, ExerciseWeightRecord>{
+        'id:ex_squat': ExerciseWeightRecord(
+          workoutId: 'ex_squat',
+          workoutName: 'Sentadilla Libre',
+          lastWeight: '75',
+          lastReps: '10',
+          updatedAt: DateTime(2026, 11, 10),
+          history: [
+            ExerciseWeightEntry(
+              weight: '75',
+              reps: '10',
+              plannedWeight: '60',
+              date: DateTime(2026, 11, 10),
+            ),
+          ],
+        ),
+      };
+
+      final rawWorkouts = [
+        {
+          'sets': '4',
+          'exercises': [
+            {
+              'workoutId': 'ex_squat',
+              'workoutName': 'Sentadilla Libre',
+              'reps': '10',
+              'weight': '60',
+            },
+          ],
+        },
+      ];
+
+      final updated = ExerciseWeightService.applySavedWeightsToWorkouts(rawWorkouts, records);
+      final ex = (updated.first['exercises'] as List).first as Map<String, dynamic>;
+
+      expect(ex['weight'], equals('75'));
+      expect(ex['lastLiftedWeight'], equals('75'));
+      expect(ex['trainerWeight'], equals('60'));
     });
   });
 }

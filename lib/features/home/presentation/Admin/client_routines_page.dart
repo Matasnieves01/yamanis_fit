@@ -4,7 +4,6 @@ import 'package:flutter/material.dart';
 import 'package:table_calendar/table_calendar.dart';
 import 'package:yamanis_fit/core/services/biometrics_service.dart';
 import 'package:yamanis_fit/core/services/routine_plan_service.dart';
-import 'package:yamanis_fit/models/user_data_sheet.dart';
 import 'client_info_page.dart';
 import 'client_tracking_sheet_page.dart';
 import 'create_routine_page.dart';
